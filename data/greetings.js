@@ -1,0 +1,22 @@
+// greetings.js
+module.exports = {
+    'halo': 'Halo',
+    'hai': 'Hai',
+    'haloo': 'Halo',
+    'holla': 'Holla',
+    'hallo': 'Halo',
+    'hi': 'Hi',
+    'hello': 'Hello',
+    'haii': 'Haii',
+    'heyy': 'Heyy',
+    'p':'Halo',
+    'hey': 'Hey',
+    'yo': 'Yo',
+    'selamat pagi': 'Pagi',
+    'selamat siang': 'Siang',
+    'selamat sore': 'Sore',
+    'selamat malam': 'Malam',
+    'assalamualaikum': 'Waalaikumsalam',
+    'salam': 'Salam',
+    'salom': 'Salam',
+};
