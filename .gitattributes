@@ -1,0 +1,8 @@
+# JavaScript / JSON / HTML → pakai LF
+*.js text eol=lf
+*.json text eol=lf
+*.html text eol=lf
+
+# Cache / lock files → biarkan default Windows
+*.lock text
+.wwebjs_cache/* text eol=crlf

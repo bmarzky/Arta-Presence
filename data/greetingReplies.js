@@ -3,8 +3,10 @@ module.exports = [
     "Senang bertemu denganmu 😄",
     "Apa kabar hari ini?",
     "Semoga harimu menyenangkan!",
-    "Semoga hari kamu luar biasa 🌟",
-    "Senang bisa chat denganmu",
-    "Salam hangat untukmu!",
-    "Senang kamu hadir di sini 😃"
+    "Bagaimana saya bisa membantumu hari ini?",
+    "Ada yang bisa saya lakukan untukmu?",
+    "Selalu senang mendengar kabar darimu!",
+    "jangan ragu untuk bertanya jika butuh bantuan.",
+    "Saya di sini untuk membantu kapan saja!",
+    "Terima kasih sudah menyapa!",
 ];

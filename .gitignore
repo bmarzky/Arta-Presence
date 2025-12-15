@@ -1,0 +1,24 @@
+# Node modules
+node_modules/
+
+# npm logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# WhatsApp cache
+.wwebjs_cache/
+
+# Session files
+sessions/
+
+# Exports (PDF, CSV, dsb)
+exports/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temp files
+*.tmp
+*.log
