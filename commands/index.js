@@ -79,7 +79,7 @@ module.exports = {
 
             // Perintah /help
             if (pesan.toLowerCase() === '/help') {
-                return require('./commands/help')(chat, user.nama_wa);
+                return require('./help')(chat, user.nama_wa);
             }
 
 

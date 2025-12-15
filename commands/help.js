@@ -9,18 +9,16 @@ module.exports = async function handleHelp(chat, nama_wa) {
     await sendTyping(chat,
 `*Perintah Absensi:*
 - /absen : Mulai proses absen MASUK/PULANG
-- /status : Cek status absensi hari ini
+- /status : Cek status absensi hari ini *(maintenance)*
 - /export : Buat laporan absensi dalam format PDF`
     , 1000);
 
     // Perintah tambahan
     await sendTyping(chat,
 `*Perintah Lain:*
-- /help : Menampilkan daftar perintah ini
-- /jadwal : Menampilkan jadwal kerja (opsional)
-- /info : Info singkat tentang bot`
+- /info : Perkenalan singkat tentang bot`
     , 1000);
 
     // Pesan penutup
-    await sendTyping(chat, `Kalau ada yang membingungkan, cukup ketik perintahnya, aku akan bantu menjelaskan.`, 1000);
+    await sendTyping(chat, `Silakan ketik perintah sesuai daftar untuk mencoba fitur-fitur yang tersedia.`, 1000);
 }
