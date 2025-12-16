@@ -122,7 +122,7 @@ async function generatePDFandSend(chat, user, db, paramBulan = null) {
 
     const rows_absensi = absensiByDate.map(a => `
         <tr>
-            <td>${moment(a.tanggal).format('DD MMM YYYY')}</td>
+            <td>${moment(a.tanggal).format('DD')}</td>
             <td>${a.jam_masuk}</td>
             <td>${a.jam_pulang}</td>
             <td>${a.deskripsi}</td>
