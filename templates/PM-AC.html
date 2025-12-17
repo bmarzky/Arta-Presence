@@ -142,46 +142,52 @@
   <tr><td style="border:1px solid black; height:50px; padding:5px;">{{notes}}</td></tr>
 </table>
 
-<!-- Pelaksana -->
-<h4 style="margin:0; padding:0; margin-top:20px;">Pelaksana</h4>
-<table style="width:70%; border-collapse: collapse; border:1px solid black; float:left;">
-  <tr>
-    <th>No</th>
-    <th>Nama</th>
-    <th>Departement</th>
-    <th>Sub Departement</th>
-  </tr>
-  <tr>
-    <td>1</td>
-    <td>{{pelaksana_nama_1}}</td>
-    <td>{{pelaksana_dept_1}}</td>
-    <td>{{pelaksana_subdept_1}}</td>
-  </tr>
-  <tr>
-    <td>2</td>
-    <td>{{pelaksana_nama_2}}</td>
-    <td>{{pelaksana_dept_2}}</td>
-    <td>{{pelaksana_subdept_2}}</td>
-  </tr>
-  <tr>
-    <td>3</td>
-    <td>{{pelaksana_nama_3}}</td>
-    <td>{{pelaksana_dept_3}}</td>
-    <td>{{pelaksana_subdept_3}}</td>
-  </tr>
-</table>
+<div style="display: flex; justify-content: space-between; margin-top: 20px;">
 
-<!-- Mengetahui -->
-<table style="width:25%; border-collapse: collapse; border:1px solid black; float:right;">
-  <tr><th style="height:30px;">Mengetahui</th></tr>
-  <tr>
-    <td class="center" style="height:45px; vertical-align: middle;">
-      <img src="{{signature_image}}" width="80">
-    </td>
-  </tr>
-</table>
+  <!-- Pelaksana -->
+  <div style="width:70%;">
+    <h4 style="margin:0; padding:0;">Pelaksana :</h4>
+    <table style="width:100%; border-collapse: collapse; border:1px solid black;">
+      <tr>
+        <th>No</th>
+        <th>Nama</th>
+        <th>Departement</th>
+        <th>Tanda Tangan</th>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td>{{pelaksana_nama_1}}</td>
+        <td>{{pelaksana_dept_1}}</td>
+        <td>{{pelaksana_subdept_1}}</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>{{pelaksana_nama_2}}</td>
+        <td>{{pelaksana_dept_2}}</td>
+        <td>{{pelaksana_subdept_2}}</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>{{pelaksana_nama_3}}</td>
+        <td>{{pelaksana_dept_3}}</td>
+        <td>{{pelaksana_subdept_3}}</td>
+      </tr>
+    </table>
+  </div>
 
-<div style="clear:both;"></div>
+  <!-- Mengetahui -->
+  <div style="width:25%; text-align:center;">
+    <h4 style="margin:0; padding:0;">Mengetahui,</h4>
+    <table style="width:100%; border-collapse: collapse; border:1px solid black;">
+      <tr>
+        <td style="height:90px; vertical-align: bottom; text-align:center;">
+          {{mengetahui_nama}}
+        </td>
+      </tr>
+    </table>
+  </div>
+
+</div>
 
 <!-- Footer Hak Cipta -->
     <div style="position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 90%; text-align: center; font-size:10px; margin-bottom: 15px;">
