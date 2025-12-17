@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Formulir Preventive Maintenance Dokumentasi</title>
+  <style>
+    body { 
+      font-family: "Times New Roman", Times, serif; 
+      font-size: 12px; 
+      margin: 20px; 
+    }
+    .header-form {
+      display: flex; 
+      border: 1px solid black; 
+      width: 100%; 
+      font-size: 12px; 
+      margin-top: 20px;
+    }
+    .header-left {
+      width: 25%; 
+      border-right: 1px solid black; 
+      padding: 5px; 
+      display: grid; 
+      grid-template-columns: auto 10px 1fr; 
+      row-gap: 2px;
+    }
+    .header-center {
+      width: 50%; 
+      border-right: 1px solid black; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      text-align: center;
+    }
+    .header-right {
+      width: 25%; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center;
+    }
+    .header-right img {
+      width: 90px;
+    }
+    h4 {
+      text-align: center; 
+      margin-top: 10px; 
+      margin-bottom: 10px;
+    }
+    .grid-images {
+      display: grid; 
+      grid-template-columns: 1fr 1fr 1fr; 
+      gap: 10px;
+    }
+    .grid-images div {
+      border: 1px solid black; 
+      padding: 5px; 
+      text-align: center;
+    }
+    .grid-images img {
+      width: 100%; 
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header Form -->
+  <div class="header-form">
+    <div class="header-left">
+      <div>No. Dok&nbsp;&nbsp;</div><div>:</div><div>{{no_dok}}</div>
+      <div>Versi</div><div>:</div><div>{{versi}}</div>
+      <div>Hal</div><div>:</div><div>{{hal}}</div>
+      <div>Label</div><div>:</div><div>{{label}}</div>
+    </div>
+    <div class="header-center">
+      <strong style="font-size: 14px;">Formulir Preventive Maintenance AC</strong>
+    </div>
+    <div class="header-right">
+      <img src="../assets/lintas.png" alt="Logo Lintas">
+    </div>
+  </div>
+
+  <!-- Dokumentasi Kegiatan -->
+  <h4>Dokumentasi Kegiatan</h4>
+  <div class="grid-images">
+    <div><img src="{{image_1}}" alt="Dokumentasi 1"></div>
+    <div><img src="{{image_2}}" alt="Dokumentasi 2"></div>
+    <div><img src="{{image_3}}" alt="Dokumentasi 3"></div>
+    <div><img src="{{image_4}}" alt="Dokumentasi 4"></div>
+    <div><img src="{{image_5}}" alt="Dokumentasi 5"></div>
+    <div><img src="{{image_6}}" alt="Dokumentasi 6"></div>
+  </div>
+
+
+  <!-- Footer Hak Cipta -->
+    <div style="position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 90%; text-align: center; font-size:10px; margin-bottom: 15px;">
+        <hr style="border:1px solid black; margin-bottom:3px;">
+        © Hak Cipta PT. APLIKANUSA LINTASARTA, Indonesia<br>
+        FM-LAP-D2-SOP-003-013 Formulir Preventive Maintenance Battery
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Formulir Preventive Maintenance Battery</title>
+  <style>
+    body { font-family: "Times New Roman", Times, serif; font-size: 12px; margin: 20px; }
+    table { width: 100%; border-collapse: collapse; }
+    table, th, td { border: 1px solid black; }
+    th, td { padding: 5px; text-align: left; }
+    .no-border { border: none; }
+    .center { text-align: center; }
+    .small { font-size: 10px; }
+    .header-table { border: none; }
+    .header-table td { border: none; vertical-align: top; }
+    .jarak { margin-top: 15px; }
+  </style>
+</head>
+<body>
+
+<!-- Header Form -->
+<div style="display: flex; border: 1px solid black; width: 100%; font-size: 12px;">
+  <div style="width: 25%; border-right: 1px solid black; padding: 5px; display: grid; grid-template-columns: auto 10px 1fr; row-gap: 2px;">
+    <div>No. Dok&nbsp;&nbsp;</div><div>:</div><div>{{no_dok}}</div>
+    <div>Versi</div><div>:</div><div>{{versi}}</div>
+    <div>Hal</div><div>:</div><div>{{hal}}</div>
+    <div>Label</div><div>:</div><div>{{label}}</div>
+  </div>
+  <div style="width: 50%; border-right: 1px solid black; display: flex; align-items: center; justify-content: center; text-align: center;">
+    <strong style="font-size: 14px;">Formulir Preventive Maintenance Battery</strong>
+  </div>
+  <div style="width: 25%; display: flex; align-items: center; justify-content: center;">
+    <img src="../assets/lintas.png" width="90">
+  </div>
+</div>
+
+<!-- Info Baterai -->
+<div class="jarak" style="display: grid; grid-template-columns: max-content 1fr; gap:2px; padding:5px; font-size:12px; line-height:1.5;">
+  <div style="display:flex;"><span style="width:120px;">Lokasi</span><span>:</span></div>
+  <div>{{location}}</div>
+
+  <div style="display:flex;"><span style="width:120px;">Date / Time</span><span>:</span></div>
+  <div>{{date_time}}</div>
+
+  <div style="display:flex;"><span style="width:120px;">Batt Temperature</span><span>:</span></div>
+  <div>{{batt_temp}}&deg;C</div>
+</div>
+
+
+<!-- Tabel Maintenance -->
+<table style="width:95%; border-collapse: collapse; font-size:10px; table-layout: fixed; margin: 0 auto; margin-top: 15px;">
+  <tr>
+    <th colspan="4" style="padding:2px; text-align: center;">Bank 1<br>Batt. Brand :{{bank1_brand}}</th>
+    <th colspan="4" style="padding:2px; text-align: center;">Bank 2<br>Batt. Brand :{{bank2_brand}}</th>
+    <th colspan="4" style="padding:2px; text-align: center;">Bank 3<br>Batt. Brand :{{bank3_brand}}</th>
+  </tr>
+  <tr>
+    <th>No</th><th>Voltage</th>
+    <th>No</th><th>Voltage</th>
+    <th>No</th><th>Voltage</th>
+    <th>No</th><th>Voltage</th>
+    <th>No</th><th>Voltage</th>
+    <th>No</th><th>Voltage</th>
+  </tr>
+
+  <!-- Baris 1 -->
+  <tr>
+    <td>1</td><td>{{bank1_voltages[0]}}</td>
+    <td>11</td><td>{{bank1_voltages[10]}}</td>
+
+    <td>1</td><td>{{bank2_voltages[0]}}</td>
+    <td>11</td><td>{{bank2_voltages[10]}}</td>
+
+    <td>1</td><td>{{bank3_voltages[0]}}</td>
+    <td>11</td><td>{{bank3_voltages[10]}}</td>
+  </tr>
+  <!-- Baris 2 -->
+  <tr>
+    <td>2</td><td>{{bank1_voltages[1]}}</td>
+    <td>12</td><td>{{bank1_voltages[11]}}</td>
+
+    <td>2</td><td>{{bank2_voltages[1]}}</td>
+    <td>12</td><td>{{bank2_voltages[11]}}</td>
+
+    <td>2</td><td>{{bank3_voltages[1]}}</td>
+    <td>12</td><td>{{bank3_voltages[11]}}</td>
+  </tr>
+  <!-- Baris 3 -->
+  <tr>
+    <td>3</td><td>{{bank1_voltages[2]}}</td>
+    <td>13</td><td>{{bank1_voltages[12]}}</td>
+
+    <td>3</td><td>{{bank2_voltages[2]}}</td>
+    <td>13</td><td>{{bank2_voltages[12]}}</td>
+
+    <td>3</td><td>{{bank3_voltages[2]}}</td>
+    <td>13</td><td>{{bank3_voltages[12]}}</td>
+  </tr>
+  <!-- Baris 4 -->
+  <tr>
+    <td>4</td><td>{{bank1_voltages[3]}}</td>
+    <td>14</td><td>{{bank1_voltages[13]}}</td>
+
+    <td>4</td><td>{{bank2_voltages[3]}}</td>
+    <td>14</td><td>{{bank2_voltages[13]}}</td>
+
+    <td>4</td><td>{{bank3_voltages[3]}}</td>
+    <td>14</td><td>{{bank3_voltages[13]}}</td>
+  </tr>
+  <!-- Baris 5 -->
+  <tr>
+    <td>5</td><td>{{bank1_voltages[4]}}</td>
+    <td>15</td><td>{{bank1_voltages[14]}}</td>
+
+    <td>5</td><td>{{bank2_voltages[4]}}</td>
+    <td>15</td><td>{{bank2_voltages[14]}}</td>
+
+    <td>5</td><td>{{bank3_voltages[4]}}</td>
+    <td>15</td><td>{{bank3_voltages[14]}}</td>
+  </tr>
+  <!-- Baris 6 -->
+  <tr>
+    <td>6</td><td>{{bank1_voltages[5]}}</td>
+    <td>16</td><td>{{bank1_voltages[15]}}</td>
+
+    <td>6</td><td>{{bank2_voltages[5]}}</td>
+    <td>16</td><td>{{bank2_voltages[15]}}</td>
+
+    <td>6</td><td>{{bank3_voltages[5]}}</td>
+    <td>16</td><td>{{bank3_voltages[15]}}</td>
+  </tr>
+  <!-- Baris 7 -->
+  <tr>
+    <td>7</td><td>{{bank1_voltages[6]}}</td>
+    <td>17</td><td>{{bank1_voltages[16]}}</td>
+
+    <td>7</td><td>{{bank2_voltages[6]}}</td>
+    <td>17</td><td>{{bank2_voltages[16]}}</td>
+
+    <td>7</td><td>{{bank3_voltages[6]}}</td>
+    <td>17</td><td>{{bank3_voltages[16]}}</td>
+  </tr>
+  <!-- Baris 8 -->
+  <tr>
+    <td>8</td><td>{{bank1_voltages[7]}}</td>
+    <td>18</td><td>{{bank1_voltages[17]}}</td>
+
+    <td>8</td><td>{{bank2_voltages[7]}}</td>
+    <td>18</td><td>{{bank2_voltages[17]}}</td>
+
+    <td>8</td><td>{{bank3_voltages[7]}}</td>
+    <td>18</td><td>{{bank3_voltages[17]}}</td>
+  </tr>
+  <!-- Baris 9 -->
+  <tr>
+    <td>9</td><td>{{bank1_voltages[8]}}</td>
+    <td>19</td><td>{{bank1_voltages[18]}}</td>
+
+    <td>9</td><td>{{bank2_voltages[8]}}</td>
+    <td>19</td><td>{{bank2_voltages[18]}}</td>
+
+    <td>9</td><td>{{bank3_voltages[8]}}</td>
+    <td>19</td><td>{{bank3_voltages[18]}}</td>
+  </tr>
+  <!-- Baris 10 -->
+  <tr>
+    <td>10</td><td>{{bank1_voltages[9]}}</td>
+    <td>20</td><td>{{bank1_voltages[19]}}</td>
+
+    <td>10</td><td>{{bank2_voltages[9]}}</td>
+    <td>20</td><td>{{bank2_voltages[19]}}</td>
+
+    <td>10</td><td>{{bank3_voltages[9]}}</td>
+    <td>20</td><td>{{bank3_voltages[19]}}</td>
+  </tr>
+</table>
+
+
+
+
+
+<!-- Notes -->
+  <p>* Measurement with load test (backup test UPS)<br>
+     * Standard min 10 VDC</p>
+
+<!-- Notes -->
+<h4 style="margin:0; padding:0; margin-top:20px;">Notes / Additional Information :</h4>
+<table style="width:100%; border-collapse: collapse; border:1px solid black;">
+  <tr><td style="border:1px solid black; height:50px; padding:5px;">{{notes}}</td></tr>
+</table>
+
+<div style="display: flex; justify-content: space-between; margin-top: 20px;">
+
+  <!-- Pelaksana -->
+  <div style="width:70%;">
+    <h4 style="margin:0; padding:0;">Pelaksana :</h4>
+    <table style="width:100%; border-collapse: collapse; border:1px solid black;">
+      <tr>
+        <th>No</th>
+        <th>Nama</th>
+        <th>Departement</th>
+        <th>Tanda Tangan</th>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td>{{pelaksana_nama_1}}</td>
+        <td>{{pelaksana_dept_1}}</td>
+        <td>{{pelaksana_subdept_1}}</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>{{pelaksana_nama_2}}</td>
+        <td>{{pelaksana_dept_2}}</td>
+        <td>{{pelaksana_subdept_2}}</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>{{pelaksana_nama_3}}</td>
+        <td>{{pelaksana_dept_3}}</td>
+        <td>{{pelaksana_subdept_3}}</td>
+      </tr>
+    </table>
+  </div>
+
+<!-- Mengetahui -->
+<div style="width:25%; text-align:center;">
+  <h4 style="margin:0; padding:0;">Mengetahui,</h4>
+  <table style="width:100%; border-collapse: collapse; border:1px solid black;">
+    <tr>
+      <td style="height:90px; vertical-align: bottom; text-align:center;">
+        {{mengetahui_nama}}
+      </td>
+    </tr>
+  </table>
+</div>
+
+</div>
+
+
+
+<!-- Footer Hak Cipta -->
+<div style="position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 90%; text-align: center; font-size:10px; margin-bottom: 15px;">
+  <hr style="border:1px solid black; margin-bottom:3px;">
+  © Hak Cipta PT. APLIKANUSA LINTASARTA, Indonesia<br>
+  FM-LAP-D2-SOP-003-013 Formulir Preventive Maintenance Battery
+</div>
+
+</body>
+</html>
