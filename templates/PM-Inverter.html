@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Formulir Preventive Maintenance 0</title>
+  <style>
+    body { font-family: "Times New Roman", Times, serif; font-size: 12px; margin: 20px; }
+    table { width: 100%; border-collapse: collapse; }
+    table, th, td { border: 1px solid black; }
+    th, td { padding: 5px; text-align: left; }
+    .no-border { border: none; }
+    .center { text-align: center; }
+    .small { font-size: 10px; }
+    .header-table { border: none; }
+    .header-table td { border: none; vertical-align: top; }
+    .jarak { margin-top: 15px; }
+  </style>
+</head>
+<body>
+
+<!-- Header Form -->
+<div style="display: flex; border: 1px solid black; width: 100%; font-size: 12px;">
+  <div style="width: 25%; border-right: 1px solid black; padding: 5px; display: grid; grid-template-columns: auto 10px 1fr; row-gap: 2px;">
+    <div>No. Dok&nbsp;&nbsp;</div><div>:</div><div>{{no_dok}}</div>
+    <div>Versi</div><div>:</div><div>{{versi}}</div>
+    <div>Hal</div><div>:</div><div>{{hal}}</div>
+    <div>Label</div><div>:</div><div>{{label}}</div>
+  </div>
+  <div style="width: 50%; border-right: 1px solid black; display: flex; align-items: center; justify-content: center; text-align: center;">
+    <strong style="font-size: 14px;">Formulir Preventive Maintenance Inverter 48VDC/220VAC</strong>
+  </div>
+  <div style="width: 25%; display: flex; align-items: center; justify-content: center;">
+    <img src="../assets/lintas.png" width="90">
+  </div>
+</div>
+
+<!-- Info AC -->
+<div class="jarak" style="display: grid; grid-template-columns: max-content 1fr max-content 1fr; gap:1px; padding:5px; font-size:12px; line-height:1.5;">
+  <div style="display:flex;"><span style="width:100px;">Lokasi</span><span>:</span></div>
+  <div>{{location}}</div>
+  <div style="display:flex;"><span style="width:100px;">Reg.Number</span><span>:</span></div>
+  <div>{{reg_number}}</div>
+
+  <div style="display:flex;"><span style="width:100px;">Date / Time</span><span>:</span></div>
+  <div>{{date_time}}</div>
+  <div style="display:flex;"><span style="width:100px;">S/N</span><span>:</span></div>
+  <div>{{serial_number}}</div>
+
+  <div style="display:flex;"><span style="width:100px;">Brand / Type</span><span>:</span></div>
+  <div>{{brand_type}}</div>
+
+</div>
+
+<!-- Tabel Kegiatan -->
+<table class="jarak">
+  <tr>
+    <th>No</th>
+    <th>Descriptions</th>
+    <th>Result</th>
+    <th>Operational Standard</th>
+    <th>Status</th>
+  </tr>
+  <tr>
+    <td>1.</td>
+    <td><b>Visual Check</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>a. Environment Condition </td>
+    <td>{{Env_result}}</td>
+    <td>Clean, No dust</td>
+    <td>{{Env_status}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>b. LED / display</td>
+    <td>{{led_result}}</td>
+    <td>Normal</td>
+    <td>{{led_status}}</td>
+  </tr>
+  <tr>
+  <tr>
+    <td>2.</td>
+    <td><b>Performance and Capacity Check</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>a. DC lnput Vottage</td>
+    <td>{{DC_result}}</td>
+    <td>48 - 54 VDC</td>
+    <td>{{DC_status}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>b. DC Current Input</td>
+    <td>{{DC_current_keamanan}}</td>
+    <td>
+        ≤ 9 A (500 VA) <br>
+        ≤ 18 A (1000 VA) <br>
+
+    </td>
+    <td>{{DC_current_status}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>c. AC Current Output </td>
+    <td>{{AC_current_result}}</td>
+    <td>
+        ≤ 2 A (500 VA) <br>
+        ≤ 4 A (1000 VA) <br>
+
+    </td>
+    <td>{{AC_current_status}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>d. Neutral - Ground Output Voltlage</td>
+    <td>{{Neutral_result}}</td>
+    <td>≤ 1 Volt AC</td>
+    <td>{{Neutral_status}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>e. Equipment Temperature</td>
+    <td>{{Equipment_temp_result}}</td>
+    <td>0-35 °C</td>
+    <td>{{Equipment_temp_status}}</td>
+  </tr>
+</table>
+
+<!-- Notes -->
+<h4 style="margin:0; padding:0; margin-top:20px;">Notes / Additional Information</h4>
+<table style="width:100%; border-collapse: collapse; border:1px solid black;">
+  <tr><td style="border:1px solid black; height:50px; padding:5px;">{{notes}}</td></tr>
+</table>
+
+<div style="display: flex; justify-content: space-between; margin-top: 20px;">
+
+  <!-- Pelaksana -->
+  <div style="width:70%;">
+    <h4 style="margin:0; padding:0;">Pelaksana :</h4>
+    <table style="width:100%; border-collapse: collapse; border:1px solid black;">
+      <tr>
+        <th>No</th>
+        <th>Nama</th>
+        <th>Departement</th>
+        <th>Tanda Tangan</th>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td>{{pelaksana_nama_1}}</td>
+        <td>{{pelaksana_dept_1}}</td>
+        <td>{{pelaksana_subdept_1}}</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>{{pelaksana_nama_2}}</td>
+        <td>{{pelaksana_dept_2}}</td>
+        <td>{{pelaksana_subdept_2}}</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>{{pelaksana_nama_3}}</td>
+        <td>{{pelaksana_dept_3}}</td>
+        <td>{{pelaksana_subdept_3}}</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Mengetahui -->
+  <div style="width:25%; text-align:center;">
+    <h4 style="margin:0; padding:0;">Mengetahui,</h4>
+    <table style="width:100%; border-collapse: collapse; border:1px solid black;">
+      <tr>
+        <td style="height:90px; vertical-align: bottom; text-align:center;">
+          {{mengetahui_nama}}
+        </td>
+      </tr>
+    </table>
+  </div>
+
+</div>
+
+<!-- Footer Hak Cipta -->
+    <div style="position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 90%; text-align: center; font-size:10px; margin-bottom: 15px;">
+        <hr style="border:1px solid black; margin-bottom:3px;">
+        © Hak Cipta PT. APLIKANUSA LINTASARTA, Indonesia<br>
+        FM-LAP-D2-SOP-003-013 Formulir Preventive Maintenance AC
+    </div>
+
+
+</body>
+</html>

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Formulir Preventive Maintenance Rectifier</title>
+  <style>
+  body { 
+    font-family: "Times New Roman", Times, serif; 
+    font-size: 11px; 
+    margin: 10px; 
+  }
+  table { 
+    width: 100%; 
+    border-collapse: collapse;
+    table-layout: fixed;
+    page-break-inside: avoid;
+  }
+  table, th, td { 
+    border: 1px solid black; 
+  }
+  th, td { 
+    padding: 3px; 
+    text-align: left; 
+    font-size:11px;
+  }
+  .header-table, .no-border { border:none; }
+  .header-table td { border:none; vertical-align: top; }
+   h4 { margin:0; padding:0; font-size:12px; }
+  .jarak { margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+<!-- Header Form -->
+<div style="display: flex; border: 1px solid black; width: 100%; font-size: 12px;">
+  <div style="width: 25%; border-right: 1px solid black; padding: 5px; display: grid; grid-template-columns: auto 10px 1fr; row-gap: 2px;">
+    <div>No. Dok&nbsp;&nbsp;</div><div>:</div><div>{{no_dok}}</div>
+    <div>Versi</div><div>:</div><div>{{versi}}</div>
+    <div>Hal</div><div>:</div><div>{{hal}}</div>
+    <div>Label</div><div>:</div><div>{{label}}</div>
+  </div>
+  <div style="width: 50%; border-right: 1px solid black; display: flex; align-items: center; justify-content: center; text-align: center;">
+    <strong style="font-size: 14px;">Formulir Preventive Maintenance Rectifier</strong>
+  </div>
+  <div style="width: 25%; display: flex; align-items: center; justify-content: center;">
+    <img src="../assets/lintas.png" width="90">
+  </div>
+</div>
+
+<!-- Info AC -->
+<div class="jarak" style="display: grid; grid-template-columns: max-content 1fr max-content 1fr; gap:1px; padding:5px; font-size:12px; line-height:1.5;">
+  <div style="display:flex;"><span style="width:100px;">Lokasi</span><span>:</span></div>
+  <div>{{location}}</div>
+  <div style="display:flex;"><span style="width:100px;">Reg.Number</span><span>:</span></div>
+  <div>{{reg_number}}</div>
+
+  <div style="display:flex;"><span style="width:100px;">Date / Time</span><span>:</span></div>
+  <div>{{date_time}}</div>
+  <div style="display:flex;"><span style="width:100px;">Brand / Type</span><span>:</span></div>
+  <div>{{brand_type}}</div>
+
+
+  <div style="display:flex;"><span style="width:100px;">Kap.Power Module</span><span>:</span></div>
+  <div>{{kap_power_module}}</div>
+  <div style="display:flex;"><span style="width:100px;">S/N</span><span>:</span></div>
+  <div>{{serial_number}}</div>
+
+</div>
+
+<!-- Tabel Kegiatan -->
+<table>
+  <tr>
+    <th style="width:5%;">No.</th>
+    <th style="width:30%;">Descriptions</th>
+    <th style="width:15%;">Result</th>
+    <th style="width:40%;">Operational Standard</th>
+    <th style="width:10%;">Status</th>
+  </tr>
+
+  <!-- 1. Visual Check -->
+  <tr>
+    <td>1.</td>
+    <td><b>Visual Check</b></td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>a. Environment Condition</td>
+    <td>{{result_environment_condition}}</td>
+    <td>Clean, No dust</td>
+    <td>{{environment_condition_status}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>b. LED / display</td>
+    <td>{{result_led_display}}</td>
+    <td>Normal</td>
+    <td>{{led_display_status}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>c. Battery Connection</td>
+    <td>{{result_battery_connection}}</td>
+    <td>Tighten, No Corrosion</td>
+    <td>{{battery_connection_status}}</td>
+  </tr>
+
+  <!-- 2. Performance and Capacity Check -->
+  <tr>
+    <td>2.</td>
+    <td><b>Performance and Capacity Check</b></td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>a. AC Input Voltage</td>
+    <td>{{result_ac_input_voltage}}</td>
+    <td>180-240 VAC</td>
+    <td>{{ac_input_voltage_status}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>b. AC Current Input</td>
+    <td>{{result_ac_current_input}}</td>
+    <td>
+      ≤ 5.5 A (Single Power Module)<br>
+      ≤ 11 A (Dual Power Module)<br>
+      ≤ 16.5 A (Three Power Module)
+    </td>
+    <td>{{ac_current_input_status}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>c. DC Current Output</td>
+    <td>{{result_dc_current_output}}</td>
+    <td>
+      ≤ 25 A (Single Power Module)<br>
+      ≤ 50 A (Dual Power Module)<br>
+      ≤ 75 A (Three Power Module)
+    </td>
+    <td>{{dc_current_output_status}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>d. Battery Temperature</td>
+    <td>{{result_battery_temperature}}</td>
+    <td>0-30 °C</td>
+    <td>{{battery_temperature_status}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>e. Charging Voltage DC</td>
+    <td>{{result_charging_voltage_dc}}</td>
+    <td>48 – 55,3 VDC</td>
+    <td>{{charging_voltage_dc_status}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>f. Charging Current DC</td>
+    <td>{{result_charging_current_dc}}</td>
+    <td>Max 10% Battery Capacity (AH)</td>
+    <td>{{charging_current_dc_status}}</td>
+  </tr>
+
+  <!-- 3. Backup Tests -->
+  <tr>
+    <td>3.</td>
+    <td><b>Backup Tests</b></td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>a. Rectifier Switching test, from the main source (PLN) to back up mode, by turning off Rectifier input MCB</td>
+    <td>{{result_rectifier_switching_test}}</td>
+    <td>Rectifier Normal Operations</td>
+    <td>{{rectifier_switching_test_status}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>b. Battery voltage (on Backup Mode)</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>- Measurement I (at the beginning)</td>
+    <td>{{result_battery_voltage_backup_measurement_i}}</td>
+    <td>Min 48 VDC</td>
+    <td>{{battery_voltage_backup_measurement_i_status}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>- Measurement II (15th minutes)</td>
+    <td>{{result_battery_voltage_backup_measurement_ii}}</td>
+    <td>Min 42 VDC</td>
+    <td>{{battery_voltage_backup_measurement_ii_status}}</td>
+  </tr>
+
+  <!-- 4. Power Alarm Monitoring Test -->
+  <tr>
+    <td>4.</td>
+    <td><b>Power Alarm Monitoring Test</b></td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>Makesure the Simonica alarm monitor, by turn off UPS power input MCB during Rect backup test operation</td>
+    <td>{{result_alaram}}</td>
+    <td>Simonica Alarm Monitor fault conditions (Red Sign)</td>
+    <td>{{status_alaram}}</td>
+  </tr>
+</table>
+*) Choose the appropriate
+
+
+<!-- Notes -->
+<h4 style="margin:0; padding:0; margin-top:20px;">Notes / Additional Information</h4>
+<table style="width:100%; border-collapse: collapse; border:1px solid black;">
+  <tr><td style="border:1px solid black; height:50px; padding:5px;">{{notes}}</td></tr>
+</table>
+
+<div style="display: flex; justify-content: space-between; margin-top: 20px;">
+
+  <!-- Pelaksana -->
+  <div style="width:70%;">
+    <h4 style="margin:0; padding:0;">Pelaksana :</h4>
+    <table style="width:100%; border-collapse: collapse; border:1px solid black;">
+      <tr>
+        <th>No</th>
+        <th>Nama</th>
+        <th>Departement</th>
+        <th>Tanda Tangan</th>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td>{{pelaksana_nama_1}}</td>
+        <td>{{pelaksana_dept_1}}</td>
+        <td>{{pelaksana_subdept_1}}</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>{{pelaksana_nama_2}}</td>
+        <td>{{pelaksana_dept_2}}</td>
+        <td>{{pelaksana_subdept_2}}</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>{{pelaksana_nama_3}}</td>
+        <td>{{pelaksana_dept_3}}</td>
+        <td>{{pelaksana_subdept_3}}</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Mengetahui -->
+  <div style="width:25%; text-align:center;">
+    <h4 style="margin:0; padding:0;">Mengetahui,</h4>
+    <table style="width:100%; border-collapse: collapse; border:1px solid black;">
+      <tr>
+        <td style="height:90px; vertical-align: bottom; text-align:center;">
+          {{mengetahui_nama}}
+        </td>
+      </tr>
+    </table>
+  </div>
+
+</div>
+
+<!-- Footer Hak Cipta -->
+    <div style="position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 90%; text-align: center; font-size:10px; margin-bottom: 15px;">
+        <hr style="border:1px solid black; margin-bottom:3px;">
+        © Hak Cipta PT. APLIKANUSA LINTASARTA, Indonesia<br>
+        FM-LAP-D2-SOP-003-013 Formulir Preventive Maintenance AC
+    </div>
+
+
+</body>
+</html>

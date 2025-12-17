@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Formulir Preventive Maintenance 0</title>
+  <style>
+    body { font-family: "Times New Roman", Times, serif; font-size: 12px; margin: 20px; }
+    table { width: 100%; border-collapse: collapse; }
+    table, th, td { border: 1px solid black; }
+    th, td { padding: 5px; text-align: left; }
+    .no-border { border: none; }
+    .center { text-align: center; }
+    .small { font-size: 10px; }
+    .header-table { border: none; }
+    .header-table td { border: none; vertical-align: top; }
+    .jarak { margin-top: 15px; }
+  </style>
+</head>
+<body>
+
+<!-- Header Form -->
+<div style="display: flex; border: 1px solid black; width: 100%; font-size: 12px;">
+  <div style="width: 25%; border-right: 1px solid black; padding: 5px; display: grid; grid-template-columns: auto 10px 1fr; row-gap: 2px;">
+    <div>No. Dok&nbsp;&nbsp;</div><div>:</div><div>{{no_dok}}</div>
+    <div>Versi</div><div>:</div><div>{{versi}}</div>
+    <div>Hal</div><div>:</div><div>{{hal}}</div>
+    <div>Label</div><div>:</div><div>{{label}}</div>
+  </div>
+  <div style="width: 50%; border-right: 1px solid black; display: flex; align-items: center; justify-content: center; text-align: center;">
+    <strong style="font-size: 14px;">Formulir Preventive Maintenance <br> Inverter 48VDC/220VAC</strong>
+  </div>
+  <div style="width: 25%; display: flex; align-items: center; justify-content: center;">
+    <img src="../assets/lintas.png" width="90">
+  </div>
+</div>
+
+<!-- Info AC -->
+<div class="jarak" style="display: grid; grid-template-columns: max-content 1fr; gap:1px; padding:5px; font-size:12px; line-height:1.5;">
+  <div style="display:flex;"><span style="width:100px;">Lokasi</span><span>:</span></div>
+  <div>{{location}}</div>
+
+  <div style="display:flex;"><span style="width:100px;">Date / Time</span><span>:</span></div>
+  <div>{{date_time}}</div>
+</div>
+
+<!-- Tabel Kegiatan -->
+<table>
+  <tr>
+    <th rowspan="2">No.</th>
+    <th rowspan="2">EQUIPMENT</th>
+    <th rowspan="2">QTY</th>
+    <th colspan="2" style="text-align: center;">STATUS</th>
+    <th rowspan="2">KETERANGAN</th>
+  </tr>
+  
+  <!-- Sub-header STATUS -->
+  <tr>
+    <th style="text-align: center;">Active</th>
+    <th style="text-align: center;">Shutdown</th>
+  </tr>
+
+  <!-- PERANGKAT SENTRAL -->
+  <tr>
+    <td class="section">I.</td>
+    <td class="section" colspan="5">PERANGKAT SENTRAL</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>{{equipment_1}}</td>
+    <td>{{qty_equipment1}}</td>
+    <td>{{equipment_active_1}}</td>
+    <td>{{equipment_shutdown_1}}</td>
+    <td>{{keterangan_1}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>{{equipment_2}}</td>
+    <td>{{qty_equipment2}}</td>
+    <td>{{equipment_active_2}}</td>
+    <td>{{equipment_shutdown_2}}</td>
+    <td>{{keterangan_2}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>{{equipment_3}}</td>
+    <td>{{qty_equipment3}}</td>
+    <td>{{equipment_active_3}}</td>
+    <td>{{equipment_shutdown_3}}</td>
+    <td>{{keterangan_3}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>{{equipment_4}}</td>
+    <td>{{qty_equipment4}}</td>
+    <td>{{equipment_active_4}}</td>
+    <td>{{equipment_shutdown_4}}</td>
+    <td>{{keterangan_4}}</td>
+  </tr>
+
+  <!-- SARANA PENUNJANG -->
+  <tr>
+    <td class="section">II.</td>
+    <td class="section" colspan="5">SARANA PENUNJANG</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>{{sarana1}}</td>
+    <td>{{qty_sarana1}}</td>
+    <td>{{status_active_5}}</td>
+    <td>{{status_shutdown_5}}</td>
+    <td>{{keterangan_5}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>{{sarana2}}</td>
+    <td>{{qty_sarana2}}</td>
+    <td>{{status_active_6}}</td>
+    <td>{{status_shutdown_6}}</td>
+    <td>{{keterangan_6}}</td>
+  </tr>
+
+  <!-- baris kosong untuk tambahan -->
+  <tr>
+    <td></td>
+    <td>{{sarana3}}</td>
+    <td>{{qty_sarana3}}</td>
+    <td>{{status_active_7}}</td>
+    <td>{{status_shutdown_7}}</td>
+    <td>{{keterangan_7}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>{{sarana4}}</td>
+    <td>{{qty_sarana4}}</td>
+    <td>{{status_active_8}}</td>
+    <td>{{status_shutdown_8}}</td>
+    <td>{{keterangan_8}}</td>
+  </tr>
+</table>
+
+<!-- Notes -->
+<h4 style="margin:0; padding:0; margin-top:20px;">Notes / Additional Information</h4>
+<table style="width:100%; border-collapse: collapse; border:1px solid black;">
+  <tr><td style="border:1px solid black; height:50px; padding:5px;">{{notes}}</td></tr>
+</table>
+
+<div style="display: flex; justify-content: space-between; margin-top: 20px;">
+
+  <!-- Pelaksana -->
+  <div style="width:70%;">
+    <h4 style="margin:0; padding:0;">Pelaksana :</h4>
+    <table style="width:100%; border-collapse: collapse; border:1px solid black;">
+      <tr>
+        <th>No</th>
+        <th>Nama</th>
+        <th>Departement</th>
+        <th>Tanda Tangan</th>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td>{{pelaksana_nama_1}}</td>
+        <td>{{pelaksana_dept_1}}</td>
+        <td>{{pelaksana_subdept_1}}</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>{{pelaksana_nama_2}}</td>
+        <td>{{pelaksana_dept_2}}</td>
+        <td>{{pelaksana_subdept_2}}</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>{{pelaksana_nama_3}}</td>
+        <td>{{pelaksana_dept_3}}</td>
+        <td>{{pelaksana_subdept_3}}</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Mengetahui -->
+  <div style="width:25%; text-align:center;">
+    <h4 style="margin:0; padding:0;">Mengetahui,</h4>
+    <table style="width:100%; border-collapse: collapse; border:1px solid black;">
+      <tr>
+        <td style="height:90px; vertical-align: bottom; text-align:center;">
+          {{mengetahui_nama}}
+        </td>
+      </tr>
+    </table>
+  </div>
+
+</div>
+
+<!-- Footer Hak Cipta -->
+    <div style="position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 90%; text-align: center; font-size:10px; margin-bottom: 15px;">
+        <hr style="border:1px solid black; margin-bottom:3px;">
+        © Hak Cipta PT. APLIKANUSA LINTASARTA, Indonesia<br>
+        FM-LAP-D2-SOP-003-013 Formulir Preventive Maintenance AC
+    </div>
+
+
+</body>
+</html>
