@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Formulir Preventive Maintenance AC</title>
+  <style>
+    body {
+      font-family: "Times New Roman", Times, serif;
+      font-size: 12px;
+      margin: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    table, th, td {
+      border: 1px solid black;
+    }
+    th, td {
+      padding: 5px;
+      text-align: left;
+    }
+    .no-border {
+      border: none;
+    }
+    .center {
+      text-align: center;
+    }
+    .small {
+      font-size: 10px;
+    }
+    /* Tabel judul tiga kolom */
+    .header-table {
+      border: none;
+    }
+    .header-table td {
+      border: none;
+      vertical-align: top;
+    }
+
+    .jarak {
+      margin-top: 15px;
+    }
+
+  </style>
+</head>
+<body>
+
+<div style="
+  display: flex;
+  border: 1px solid black;
+  width: 100%;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 12px;
+">
+
+<!-- Kiri: Info Dokumen -->
+<div style="
+  width: 25%;
+  border-right: 1px solid black;
+  padding: 5px;
+  display: grid;
+  grid-template-columns: auto 10px 1fr;
+  row-gap: 2px;
+">
+
+  <div>No. Dok&nbsp;&nbsp;</div><div>:</div><div>{{no_dok}}</div>
+  <div>Versi</div><div>:</div><div>{{versi}}</div>
+  <div>Hal</div><div>:</div><div>{{hal}}</div>
+  <div>Label</div><div>:</div><div>{{label}}</div>
+
+</div>
+
+
+  <!-- Tengah: Judul -->
+  <div style="
+    width: 50%; 
+    border-right: 1px solid black;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  ">
+    <strong style="font-size: 14px;">
+      Formulir Preventive Maintenance AC
+    </strong>
+  </div>
+
+  <!-- Kanan: Logo -->
+  <div style="
+    width: 25%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  ">
+    <img src="../assets/lintas.png" width="90">
+  </div>
+
+</div>
+
+
+
+
+
+
+<!-- Info AC -->
+<div class="jarak" style="display: grid; grid-template-columns: max-content 1fr max-content 1fr; gap:10px; padding:5px; font-size:12px; line-height:1.5;">
+  <!-- Baris 1 -->
+  <div style="display:flex;"><span style="width:100px;">Lokasi</span><span>:</span></div>
+  <div>{{location}}</div>
+  <div style="display:flex;"><span style="width:100px;">Reg.Number</span><span>:</span></div>
+  <div>{{reg_number}}</div>
+
+
+  <!-- Baris 2 -->
+  <div style="display:flex;"><span style="width:100px;">Date / Time</span><span>:</span></div>
+  <div>{{date_time}}</div>
+  <div style="display:flex;"><span style="width:100px;">Kapasitas</span><span>:</span></div>
+  <div>{{capacity}}</div>
+
+
+
+  <!-- Baris 3 -->
+  <div style="display:flex;"><span style="width:100px;">Brand / Type</span><span>:</span></div>
+  <div>{{brand_type}}</div>
+  <div style="display:flex;"><span style="width:100px;">S/N</span><span>:</span></div>
+  <div>{{serial_number}}</div>
+</div>
+
+
+<table class="jarak">
+  <tr>
+    <th>No</th>
+    <th>Activity</th>
+    <th>Result</th>
+    <th>Operational Standard</th>
+    <th>Status</th>
+  </tr>
+    <tr>
+    <td>1.</td>
+    <td>Visual Check</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>a. Environment Condition</td>
+    <td>{{env_result}}</td>
+    <td>No dust</td>
+    <td>{{env_status}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>b. Filter</td>
+    <td>{{filter_result}}</td>
+    <td>Clean, No dust</td>
+    <td>{{filter_status}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>c. Evaporator</td>
+    <td>{{evap_result}}</td>
+    <td>Clean, No dust</td>
+    <td>{{evap_status}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>d. LED & Display</td>
+    <td>{{led_result}}</td>
+    <td>Normal</td>
+    <td>{{led_status}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>e. Air Flow</td>
+    <td>{{airflow_result}}</td>
+    <td>Fan operates normally, cool air flow</td>
+    <td>{{airflow_status}}</td>
+  </tr>
+  <tr>
+    <td>2.</td>
+    <td>Room Temperature Shelter/ODC </td>
+    <td>{{room_temp_result}}</td>
+    <td>≤ 22°C Shelter/Ruangan <br> ≤ 28°C Outdoor Cabinet (ODC)</td>
+    <td>{{room_temp_status}}</td>
+  </tr>
+  <tr>
+    <td>3.</td>
+    <td>Input Current<br><br>AC 1 = <br> AC 2 =<br> AC 3 =<br> AC 4 =<br> AC 5 =<br> AC 6 =<br> AC 7 =<br></td>
+    <td>{{input_current_result}}</td>
+    <td style="line-height:1.5; text-align: start;">
+    3/4 -1 PK   ≤ 4 A <br>
+    2 PK       ≤ 10 A <br>
+    2,5 PK     ≤ 13,5 A <br>
+    5-7 PK     ≤ 8 A/Phase <br>
+    10 PK      ≤ 15 A/Phase <br>
+    15 PK      ≤ 25 A/Phase <br>
+    </td>
+
+    <td>AC 1 : {{input_current_status}} <br> AC 2 : {{input_current_status}} <br> AC 3 : {{input_current_status}} <br> AC 4 : {{input_current_status}}
+   <br> AC 5 : {{input_current_status}} <br> AC 6 : {{input_current_status}} <br> AC 7 : {{input_current_status}}
+    </td>
+  </tr>
+</table>
+
+
+<h4 style="margin:0; padding:0; margin-top:20px;">Notes / Additional Information</h4>
+<table style="width:100%; border-collapse: collapse; border:1px solid black;">
+  <!-- Baris kosong untuk catatan -->
+  <tr><td style="border:1px solid black; height:50px; padding:5px;">{{input_note_or_Additional_Information}}</td></tr>
+</table>
+
+<h4 style="margin:0; padding:0; margin-top:20px;">Pelaksana</h4>
+
+<!-- Tabel utama Pelaksana (tanpa kolom Mengetahui) -->
+<table style="width:70%; border-collapse: collapse; border:1px solid black; float:left;">
+  <tr>
+    <th>No</th>
+    <th>Nama</th>
+    <th>Departement</th>
+    <th>Sub Departement</th>
+  </tr>
+  <tr>
+    <td>1</td>
+    <td>{{pelaksana_nama}}</td>
+    <td>{{pelaksana_dept}}</td>
+    <td>{{pelaksana_subdept}}</td>
+  </tr>
+    <tr>
+    <td>2</td>
+    <td>{{pelaksana_nama}}</td>
+    <td>{{pelaksana_dept}}</td>
+    <td>{{pelaksana_subdept}}</td>
+  </tr>
+    <tr>
+    <td>3</td>
+    <td>{{pelaksana_nama}}</td>
+    <td>{{pelaksana_dept}}</td>
+    <td>{{pelaksana_subdept}}</td>
+  </tr>
+</table>
+
+<!-- Tabel Mengetahui -->
+<table style="width:25%; border-collapse: collapse; border:1px solid black; float:right;">
+  <tr>
+    <th style="height:30px;">Mengetahui</th>
+  </tr>
+  <tr>
+    <td class="center" style="height:45px; vertical-align: middle;">
+      <img src="{{signature_image}}" width="80">
+    </td>
+  </tr>
+</table>
+
+<div style="clear:both;"></div>
+
+
+<!-- Lembar Kedua: Dokumentasi Kegiatan -->
+<div style="page-break-before: always;"></div> <!-- Memaksa halaman baru di PDF -->
+
+<!-- Tabel header utama -->
+<table style="width:100%; border-collapse: collapse; border:1px solid black; margin-top: 20px;">
+  <tr>
+    <!-- Kiri: info dokumen vertikal -->
+    <td style="width:25%; vertical-align: top; padding:0; border-right:1px solid black;">
+      <div style="padding:5px; border-bottom:1px solid black;"><strong>No. Dok.:</strong> {{no_dok}}</div>
+      <div style="padding:5px; border-bottom:1px solid black;"><strong>Versi:</strong> {{versi}}</div>
+      <div style="padding:5px; border-bottom:1px solid black;"><strong>Hal:</strong> {{hal}}</div>
+      <div style="padding:5px;"><strong>Label:</strong> {{label}}</div>
+    </td>
+
+    <!-- Tengah: judul -->
+    <td style="width:50%; vertical-align: middle; text-align:center; border-right:1px solid black; padding:5px;">
+      <h2 style="margin:5px 0;">Formulir Preventive Maintenance AC</h2>
+    </td>
+
+    <!-- Kanan: logo -->
+    <td style="width:25%; vertical-align: middle; text-align:center; padding:5px;">
+      <img src="../assets/lintas.png" width="100">
+    </td>
+  </tr>
+</table>
+
+
+<h4 style="margin:0; padding:0; margin-top: 10px; margin-bottom:10px; text-align: center;">Dokumentasi Kegiatan</h4>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
+  <div style="border:1px solid black; padding:5px; text-align:center;">
+    <img src="{{image1}}" style="width:100%; height:auto;"><br>
+  </div>
+  <div style="border:1px solid black; padding:5px; text-align:center;">
+    <img src="{{image2}}" style="width:100%; height:auto;"><br>
+  </div>
+  <div style="border:1px solid black; padding:5px; text-align:center;">
+    <img src="{{image3}}" style="width:100%; height:auto;"><br>
+  </div>
+  <div style="border:1px solid black; padding:5px; text-align:center;">
+    <img src="{{image4}}" style="width:100%; height:auto;"><br>
+  </div>
+  <div style="border:1px solid black; padding:5px; text-align:center;">
+    <img src="{{image5}}" style="width:100%; height:auto;"><br>
+  </div>
+  <div style="border:1px solid black; padding:5px; text-align:center;">
+    <img src="{{image6}}" style="width:100%; height:auto;"><br>
+  </div>
+</div>
+
+</body>
+</html>
