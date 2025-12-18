@@ -7,7 +7,7 @@ const commands = require('./commands');
 
 // Database setup
 const db = mysql.createPool({
-  host: 'localhost',
+  host: '127.0.0.1',
   user: 'admin',
   password: 'admin',
   database: 'bot',
