@@ -28,6 +28,11 @@ db.getConnection((err, conn) => {
   }
 });
 
+// Handle DB errors
+db.on('error', err => {
+  console.error('MySQL Pool Error:', err);
+});
+
 
 // WHATSAPP CLIENT
 function startWhatsAppBot() {
