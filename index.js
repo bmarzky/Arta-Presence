@@ -14,14 +14,16 @@ const db = mysql.createConnection({
 });
 
 // Cek koneksi database
-db.connect(err => {
-    if (err) {
-        console.error("Gagal koneksi database:", err);
-        process.exit(1);
-    } else {
-        console.log("Database connected!");
-    }
+connection.connect(err => {
+  if(err) {
+    console.error('DB connection error:', err);
+    process.exit(1);
+  } else {
+    console.log('Database connected!');
+    startWhatsAppBot();
+  }
 });
+
 
 // --- Client WA ---
 const client = new Client({
