@@ -7,13 +7,16 @@ const commands = require('./commands');
 
 // Database setup
 const db = mysql.createPool({
-  host: '127.0.0.1',
+  host: '127.0.0.1',          // IPv4
   user: 'admin',
   password: 'admin',
   database: 'bot',
+  port: 3306,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0
 });
 
 // Test DB connection
@@ -24,8 +27,6 @@ db.getConnection((err, conn) => {
   }
   console.log('Database connected!');
   conn.release();
-
-  // Start WhatsApp Bot after DB is connected
   startWhatsAppBot();
 });
 
