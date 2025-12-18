@@ -14,7 +14,7 @@ const db = mysql.createConnection({
 });
 
 // Cek koneksi database
-connection.connect(err => {
+db.connect(err => {
   if(err) {
     console.error('DB connection error:', err);
     process.exit(1);
