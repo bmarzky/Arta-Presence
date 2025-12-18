@@ -1,7 +1,7 @@
 // index.js
 const qrcode = require('qrcode-terminal');
 const { Client, LocalAuth } = require('whatsapp-web.js');
-const mysql = require('mysql');
+const mysql = require('mysql2');
 const commands = require('./commands'); // otomatis ambil index.js di folder commands
 const moment = require('moment');
 
