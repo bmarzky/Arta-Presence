@@ -7,9 +7,9 @@ const moment = require('moment');
 
 // --- Database Config ---
 const db = mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "",
+    host: "127.0.0.1",
+    user: "admin",
+    password: "admin",
     database: "bot"
 });
 
