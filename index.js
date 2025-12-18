@@ -3,9 +3,9 @@ const qrcode = require('qrcode-terminal');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const mysql = require('mysql2');
 const commands = require('./commands');
-const moment = require('moment');
 
-// DATABASE (POOL - STABLE)
+
+// Database setup
 const db = mysql.createPool({
   host: '127.0.0.1',
   user: 'admin',
@@ -16,26 +16,27 @@ const db = mysql.createPool({
   queueLimit: 0
 });
 
-// Test koneksi DB
+// Test DB connection
 db.getConnection((err, conn) => {
   if (err) {
-    console.error('DB connection error:', err);
+    console.error('DB connection failed:', err.message);
     process.exit(1);
-  } else {
-    console.log('Database connected!');
-    conn.release();
-    startWhatsAppBot();
   }
+  console.log('Database connected!');
+  conn.release();
+
+  // Start WhatsApp Bot after DB is connected
+  startWhatsAppBot();
 });
 
-// Handle DB errors
-db.on('error', err => {
-  console.error('MySQL Pool Error:', err);
-});
 
+// Whatsapp Bot
+let botStarted = false;
 
-// WHATSAPP CLIENT
 function startWhatsAppBot() {
+  if (botStarted) return;
+  botStarted = true;
+
   const client = new Client({
     authStrategy: new LocalAuth({
       clientId: 'bot1',
@@ -47,18 +48,18 @@ function startWhatsAppBot() {
     }
   });
 
-  // QR Code
+  // QR Login
   client.on('qr', qr => {
     console.log('Scan QR Code untuk login:');
     qrcode.generate(qr, { small: true });
   });
 
-  // Bot siap
+  // Ready
   client.on('ready', () => {
     console.log('Bot WhatsApp ON!');
   });
 
-  // SIMPAN / UPDATE USER
+  // Save or update user info in DB
   function saveOrUpdateUser(wa_number, nama_wa) {
     db.query(
       `INSERT INTO users (wa_number, nama_wa)
@@ -68,33 +69,30 @@ function startWhatsAppBot() {
          updated_at = CURRENT_TIMESTAMP`,
       [wa_number, nama_wa],
       err => {
-        if (err) console.error('Error saveOrUpdateUser:', err);
+        if (err) console.error('DB save user error:', err.message);
       }
     );
   }
 
-  // PESAN MASUK
+  // Message handler
   client.on('message', async msg => {
     try {
       const chat = await msg.getChat();
       const wa_number = msg.from.replace('@c.us', '');
-      const nama = msg._data.notifyName || 'User';
-      const pesan = msg.body.trim();
+      const nama = msg._data?.notifyName || 'User';
+      const pesan = msg.body?.trim() || '';
 
-      // Simpan user
       saveOrUpdateUser(wa_number, nama);
 
-      // Jalankan command
       if (commands.message) {
         await commands.message(chat, wa_number, nama, db, pesan);
       } else if (commands.default) {
         await commands.default(chat, nama);
       }
     } catch (err) {
-      console.error('Error handling message:', err);
+      console.error('Message handling error:', err);
     }
   });
 
-  // Init WA
   client.initialize();
 }
