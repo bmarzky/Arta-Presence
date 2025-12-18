@@ -130,7 +130,7 @@ async function generatePDFandSend(chat, user, db, paramBulan = null) {
         </tr>
     `).join('');
 
-    const template = fs.readFileSync(path.join(__dirname, '../templates/pdf.html'), 'utf8');
+    const template = fs.readFileSync(path.join(__dirname, '../templates/KSPS.html'), 'utf8');
     const logoBase64 = fs.readFileSync(path.join(__dirname, '../assets/ksps.png'), 'base64');
 
     const html = template
