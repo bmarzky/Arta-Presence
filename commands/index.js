@@ -65,10 +65,6 @@ module.exports = {
                 return sendTyping(chat, `${replyGreeting} *${nama_wa}*, ${randomReply}`, 1000); // 1000 ms = 1 detik
             }
 
-            // Default response
-            await sendTyping(chat, `Hmm… ${nama_wa}, aku masih belajar memahami pesan kamu.`, 1000);
-            await sendTyping(chat, "Coba ketik */help* untuk melihat daftar perintah.", 1000);
-
             // Jika user sedang absen
             if (user.step_absen || lowerMsg === '/absen') {
                 return handleAbsen(chat, user, lowerMsg, pesan, query);
@@ -86,6 +82,10 @@ module.exports = {
             if (user.step_input || lowerMsg.startsWith('/export')) {
                 return handleExport(chat, user, pesan, db, paramBulan);
             }
+
+            // Default response
+            await sendTyping(chat, `Hmm… ${nama_wa}, aku masih belajar memahami pesan kamu.`, 1000);
+            await sendTyping(chat, "Coba ketik */help* untuk melihat daftar perintah.", 1000);
 
 
         } catch (err) {
