@@ -66,11 +66,16 @@ module.exports = {
 
             // --- Export ---
             let paramBulan = null;
+
+            // Jika user mengetik /export, ambil param bulan
             if (lowerMsg.startsWith('/export')) {
-                const parts = pesan.split(' ').slice(1); // ambil kata setelah /export
+                const parts = pesan.split(' ').slice(1);
                 paramBulan = parts.length ? parts[0] : null;
+                return handleExport(chat, user, pesan, db, paramBulan); // langsung return
             }
-            if (user.step_input || lowerMsg.startsWith('/export')) {
+
+            // Jika user sedang input export (step_input = true)
+            if (user.step_input) {
                 return handleExport(chat, user, pesan, db, paramBulan);
             }
 
