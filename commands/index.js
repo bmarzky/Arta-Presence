@@ -52,6 +52,29 @@ module.exports = {
                 nik: 'NIK'
             };
 
+
+            // Perintah /help
+            if (pesan.toLowerCase() === '/help') {
+                return require('./help')(chat, user.nama_wa);
+            }
+
+            // Greeting otomatis
+            const replyGreeting = greetings[lowerMsg];
+            if (replyGreeting) {
+                const randomReply = greetingReplies[Math.floor(Math.random() * greetingReplies.length)];
+                return sendTyping(chat, `${replyGreeting} *${nama_wa}*, ${randomReply}`, 1000); // 1000 ms = 1 detik
+            }
+
+            // Default response
+            await sendTyping(chat, `Hmm… ${nama_wa}, aku masih belajar memahami pesan kamu.`, 1000);
+            await sendTyping(chat, "Coba ketik */help* untuk melihat daftar perintah.", 1000);
+
+            // Jika user sedang absen
+            if (user.step_absen || lowerMsg === '/absen') {
+                return handleAbsen(chat, user, lowerMsg, pesan, query);
+            }
+
+
             // Cek apakah pesan adalah export dengan bulan
             let paramBulan = null;
             if (lowerMsg.startsWith('/export')) {
@@ -63,29 +86,6 @@ module.exports = {
             if (user.step_input || lowerMsg.startsWith('/export')) {
                 return handleExport(chat, user, pesan, db, paramBulan);
             }
-
-            // Jika user sedang absen
-            if (user.step_absen || lowerMsg === '/absen') {
-                return handleAbsen(chat, user, lowerMsg, pesan, query);
-            }
-
-            // Greeting otomatis
-            const replyGreeting = greetings[lowerMsg];
-            if (replyGreeting) {
-                const randomReply = greetingReplies[Math.floor(Math.random() * greetingReplies.length)];
-                return sendTyping(chat, `${replyGreeting} *${nama_wa}*, ${randomReply}`, 1000); // 1000 ms = 1 detik
-            }
-
-
-            // Perintah /help
-            if (pesan.toLowerCase() === '/help') {
-                return require('./help')(chat, user.nama_wa);
-            }
-
-
-            // Default response
-            await sendTyping(chat, `Hmm… ${nama_wa}, aku masih belajar memahami pesan kamu.`, 1000);
-            await sendTyping(chat, "Coba ketik */help* untuk melihat daftar perintah.", 1000);
 
 
         } catch (err) {
