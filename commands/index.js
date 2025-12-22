@@ -75,7 +75,10 @@ module.exports = {
             }
 
             // Jika user sedang input export (step_input = true)
-            if (user.step_input) {
+            if (user.step_input && !isExportValid(pesan)) {
+                // reset step_input supaya bisa masuk default response
+                await query("UPDATE users SET step_input=0 WHERE id=?", [user.id]);
+            } else if (user.step_input) {
                 return handleExport(chat, user, pesan, db, paramBulan);
             }
 
