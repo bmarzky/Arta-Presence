@@ -52,6 +52,10 @@ module.exports = {
                 nik: 'NIK'
             };
 
+            // Default response
+            await sendTyping(chat, `Hmm… ${nama_wa}, aku masih belajar memahami pesan kamu.`, 1000);
+            await sendTyping(chat, "Coba ketik */help* untuk melihat daftar perintah.", 1000);
+
 
             // Perintah /help
             if (pesan.toLowerCase() === '/help') {
@@ -82,11 +86,6 @@ module.exports = {
             if (user.step_input || lowerMsg.startsWith('/export')) {
                 return handleExport(chat, user, pesan, db, paramBulan);
             }
-
-            // Default response
-            await sendTyping(chat, `Hmm… ${nama_wa}, aku masih belajar memahami pesan kamu.`, 1000);
-            await sendTyping(chat, "Coba ketik */help* untuk melihat daftar perintah.", 1000);
-
 
         } catch (err) {
             console.error('Error handling message:', err);
