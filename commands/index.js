@@ -6,7 +6,7 @@ const greetingReplies = require('../data/greetingReplies');
 const sendingIntro = {}; // flag intro agar tidak double
 const { sendTyping } = require('../utils/sendTyping'); // sesuaikan path jika perlu
 
-
+// Fungsi simulasi mengetik dengan delay acak
 const typeAndDelay = async (chat, ms = 800, random = 400) => {
     await chat.sendStateTyping();
     await new Promise(r => setTimeout(r, ms + Math.random() * random));
@@ -16,6 +16,7 @@ module.exports = {
     message: async (chat, wa_number, nama_wa, db, pesan) => {
         const lowerMsg = pesan.toLowerCase().trim();
 
+        // Fungsi query DB promisified
         const query = (sql, params) =>
             new Promise((res, rej) =>
                 db.query(sql, params, (err, result) => err ? rej(err) : res(result))
@@ -37,55 +38,45 @@ module.exports = {
             if (user.intro === 0 && !sendingIntro[wa_number]) {
                 sendingIntro[wa_number] = true;
                 await typeAndDelay(chat);
-                await chat.sendMessage(`Halo *${nama_wa}*\nSaya *Arta Presence*, bot absensi otomatis.\n\nKetik */absen* untuk mulai absensi atau */export* untuk laporan.`);
+                await chat.sendMessage(
+                    `Halo *${nama_wa}*\nSaya *Arta Presence*, bot absensi otomatis.\n\n` +
+                    `Ketik */absen* untuk mulai absensi atau */export* untuk laporan.`
+                );
                 await query("UPDATE users SET intro=1 WHERE id=?", [user.id]);
                 sendingIntro[wa_number] = false;
                 return;
             }
 
-            // --- Step input / Export ---
-            const fields = ['nama_lengkap','jabatan','divisi','nik'];
-            const labels = {
-                nama_lengkap: 'Nama lengkap',
-                jabatan: 'Jabatan',
-                divisi: 'Divisi',
-                nik: 'NIK'
-            };
-
-            // Default response
-            await sendTyping(chat, `Hmm… ${nama_wa}, aku masih belajar memahami pesan kamu.`, 1000);
-            await sendTyping(chat, "Coba ketik */help* untuk melihat daftar perintah.", 1000);
-
-
-            // Perintah /help
-            if (pesan.toLowerCase() === '/help') {
+            // --- Perintah /help ---
+            if (lowerMsg === '/help') {
                 return require('./help')(chat, user.nama_wa);
             }
 
-            // Greeting otomatis
+            // --- Greeting otomatis ---
             const replyGreeting = greetings[lowerMsg];
             if (replyGreeting) {
                 const randomReply = greetingReplies[Math.floor(Math.random() * greetingReplies.length)];
-                return sendTyping(chat, `${replyGreeting} *${nama_wa}*, ${randomReply}`, 1000); // 1000 ms = 1 detik
+                return sendTyping(chat, `${replyGreeting} *${nama_wa}*, ${randomReply}`, 1000);
             }
 
-            // Jika user sedang absen
+            // --- Absensi ---
             if (user.step_absen || lowerMsg === '/absen') {
                 return handleAbsen(chat, user, lowerMsg, pesan, query);
             }
 
-
-            // Cek apakah pesan adalah export dengan bulan
+            // --- Export ---
             let paramBulan = null;
             if (lowerMsg.startsWith('/export')) {
-                const parts = pesan.split(' ').slice(1); // ambil kata abis /export
+                const parts = pesan.split(' ').slice(1); // ambil kata setelah /export
                 paramBulan = parts.length ? parts[0] : null;
             }
-
-            // Jika user sedang input export atau mengetik /export
             if (user.step_input || lowerMsg.startsWith('/export')) {
                 return handleExport(chat, user, pesan, db, paramBulan);
             }
+
+            // --- Default response untuk pesan yang tidak dikenali ---
+            await sendTyping(chat, `Hmm… ${nama_wa}, aku masih belajar memahami pesan kamu.`, 1000);
+            await sendTyping(chat, "Coba ketik */help* untuk melihat daftar perintah.", 1000);
 
         } catch (err) {
             console.error('Error handling message:', err);
