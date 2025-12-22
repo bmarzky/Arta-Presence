@@ -12,6 +12,17 @@ const typeAndDelay = async (chat, ms = 800, random = 400) => {
     await new Promise(r => setTimeout(r, ms + Math.random() * random));
 };
 
+// Fungsi validasi input export
+const isExportValid = (msg) => {
+    const lowerMsg = msg.toLowerCase().trim();
+    const validMonths = [
+        'januari','februari','maret','april','mei','juni',
+        'juli','agustus','september','oktober','november','desember',
+        '01','02','03','04','05','06','07','08','09','10','11','12'
+    ];
+    return validMonths.includes(lowerMsg);
+};
+
 module.exports = {
     message: async (chat, wa_number, nama_wa, db, pesan) => {
         const lowerMsg = pesan.toLowerCase().trim();
@@ -75,11 +86,13 @@ module.exports = {
             }
 
             // Jika user sedang input export (step_input = true)
-            if (user.step_input && !isExportValid(pesan)) {
-                // reset step_input supaya bisa masuk default response
-                await query("UPDATE users SET step_input=0 WHERE id=?", [user.id]);
-            } else if (user.step_input) {
-                return handleExport(chat, user, pesan, db, paramBulan);
+            if (user.step_input) {
+                if (!isExportValid(pesan)) {
+                    // reset step_input supaya bisa masuk default response
+                    await query("UPDATE users SET step_input=0 WHERE id=?", [user.id]);
+                } else {
+                    return handleExport(chat, user, pesan, db, paramBulan);
+                }
             }
 
             // --- Default response untuk pesan yang tidak dikenali ---
