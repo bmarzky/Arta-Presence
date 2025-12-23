@@ -131,7 +131,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
         return sendTyping(
             chat,
             `Mau pakai template apa?\n\n` +
-            `1️⃣ KSPS\n2️⃣ LMD\n\n` +
+            `1 KSPS\n2 LMD\n\n` +
             `Balas *ksps* atau *lmd*`
         );
     }
@@ -242,5 +242,5 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
     const media = MessageMedia.fromFilePath(output);
     await chat.sendMessage(media);
 
-    return sendTyping(chat, 'Laporan berhasil dibuat ✅');
+    return sendTyping(chat, 'Laporan berhasil dibuat');
 }
