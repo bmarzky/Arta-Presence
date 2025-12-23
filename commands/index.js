@@ -5,7 +5,6 @@ const greetingReplies = require('../data/greetingReplies');
 const sendingIntro = {};
 const { sendTyping } = require('../utils/sendTyping');
 
-// Simulasi mengetik
 const typeAndDelay = async (chat, ms = 800, random = 400) => {
     await chat.sendStateTyping();
     await new Promise(r => setTimeout(r, ms + Math.random() * random));
@@ -24,41 +23,36 @@ module.exports = {
 
         try {
             // =========================
-            // AMBIL / BUAT USER
+            // USER
             // =========================
-            let users = await query(
+            let [user] = await query(
                 "SELECT * FROM users WHERE wa_number=?",
                 [wa_number]
             );
-            let user = users[0];
 
             if (!user) {
                 await query(
                     "INSERT INTO users (wa_number, nama_wa, intro) VALUES (?, ?, 0)",
                     [wa_number, nama_wa]
                 );
-                users = await query(
+                [user] = await query(
                     "SELECT * FROM users WHERE wa_number=?",
                     [wa_number]
                 );
-                user = users[0];
             }
 
             // =========================
-            // INTRO (SEKALI)
+            // INTRO
             // =========================
             if (user.intro === 0 && !sendingIntro[wa_number]) {
                 sendingIntro[wa_number] = true;
                 await typeAndDelay(chat);
                 await chat.sendMessage(
                     `Halo *${nama_wa}*\nSaya *Arta Presence*, bot absensi otomatis.\n\n` +
-                    `Ketik */absen* untuk absensi\n` +
-                    `Ketik */export* untuk laporan PDF`
+                    `• */absen* — absensi masuk/pulang\n` +
+                    `• */export* — laporan PDF`
                 );
-                await query(
-                    "UPDATE users SET intro=1 WHERE id=?",
-                    [user.id]
-                );
+                await query("UPDATE users SET intro=1 WHERE id=?", [user.id]);
                 sendingIntro[wa_number] = false;
                 return;
             }
@@ -71,7 +65,23 @@ module.exports = {
             }
 
             // =========================
-            // GREETING
+            // ABSEN (COMMAND & STEP)
+            // =========================
+            if (lowerMsg === '/absen' || user.step_absen) {
+                return handleAbsen(chat, user, lowerMsg, pesan, query);
+            }
+
+            // =========================
+            // EXPORT (COMMAND & STEP)
+            // =========================
+            if (lowerMsg.startsWith('/export') || user.step_input) {
+                const parts = pesan.split(' ').slice(1);
+                const paramBulan = parts.length ? parts[0] : null;
+                return handleExport(chat, user, pesan, db, paramBulan);
+            }
+
+            // =========================
+            // GREETING (PALING BAWAH)
             // =========================
             const replyGreeting = greetings[lowerMsg];
             if (replyGreeting) {
@@ -85,41 +95,10 @@ module.exports = {
             }
 
             // =========================
-            // EXPORT (HARUS DI ATAS!)
-            // =========================
-
-            // ⬅️ JIKA MASIH DALAM PROSES EXPORT
-            if (user.step_input) {
-                return handleExport(chat, user, pesan, db);
-            }
-
-            // ⬅️ COMMAND /export
-            if (lowerMsg.startsWith('/export')) {
-                const parts = pesan.split(' ').slice(1);
-                const paramBulan = parts.length ? parts[0] : null;
-                return handleExport(chat, user, pesan, db, paramBulan);
-            }
-
-            // =========================
-            // ABSEN
-            // =========================
-            if (user.step_absen || lowerMsg === '/absen') {
-                return handleAbsen(chat, user, lowerMsg, pesan, query);
-            }
-
-            // =========================
             // DEFAULT
             // =========================
-            await sendTyping(
-                chat,
-                `Hmm… ${nama_wa}, aku belum paham pesan kamu.`,
-                1000
-            );
-            await sendTyping(
-                chat,
-                "Coba ketik */help* untuk melihat perintah.",
-                1000
-            );
+            await sendTyping(chat, `Hmm… ${nama_wa}, aku belum paham pesan kamu.`, 1000);
+            await sendTyping(chat, "Coba ketik */help* untuk melihat perintah.", 1000);
 
         } catch (err) {
             console.error('Error handling message:', err);
