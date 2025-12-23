@@ -1,4 +1,3 @@
-// commands/index.js
 const handleAbsen = require('./absen');
 const handleExport = require('./export');
 const greetings = require('../data/greetings');
@@ -18,7 +17,9 @@ module.exports = {
 
         const query = (sql, params) =>
             new Promise((res, rej) =>
-                db.query(sql, params, (err, result) => err ? rej(err) : res(result))
+                db.query(sql, params, (err, result) =>
+                    err ? rej(err) : res(result)
+                )
             );
 
         try {
@@ -84,14 +85,7 @@ module.exports = {
             }
 
             // =========================
-            // ABSEN
-            // =========================
-            if (user.step_absen || lowerMsg === '/absen') {
-                return handleAbsen(chat, user, lowerMsg, pesan, query);
-            }
-
-            // =========================
-            // EXPORT (PALING PENTING)
+            // EXPORT (HARUS DI ATAS!)
             // =========================
 
             // ⬅️ JIKA MASIH DALAM PROSES EXPORT
@@ -104,6 +98,13 @@ module.exports = {
                 const parts = pesan.split(' ').slice(1);
                 const paramBulan = parts.length ? parts[0] : null;
                 return handleExport(chat, user, pesan, db, paramBulan);
+            }
+
+            // =========================
+            // ABSEN
+            // =========================
+            if (user.step_absen || lowerMsg === '/absen') {
+                return handleAbsen(chat, user, lowerMsg, pesan, query);
             }
 
             // =========================

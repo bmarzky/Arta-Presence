@@ -42,7 +42,7 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query) 
                 }
 
                 // ❗ JAWABAN TIDAK VALID
-                return sendTyping(chat, 'Mohon jawab dengan *ya* atau *tidak* 🙏');
+                return sendTyping(chat, 'Mohon jawab dengan *ya* atau *tidak*');
             }
 
             // -------------------------
@@ -99,7 +99,7 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query) 
                     await sendTyping(chat, `Absen PULANG berhasil pada ${nowTime}`);
                     return sendTyping(
                         chat,
-                        'Terima kasih, absensi hari ini sudah lengkap ✅'
+                        'Terima kasih, absensi hari ini sudah lengkap'
                     );
                 }
 
