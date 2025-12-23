@@ -8,16 +8,38 @@ const { sendTyping } = require('../utils/sendTyping');
 module.exports = async function handleExport(chat, user, pesan, db, paramBulan = null) {
     if (!db) return chat.sendMessage('Database tidak tersedia.');
 
-    const query = (sql, params) => new Promise((res, rej) => {
-        db.query(sql, params, (err, result) => err ? rej(err) : res(result));
-    });
+    const query = (sql, params) =>
+        new Promise((res, rej) =>
+            db.query(sql, params, (err, result) => err ? rej(err) : res(result))
+        );
 
-    // Ambil data user terbaru
+    // =============================
+    // AMBIL DATA USER TERBARU
+    // =============================
     const userData = await query(`SELECT * FROM users WHERE id=?`, [user.id]);
-    if (!userData || userData.length === 0)
+    if (!userData.length) {
         return sendTyping(chat, 'Data user tidak ditemukan.');
+    }
 
     user = { ...user, ...userData[0] };
+
+    // =============================
+    // RESET STATE JIKA /EXPORT
+    // =============================
+    if (pesan.toLowerCase().startsWith('/export')) {
+        await query(
+            `UPDATE users 
+             SET step_input=NULL, template_export=NULL, has_done_export=0 
+             WHERE id=?`,
+            [user.id]
+        );
+
+        user.step_input = null;
+        user.template_export = null;
+        user.has_done_export = 0;
+
+        await sendTyping(chat, 'Menyiapkan laporan absensi...', 800);
+    }
 
     const fields = ['nama_lengkap', 'jabatan', 'divisi', 'nik'];
     const labels = {
@@ -32,8 +54,11 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
     // =============================
     // STEP 1: KONFIRMASI NAMA
     // =============================
-    if (!user.nama_lengkap && !stepNow && !user.has_done_export) {
-        await query(`UPDATE users SET step_input='confirm_name' WHERE id=?`, [user.id]);
+    if (!user.nama_lengkap && !stepNow) {
+        await query(
+            `UPDATE users SET step_input='confirm_name' WHERE id=?`,
+            [user.id]
+        );
         return sendTyping(
             chat,
             `Untuk membuat laporan PDF, aku perlu beberapa data ya.\n\n` +
@@ -41,7 +66,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
         );
     }
 
-    if (stepNow === 'confirm_name' && pesan) {
+    if (stepNow === 'confirm_name') {
         const jawab = pesan.toLowerCase();
 
         if (jawab === 'iya' || jawab === 'benar') {
@@ -52,10 +77,13 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
             user.nama_lengkap = user.nama_wa;
             stepNow = null;
         } else if (jawab === 'tidak') {
-            await query(`UPDATE users SET step_input='nama_lengkap' WHERE id=?`, [user.id]);
+            await query(
+                `UPDATE users SET step_input='nama_lengkap' WHERE id=?`,
+                [user.id]
+            );
             return sendTyping(chat, `Silakan isi ${labels.nama_lengkap}:`);
         } else {
-            return sendTyping(chat, `Balas dengan *iya* atau *tidak* ya.`);
+            return sendTyping(chat, 'Balas dengan *iya* atau *tidak* ya.');
         }
     }
 
@@ -63,59 +91,55 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
     // STEP 2: CEK DATA KOSONG
     // =============================
     const missingFields = fields.filter(f => !user[f]);
-    if (missingFields.length > 0 && !stepNow) {
+    if (missingFields.length && !stepNow) {
         await query(
             `UPDATE users SET step_input=? WHERE id=?`,
             [missingFields[0], user.id]
         );
-        await sendTyping(chat, `Datamu masih ada yang kurang 🙏`, 800);
+        await sendTyping(chat, 'Datamu masih ada yang kurang 🙏', 600);
         return sendTyping(chat, `Silakan isi ${labels[missingFields[0]]}:`);
     }
 
     // =============================
-    // STEP 3: INPUT DATA SATU-SATU
+    // STEP 3: INPUT DATA
     // =============================
-    if (stepNow && fields.includes(stepNow) && pesan) {
+    if (stepNow && fields.includes(stepNow)) {
         await query(
-            `UPDATE users SET ${stepNow}=? WHERE id=?`,
+            `UPDATE users SET ${stepNow}=?, step_input=NULL WHERE id=?`,
             [pesan, user.id]
         );
         user[stepNow] = pesan;
 
-        const nextStep = fields.find(f => !user[f]);
-        if (nextStep) {
+        const next = fields.find(f => !user[f]);
+        if (next) {
             await query(
                 `UPDATE users SET step_input=? WHERE id=?`,
-                [nextStep, user.id]
+                [next, user.id]
             );
-            return sendTyping(chat, `Silakan isi ${labels[nextStep]}:`);
+            return sendTyping(chat, `Silakan isi ${labels[next]}:`);
         }
-
-        await query(`UPDATE users SET step_input=NULL WHERE id=?`, [user.id]);
-        stepNow = null;
     }
 
     // =============================
     // STEP 4: PILIH TEMPLATE
     // =============================
-    if (fields.every(f => user[f]) && !user.template_export && !stepNow) {
+    if (fields.every(f => user[f]) && !user.template_export && !user.step_input) {
         await query(
             `UPDATE users SET step_input='choose_template' WHERE id=?`,
             [user.id]
         );
         return sendTyping(
             chat,
-            `Mau pakai template apa untuk laporan?\n\n` +
+            `Mau pakai template apa?\n\n` +
             `1️⃣ KSPS\n2️⃣ LMD\n\n` +
-            `Balas dengan *ksps* atau *lmd*`
+            `Balas *ksps* atau *lmd*`
         );
     }
 
-    if (stepNow === 'choose_template' && pesan) {
+    if (stepNow === 'choose_template') {
         const tpl = pesan.toLowerCase();
-
-        if (tpl !== 'ksps' && tpl !== 'lmd') {
-            return sendTyping(chat, `Pilihan tidak valid.\nBalas *ksps* atau *lmd*`);
+        if (!['ksps', 'lmd'].includes(tpl)) {
+            return sendTyping(chat, 'Pilihan tidak valid. Balas *ksps* atau *lmd*');
         }
 
         await query(
@@ -124,22 +148,27 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
         );
 
         user.template_export = tpl.toUpperCase();
-        return generatePDFandSend(chat, user, db, paramBulan);
     }
 
     // =============================
-    // STEP 5: LANGSUNG GENERATE
+    // STEP 5: GENERATE PDF
     // =============================
     if (fields.every(f => user[f]) && user.template_export) {
+        await sendTyping(chat, 'Sedang membuat laporan PDF...', 1000);
         return generatePDFandSend(chat, user, db, paramBulan);
     }
 };
 
 // ======================================================
-// FUNGSI GENERATE PDF SESUAI TEMPLATE
+// GENERATE PDF
 // ======================================================
-async function generatePDFandSend(chat, user, db, paramBulan = null) {
-    const namaBulanArr = [
+async function generatePDFandSend(chat, user, db, paramBulan) {
+    const query = (sql, params) =>
+        new Promise((res, rej) =>
+            db.query(sql, params, (err, result) => err ? rej(err) : res(result))
+        );
+
+    const bulanNama = [
         'Januari','Februari','Maret','April','Mei','Juni',
         'Juli','Agustus','September','Oktober','November','Desember'
     ];
@@ -149,87 +178,69 @@ async function generatePDFandSend(chat, user, db, paramBulan = null) {
     let tahun = now.getFullYear();
 
     if (paramBulan) {
-        const idx = namaBulanArr.findIndex(
+        const idx = bulanNama.findIndex(
             b => b.toLowerCase() === paramBulan.toLowerCase()
         );
         if (idx >= 0) bulan = idx;
     }
 
-    const jumlahHari = new Date(tahun, bulan + 1, 0).getDate();
-    user.periode = `1 - ${jumlahHari} ${namaBulanArr[bulan]} ${tahun}`;
+    const totalHari = new Date(tahun, bulan + 1, 0).getDate();
+    user.periode = `1 - ${totalHari} ${bulanNama[bulan]} ${tahun}`;
 
-    const query = (sql, params) => new Promise((res, rej) => {
-        db.query(sql, params, (err, result) => err ? rej(err) : res(result));
-    });
-
-    const absensiData = await query(
+    const absensi = await query(
         `SELECT * FROM absensi 
          WHERE user_id=? AND MONTH(tanggal)=? AND YEAR(tanggal)=?
          ORDER BY tanggal`,
         [user.id, bulan + 1, tahun]
     );
 
-    const absensiByDate = [];
-    for (let i = 1; i <= jumlahHari; i++) {
+    const rows = [];
+    for (let i = 1; i <= totalHari; i++) {
         const tgl = moment(`${tahun}-${bulan + 1}-${i}`, 'YYYY-M-D')
             .format('YYYY-MM-DD');
-
-        const record = absensiData.find(
-            a => moment(a.tanggal).format('YYYY-MM-DD') === tgl
+        const r = absensi.find(a =>
+            moment(a.tanggal).format('YYYY-MM-DD') === tgl
         );
-
-        absensiByDate.push({
-            tanggal: tgl,
-            jam_masuk: record?.jam_masuk || '',
-            jam_pulang: record?.jam_pulang || '',
-            deskripsi: record?.deskripsi || ''
-        });
+        rows.push(`
+            <tr>
+                <td>${i}</td>
+                <td>${r?.jam_masuk || ''}</td>
+                <td>${r?.jam_pulang || ''}</td>
+                <td>${r?.deskripsi || ''}</td>
+                <td></td>
+            </tr>
+        `);
     }
 
-    const rows_absensi = absensiByDate.map(a => `
-        <tr>
-            <td>${moment(a.tanggal).format('DD')}</td>
-            <td>${a.jam_masuk}</td>
-            <td>${a.jam_pulang}</td>
-            <td>${a.deskripsi}</td>
-            <td></td>
-        </tr>
-    `).join('');
-
-    const templateName = user.template_export === 'LMD' ? 'LMD' : 'KSPS';
-
+    const templateName = user.template_export;
     const template = fs.readFileSync(
         path.join(__dirname, `../templates/${templateName}.html`),
         'utf8'
     );
 
-    const logoBase64 = fs.readFileSync(
+    const logo = fs.readFileSync(
         path.join(__dirname, `../assets/${templateName.toLowerCase()}.png`),
         'base64'
     );
 
     const html = template
-        .replaceAll('{{logo_path}}', `data:image/png;base64,${logoBase64}`)
+        .replaceAll('{{logo_path}}', `data:image/png;base64,${logo}`)
         .replaceAll('{{nama}}', user.nama_lengkap)
         .replaceAll('{{jabatan}}', user.jabatan)
         .replaceAll('{{divisi}}', user.divisi)
         .replaceAll('{{nik}}', user.nik)
         .replaceAll('{{periode}}', user.periode)
-        .replaceAll('{{rows_absensi}}', rows_absensi);
+        .replaceAll('{{rows_absensi}}', rows.join(''));
 
-    await sendTyping(chat, 'File sedang disiapkan...', 1500);
+    const fileName = `${user.nama_lengkap}-${templateName}-${bulanNama[bulan]}.pdf`;
+    const output = path.join(__dirname, '../exports', fileName);
 
-    const fileName = `${user.nama_lengkap}-${templateName}-${namaBulanArr[bulan]}.pdf`;
-    const outputPath = path.join(__dirname, '../exports', fileName);
+    if (fs.existsSync(output)) fs.unlinkSync(output);
 
-    if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+    await generatePDF(html, output);
 
-    await generatePDF(html, outputPath);
-
-    const media = MessageMedia.fromFilePath(outputPath);
+    const media = MessageMedia.fromFilePath(output);
     await chat.sendMessage(media);
 
-    await query(`UPDATE users SET has_done_export=1 WHERE id=?`, [user.id]);
-
-    return sendTyping(chat, `Laporan berhasil dibuat`);
+    return sendTyping(chat, 'Laporan berhasil dibuat ✅');
 }
