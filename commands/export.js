@@ -200,8 +200,20 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         if (idx >= 0) bulan = idx;
     }
 
+    const formatPeriodeLMD = (bulan, tahun, bulanNama) => {
+    return `${bulanNama[bulan]} ${tahun}`;
+    };
+    
     const totalHari = new Date(tahun, bulan + 1, 0).getDate();
-    user.periode = `1 - ${totalHari} ${bulanNama[bulan]} ${tahun}`;
+
+    // Periode beda antara KSPS & LMD
+    if (user.template_export === 'LMD') {
+        // LMD → Nama Bulan Tahun
+        user.periode = `${bulanNama[bulan]} ${tahun}`;
+    } else {
+        // KSPS → 1 - akhir bulan
+        user.periode = `1 - ${totalHari} ${bulanNama[bulan]} ${tahun}`;
+    }
 
     const absensi = await query(
         `SELECT * FROM absensi
