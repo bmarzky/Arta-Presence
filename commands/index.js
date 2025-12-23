@@ -3,101 +3,122 @@ const handleAbsen = require('./absen');
 const handleExport = require('./export');
 const greetings = require('../data/greetings');
 const greetingReplies = require('../data/greetingReplies');
-const sendingIntro = {}; // flag intro agar tidak double
-const { sendTyping } = require('../utils/sendTyping'); // sesuaikan path jika perlu
+const sendingIntro = {};
+const { sendTyping } = require('../utils/sendTyping');
 
-// Fungsi simulasi mengetik dengan delay acak
+// Simulasi mengetik
 const typeAndDelay = async (chat, ms = 800, random = 400) => {
     await chat.sendStateTyping();
     await new Promise(r => setTimeout(r, ms + Math.random() * random));
-};
-
-// Fungsi validasi input export
-const isExportValid = (msg) => {
-    const lowerMsg = msg.toLowerCase().trim();
-    const validMonths = [
-        'januari','februari','maret','april','mei','juni',
-        'juli','agustus','september','oktober','november','desember',
-        '01','02','03','04','05','06','07','08','09','10','11','12'
-    ];
-    return validMonths.includes(lowerMsg);
 };
 
 module.exports = {
     message: async (chat, wa_number, nama_wa, db, pesan) => {
         const lowerMsg = pesan.toLowerCase().trim();
 
-        // Fungsi query DB promisified
         const query = (sql, params) =>
             new Promise((res, rej) =>
                 db.query(sql, params, (err, result) => err ? rej(err) : res(result))
             );
 
         try {
-            // Ambil user dari DB
-            let users = await query("SELECT * FROM users WHERE wa_number=?", [wa_number]);
+            // =========================
+            // AMBIL / BUAT USER
+            // =========================
+            let users = await query(
+                "SELECT * FROM users WHERE wa_number=?",
+                [wa_number]
+            );
             let user = users[0];
 
-            // Jika user baru → insert
             if (!user) {
-                await query("INSERT INTO users (wa_number, nama_wa, intro) VALUES (?, ?, 0)", [wa_number, nama_wa]);
-                users = await query("SELECT * FROM users WHERE wa_number=?", [wa_number]);
+                await query(
+                    "INSERT INTO users (wa_number, nama_wa, intro) VALUES (?, ?, 0)",
+                    [wa_number, nama_wa]
+                );
+                users = await query(
+                    "SELECT * FROM users WHERE wa_number=?",
+                    [wa_number]
+                );
                 user = users[0];
             }
 
-            // Intro (hanya sekali)
+            // =========================
+            // INTRO (SEKALI)
+            // =========================
             if (user.intro === 0 && !sendingIntro[wa_number]) {
                 sendingIntro[wa_number] = true;
                 await typeAndDelay(chat);
                 await chat.sendMessage(
                     `Halo *${nama_wa}*\nSaya *Arta Presence*, bot absensi otomatis.\n\n` +
-                    `Ketik */absen* untuk mulai absensi atau */export* untuk laporan.`
+                    `Ketik */absen* untuk absensi\n` +
+                    `Ketik */export* untuk laporan PDF`
                 );
-                await query("UPDATE users SET intro=1 WHERE id=?", [user.id]);
+                await query(
+                    "UPDATE users SET intro=1 WHERE id=?",
+                    [user.id]
+                );
                 sendingIntro[wa_number] = false;
                 return;
             }
 
-            // --- Perintah /help ---
+            // =========================
+            // HELP
+            // =========================
             if (lowerMsg === '/help') {
                 return require('./help')(chat, user.nama_wa);
             }
 
-            // --- Greeting otomatis ---
+            // =========================
+            // GREETING
+            // =========================
             const replyGreeting = greetings[lowerMsg];
             if (replyGreeting) {
-                const randomReply = greetingReplies[Math.floor(Math.random() * greetingReplies.length)];
-                return sendTyping(chat, `${replyGreeting} *${nama_wa}*, ${randomReply}`, 1000);
+                const randomReply =
+                    greetingReplies[Math.floor(Math.random() * greetingReplies.length)];
+                return sendTyping(
+                    chat,
+                    `${replyGreeting} *${nama_wa}*, ${randomReply}`,
+                    1000
+                );
             }
 
-            // --- Absensi ---
+            // =========================
+            // ABSEN
+            // =========================
             if (user.step_absen || lowerMsg === '/absen') {
                 return handleAbsen(chat, user, lowerMsg, pesan, query);
             }
 
-            // --- Export ---
-            let paramBulan = null;
+            // =========================
+            // EXPORT (PALING PENTING)
+            // =========================
 
-            // Jika user mengetik /export, ambil param bulan
+            // ⬅️ JIKA MASIH DALAM PROSES EXPORT
+            if (user.step_input) {
+                return handleExport(chat, user, pesan, db);
+            }
+
+            // ⬅️ COMMAND /export
             if (lowerMsg.startsWith('/export')) {
                 const parts = pesan.split(' ').slice(1);
-                paramBulan = parts.length ? parts[0] : null;
-                return handleExport(chat, user, pesan, db, paramBulan); // langsung return
+                const paramBulan = parts.length ? parts[0] : null;
+                return handleExport(chat, user, pesan, db, paramBulan);
             }
 
-            // Jika user sedang input export (step_input = true)
-            if (user.step_input) {
-                if (!isExportValid(pesan)) {
-                    // reset step_input supaya bisa masuk default response
-                    await query("UPDATE users SET step_input=0 WHERE id=?", [user.id]);
-                } else {
-                    return handleExport(chat, user, pesan, db, paramBulan);
-                }
-            }
-
-            // --- Default response untuk pesan yang tidak dikenali ---
-            await sendTyping(chat, `Hmm… ${nama_wa}, aku masih belajar memahami pesan kamu.`, 1000);
-            await sendTyping(chat, "Coba ketik */help* untuk melihat daftar perintah.", 1000);
+            // =========================
+            // DEFAULT
+            // =========================
+            await sendTyping(
+                chat,
+                `Hmm… ${nama_wa}, aku belum paham pesan kamu.`,
+                1000
+            );
+            await sendTyping(
+                chat,
+                "Coba ketik */help* untuk melihat perintah.",
+                1000
+            );
 
         } catch (err) {
             console.error('Error handling message:', err);
