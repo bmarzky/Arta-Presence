@@ -5,7 +5,6 @@
   <title>Form Absen Non Shift</title>
 
   <style>
-    /* SETTING PRINT A4 */
     @page {
       size: A4;
       margin: 15mm;
@@ -53,7 +52,6 @@
       font-size: 11pt;
     }
 
-    /* DATA DIRI */
     table {
       width: 100%;
       border-collapse: collapse;
@@ -65,7 +63,6 @@
       font-size: 10.5pt;
     }
 
-    /* TABEL ABSEN */
     .absen {
       margin-top: 8px;
     }
@@ -107,21 +104,30 @@
 
   <!-- DATA KARYAWAN -->
   <table class="no-border">
-    <tr><td width="130" class="bold">Nama</td><td>: {{nama}}</td></tr>
-    <tr><td class="bold">Jabatan</td><td>: {{jabatan}}</td></tr>
     <tr>
-    <td class="bold">Dept</td>
-    <td>: Central Regional Operation</td>
+      <td width="130" class="bold">Nama</td>
+      <td>: {{nama}}</td>
     </tr>
     <tr>
-    <td class="bold">Sub Dept</td>
-    <td>: West Java Operation</td>
+      <td class="bold">Jabatan</td>
+      <td>: {{jabatan}}</td>
     </tr>
     <tr>
-    <td class="bold">Lokasi</td>
-    <td>: Bandung</td>
+      <td class="bold">Dept</td>
+      <td>: Central Regional Operation</td>
     </tr>
-    <tr><td class="bold">Periode</td><td>: {{periode}}</td></tr>
+    <tr>
+      <td class="bold">Sub Dept</td>
+      <td>: West Java Operation</td>
+    </tr>
+    <tr>
+      <td class="bold">Lokasi</td>
+      <td>: Bandung</td>
+    </tr>
+    <tr>
+      <td class="bold">Periode</td>
+      <td>: {{periode}}</td>
+    </tr>
   </table>
 
   <!-- TABEL ABSENSI -->
@@ -136,13 +142,7 @@
       </tr>
     </thead>
     <tbody>
-      <tr class="{{row_class}}">
-        <td>{{tanggal}}</td>
-        <td>{{hari}}</td>
-        <td>{{jam_masuk}}</td>
-        <td>{{jam_keluar}}</td>
-        <td class="keterangan">{{keterangan}}</td>
-      </tr>
+      {{rows_absensi}}
     </tbody>
   </table>
 
