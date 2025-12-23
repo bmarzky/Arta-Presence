@@ -4,10 +4,11 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
 const mysql = require('mysql2');
 const commands = require('./commands');
 
-
-// Database setup
+// =====================
+// DATABASE
+// =====================
 const db = mysql.createPool({
-  host: '127.0.0.1',          // IPv4
+  host: '127.0.0.1',
   user: 'admin',
   password: 'admin',
   database: 'bot',
@@ -19,7 +20,6 @@ const db = mysql.createPool({
   keepAliveInitialDelay: 0
 });
 
-// Test DB connection
 db.getConnection((err, conn) => {
   if (err) {
     console.error('DB connection failed:', err.message);
@@ -30,8 +30,9 @@ db.getConnection((err, conn) => {
   startWhatsAppBot();
 });
 
-
-// Whatsapp Bot
+// =====================
+// WHATSAPP BOT
+// =====================
 let botStarted = false;
 
 function startWhatsAppBot() {
@@ -49,33 +50,18 @@ function startWhatsAppBot() {
     }
   });
 
-  // QR Login
   client.on('qr', qr => {
-    console.log('Scan QR Code untuk login:');
+    console.log('Scan QR Code:');
     qrcode.generate(qr, { small: true });
   });
 
-  // Ready
   client.on('ready', () => {
     console.log('Bot WhatsApp ON!');
   });
 
-  // Save or update user info in DB
-  function saveOrUpdateUser(wa_number, nama_wa) {
-    db.query(
-      `INSERT INTO users (wa_number, nama_wa)
-       VALUES (?, ?)
-       ON DUPLICATE KEY UPDATE
-         nama_wa = VALUES(nama_wa),
-         updated_at = CURRENT_TIMESTAMP`,
-      [wa_number, nama_wa],
-      err => {
-        if (err) console.error('DB save user error:', err.message);
-      }
-    );
-  }
-
-  // Message handler
+  // =====================
+  // MESSAGE HANDLER
+  // =====================
   client.on('message', async msg => {
     try {
       const chat = await msg.getChat();
@@ -83,12 +69,9 @@ function startWhatsAppBot() {
       const nama = msg._data?.notifyName || 'User';
       const pesan = msg.body?.trim() || '';
 
-      saveOrUpdateUser(wa_number, nama);
-
+      // HANDLE COMMANDS
       if (commands.message) {
         await commands.message(chat, wa_number, nama, db, pesan);
-      } else if (commands.default) {
-        await commands.default(chat, nama);
       }
     } catch (err) {
       console.error('Message handling error:', err);
