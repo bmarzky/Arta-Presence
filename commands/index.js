@@ -67,17 +67,14 @@ module.exports = {
             // =========================
             // ABSEN (COMMAND & STEP)
             // =========================
-            if (lowerMsg === '/absen' || user.step_absen) {
-                return handleAbsen(chat, user, lowerMsg, pesan, query);
-            }
-
-            // =========================
-            // EXPORT (COMMAND & STEP)
-            // =========================
             if (lowerMsg.startsWith('/export') || user.step_input) {
                 const parts = pesan.split(' ').slice(1);
                 const paramBulan = parts.length ? parts[0] : null;
                 return handleExport(chat, user, pesan, db, paramBulan);
+            }
+
+            if (lowerMsg === '/absen' || user.step_absen) {
+                return handleAbsen(chat, user, lowerMsg, pesan, query);
             }
 
             // =========================
