@@ -34,10 +34,19 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
     const text = pesan.toLowerCase();
     const step = user.step_input;
 
-    /* =============================
-       COMMAND /EXPORT
-    ============================= */
+    // =============================
+    // COMMAND / EXPORT
+    // =============================
     if (text === '/export') {
+
+        // 🔥 RESET STATE LAMA
+        await query(
+            `UPDATE users 
+            SET step_input=NULL, template_export=NULL 
+            WHERE id=?`,
+            [user.id]
+        );
+
         const [userDb] = await query(
             `SELECT nama_lengkap, jabatan, nik, intro
             FROM users WHERE id=?`,
@@ -47,10 +56,11 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
         const dataBelumLengkap =
             !userDb.nama_lengkap || !userDb.jabatan || !userDb.nik;
 
+        // ===============================
         // USER BARU / DATA BELUM LENGKAP
+        // ===============================
         if (dataBelumLengkap) {
 
-            // kirim pernyataan maaf HANYA SEKALI
             if (userDb.intro === 0) {
                 await sendTyping(
                     chat,
@@ -69,14 +79,17 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
                 [user.id]
             );
 
-            user.step_input = 'confirm_name';
-            return;
+            return sendTyping(
+                chat,
+                `Apakah benar nama lengkap kamu ${user.name}? (iya/tidak)`
+            );
         }
 
+        // ===============================
         // USER LAMA (DATA LENGKAP)
+        // ===============================
         await sendTyping(chat, 'Sedang membuat laporan PDF...', 800);
-        await generatePDF(user);
-        return;
+        return generatePDFandSend(chat, user, db, paramBulan);
     }
 
 
