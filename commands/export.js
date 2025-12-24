@@ -38,32 +38,47 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
        COMMAND /EXPORT
     ============================= */
     if (text === '/export') {
+        const [userDb] = await query(
+            `SELECT nama_lengkap, jabatan, nik, intro
+            FROM users WHERE id=?`,
+            [user.id]
+        );
 
-        const dataLengkap = user.nama_lengkap && user.jabatan && user.nik;
-
-        // USER LAMA → LANGSUNG PDF
-        if (dataLengkap) {
-            await sendTyping(chat, 'Sedang membuat laporan PDF...', 800);
-            return generatePDFandSend(chat, user, db, paramBulan);
-        }
+        const dataBelumLengkap =
+            !userDb.nama_lengkap || !userDb.jabatan || !userDb.nik;
 
         // USER BARU / DATA BELUM LENGKAP
-        await query(`UPDATE users SET step_input='confirm_name' WHERE id=?`, [user.id]);
+        if (dataBelumLengkap) {
 
-        if (!user.intro) {
-            await query(`UPDATE users SET intro=1 WHERE id=?`, [user.id]);
-            await sendTyping(
-                chat,
-                `Maaf *${user.nama_wa}*, kami belum mendapatkan data lengkap kamu untuk menyiapkan laporan absensi.`,
-                700
+            // kirim pernyataan maaf HANYA SEKALI
+            if (userDb.intro === 0) {
+                await sendTyping(
+                    chat,
+                    `Maaf ${user.name}, kami belum mendapatkan data lengkap kamu untuk menyiapkan laporan absensi.`,
+                    800
+                );
+
+                await query(
+                    `UPDATE users SET intro=1 WHERE id=?`,
+                    [user.id]
+                );
+            }
+
+            await query(
+                `UPDATE users SET step_input='confirm_name' WHERE id=?`,
+                [user.id]
             );
+
+            user.step_input = 'confirm_name';
+            return;
         }
 
-        return sendTyping(
-            chat,
-            `Apakah benar nama lengkap kamu *${user.nama_wa}*? (iya/tidak)`
-        );
+        // USER LAMA (DATA LENGKAP)
+        await sendTyping(chat, 'Sedang membuat laporan PDF...', 800);
+        await generatePDF(user);
+        return;
     }
+
 
     /* =============================
        CONFIRM NAME
