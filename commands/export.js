@@ -261,7 +261,7 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
     const templateName = user.template_export;
 
     const template = fs.readFileSync(
-        path.join(__dirname, `../templates/absensi${templateName}.html`),
+        path.join(__dirname, `../templates/absensi/${templateName}.html`),
         'utf8'
     );
 
