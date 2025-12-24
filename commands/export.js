@@ -100,7 +100,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
         if (text === 'iya') {
             await query(
                 `UPDATE users SET nama_lengkap=?, step_input='jabatan' WHERE id=?`,
-                [nama_wa, user.id]
+                [nama_lengkap, user.id]
             );
             return sendTyping(chat, 'Silakan isi *Jabatan* kamu:');
         }
