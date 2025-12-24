@@ -64,7 +64,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
             if (userDb.intro === 0) {
                 await sendTyping(
                     chat,
-                    `Maaf ${user.nama_wa}, kami belum mendapatkan data lengkap kamu untuk menyiapkan laporan absensi.`,
+                    `Maaf ${nama_wa}, kami belum mendapatkan data lengkap kamu untuk menyiapkan laporan absensi.`,
                     800
                 );
 
@@ -81,7 +81,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
 
             return sendTyping(
                 chat,
-                `Apakah benar nama lengkap kamu ${users.nama_wa}? (iya/tidak)`
+                `Apakah benar nama lengkap kamu ${nama_wa}? (iya/tidak)`
             );
         }
 
@@ -100,7 +100,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
         if (text === 'iya') {
             await query(
                 `UPDATE users SET nama_lengkap=?, step_input='jabatan' WHERE id=?`,
-                [user.nama_wa, user.id]
+                [nama_wa, user.id]
             );
             return sendTyping(chat, 'Silakan isi *Jabatan* kamu:');
         }
