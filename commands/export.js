@@ -20,61 +20,49 @@ const hariIndonesia = (date) =>
    MAIN HANDLER
 ========================= */
 module.exports = async function handleExport(chat, user, pesan, db, paramBulan = null) {
-    if (!db) return chat.sendMessage('Database tidak tersedia.');
+    if (!db) return;
 
     const query = (sql, params) =>
         new Promise((res, rej) =>
             db.query(sql, params, (err, result) => err ? rej(err) : res(result))
         );
 
-    /* =============================
-       AMBIL DATA USER
-    ============================= */
     const [dbUser] = await query(`SELECT * FROM users WHERE id=?`, [user.id]);
-    if (!dbUser) return sendTyping(chat, 'Data user tidak ditemukan.');
+    if (!dbUser) return;
 
     user = { ...user, ...dbUser };
-    const step = user.step_input;
     const text = pesan.toLowerCase();
+    const step = user.step_input;
 
     /* =============================
-       /EXPORT → RESET FLOW
+       COMMAND /EXPORT
     ============================= */
     if (text === '/export') {
-        await query(
-            `UPDATE users 
-             SET step_input='start', template_export=NULL 
-             WHERE id=?`,
-            [user.id]
-        );
 
-        user.step_input = 'start';
-    }
+        const dataLengkap = user.nama_lengkap && user.jabatan && user.nik;
 
-    /* =============================
-       START
-    ============================= */
-    if (step === 'start') {
-        if (!user.nama_lengkap) {
-            await query(`UPDATE users SET step_input='confirm_name' WHERE id=?`, [user.id]);
+        // USER LAMA → LANGSUNG PDF
+        if (dataLengkap) {
+            await sendTyping(chat, 'Sedang membuat laporan PDF...', 800);
+            return generatePDFandSend(chat, user, db, paramBulan);
+        }
 
-            if (!user.intro) {
-                await query(`UPDATE users SET intro=1 WHERE id=?`, [user.id]);
-                await sendTyping(
-                    chat,
-                    `Maaf *${user.nama_wa}*, kami belum mendapatkan data lengkap kamu.`,
-                    600
-                );
-            }
+        // USER BARU / DATA BELUM LENGKAP
+        await query(`UPDATE users SET step_input='confirm_name' WHERE id=?`, [user.id]);
 
-            return sendTyping(
+        if (!user.intro) {
+            await query(`UPDATE users SET intro=1 WHERE id=?`, [user.id]);
+            await sendTyping(
                 chat,
-                `Apakah benar nama lengkap kamu *${user.nama_wa}*? (iya/tidak)`
+                `Maaf *${user.nama_wa}*, kami belum mendapatkan data lengkap kamu untuk menyiapkan laporan absensi.`,
+                700
             );
         }
 
-        await query(`UPDATE users SET step_input='jabatan' WHERE id=?`, [user.id]);
-        return sendTyping(chat, 'Silakan isi *Jabatan* kamu:');
+        return sendTyping(
+            chat,
+            `Apakah benar nama lengkap kamu *${user.nama_wa}*? (iya/tidak)`
+        );
     }
 
     /* =============================
@@ -90,7 +78,10 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
         }
 
         if (text === 'tidak') {
-            await query(`UPDATE users SET step_input='nama_lengkap' WHERE id=?`, [user.id]);
+            await query(
+                `UPDATE users SET step_input='nama_lengkap' WHERE id=?`,
+                [user.id]
+            );
             return sendTyping(chat, 'Silakan isi *Nama Lengkap* kamu:');
         }
 
@@ -127,7 +118,6 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
             `UPDATE users SET nik=?, step_input='choose_template' WHERE id=?`,
             [pesan, user.id]
         );
-
         return sendTyping(
             chat,
             `Mau pakai template apa?\n\n1. KSPS\n2. LMD\n\nBalas *ksps* atau *lmd*`
@@ -135,7 +125,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
     }
 
     /* =============================
-       PILIH TEMPLATE → GENERATE
+       PILIH TEMPLATE
     ============================= */
     if (step === 'choose_template') {
         if (!['ksps', 'lmd'].includes(text)) {
@@ -149,14 +139,14 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
             [template, user.id]
         );
 
-        await sendTyping(chat, 'Sedang membuat laporan PDF...', 1000);
-        return generatePDFandSend(chat, { ...user, template_export: template }, db, paramBulan);
+        await sendTyping(chat, 'Sedang membuat laporan PDF...', 800);
+        return generatePDFandSend(
+            chat,
+            { ...user, template_export: template },
+            db,
+            paramBulan
+        );
     }
-
-    /* =============================
-       FALLBACK
-    ============================= */
-    return sendTyping(chat, 'Ketik */export* untuk membuat laporan absensi.');
 };
 
 /* ======================================================
@@ -186,7 +176,7 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
 
     const totalHari = new Date(tahun, bulan + 1, 0).getDate();
 
-    user.periode =
+    const periode =
         user.template_export === 'LMD'
             ? `${bulanNama[bulan]} ${tahun}`
             : `1 - ${totalHari} ${bulanNama[bulan]} ${tahun}`;
@@ -210,22 +200,20 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
 
         rows.push(
             user.template_export === 'LMD'
-                ? `
-                <tr>
+                ? `<tr>
                     <td>${formatTanggalLMD(dateObj)}</td>
                     <td>${hariIndonesia(dateObj)}</td>
                     <td>${r?.jam_masuk || '-'}</td>
                     <td>${r?.jam_pulang || '-'}</td>
                     <td>${r?.deskripsi || '-'}</td>
-                </tr>`
-                : `
-                <tr>
+                   </tr>`
+                : `<tr>
                     <td>${i}</td>
                     <td>${r?.jam_masuk || ''}</td>
                     <td>${r?.jam_pulang || ''}</td>
                     <td>${r?.deskripsi || ''}</td>
                     <td></td>
-                </tr>`
+                   </tr>`
         );
     }
 
@@ -248,7 +236,7 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         .replaceAll('{{divisi}}', 'Regional Operation')
         .replaceAll('{{lokasi}}', 'Aplikanusa Lintasarta Bandung')
         .replaceAll('{{kelompok_kerja}}', 'Central Regional Operation')
-        .replaceAll('{{periode}}', user.periode)
+        .replaceAll('{{periode}}', periode)
         .replaceAll('{{rows_absensi}}', rows.join(''));
 
     const fileName = `${user.nama_lengkap}-${templateName}-${bulanNama[bulan]}.pdf`;
@@ -257,7 +245,6 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
     if (fs.existsSync(output)) fs.unlinkSync(output);
 
     await generatePDF(html, output);
-
     await chat.sendMessage(MessageMedia.fromFilePath(output));
     return sendTyping(chat, 'Laporan berhasil dibuat');
 }
