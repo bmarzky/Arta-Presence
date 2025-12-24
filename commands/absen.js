@@ -41,7 +41,7 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query) 
                     );
                 }
 
-                // ❗ JAWABAN TIDAK VALID
+                //JAWABAN TIDAK VALID
                 return sendTyping(chat, 'Mohon jawab dengan *ya* atau *tidak*');
             }
 

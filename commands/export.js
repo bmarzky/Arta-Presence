@@ -203,7 +203,7 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
     const formatPeriodeLMD = (bulan, tahun, bulanNama) => {
     return `${bulanNama[bulan]} ${tahun}`;
     };
-    
+
     const totalHari = new Date(tahun, bulan + 1, 0).getDate();
 
     // Periode beda antara KSPS & LMD
@@ -261,7 +261,7 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
     const templateName = user.template_export;
 
     const template = fs.readFileSync(
-        path.join(__dirname, `../templates/${templateName}.html`),
+        path.join(__dirname, `../templates/absensi${templateName}.html`),
         'utf8'
     );
 
