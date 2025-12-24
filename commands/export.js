@@ -48,8 +48,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
             [user.id]
         );
 
-        await sendTyping(chat, 'Menyiapkan laporan absensi...', 600);
-        return;
+        user.step_input = 'start';
     }
 
     /* =============================
