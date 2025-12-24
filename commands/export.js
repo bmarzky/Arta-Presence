@@ -57,41 +57,41 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
     let stepNow = user.step_input;
 
     /* =============================
-       STEP 1: KONFIRMASI NAMA
+    STEP 1: KONFIRMASI NAMA
     ============================= */
     if (!user.nama_lengkap && !stepNow) {
+
+        // Intro hanya SEKALI
+        if (!user.intro) {
+            await query(
+                `UPDATE users 
+                SET intro=1, step_input='confirm_name' 
+                WHERE id=?`,
+                [user.id]
+            );
+
+            await sendTyping(
+                chat,
+                `Maaf *${user.nama_wa}*, kami belum mendapatkan data lengkap kamu untuk menyiapkan laporan absensi.`,
+                700
+            );
+
+            return sendTyping(
+                chat,
+                `Apakah benar nama lengkap kamu *${user.nama_wa}*? (iya/tidak)`
+            );
+        }
+
+        // Jika intro sudah pernah, langsung tanya
         await query(
             `UPDATE users SET step_input='confirm_name' WHERE id=?`,
             [user.id]
         );
+
         return sendTyping(
             chat,
-            `Apakah benar nama kamu *${user.nama_wa}*? (iya/tidak)`
+            `Apakah benar nama lengkap kamu *${user.nama_wa}*? (iya/tidak)`
         );
-    }
-
-    if (stepNow === 'confirm_name') {
-        const jawab = pesan.toLowerCase();
-
-        if (jawab === 'iya') {
-            await query(
-                `UPDATE users 
-                 SET nama_lengkap=?, step_input='jabatan' 
-                 WHERE id=?`,
-                [user.nama_wa, user.id]
-            );
-            return sendTyping(chat, 'Silakan isi *Jabatan* kamu:');
-        }
-
-        if (jawab === 'tidak') {
-            await query(
-                `UPDATE users SET step_input='nama_lengkap' WHERE id=?`,
-                [user.id]
-            );
-            return sendTyping(chat, 'Silakan isi *Nama Lengkap* kamu:');
-        }
-
-        return sendTyping(chat, 'Balas *iya* atau *tidak* ya.');
     }
 
     /* =============================
@@ -117,7 +117,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
              WHERE id=?`,
             [pesan, user.id]
         );
-        return sendTyping(chat, 'Silakan isi *NIK* kamu:');
+        return sendTyping(chat, 'Silakan isi *NIP* kamu:');
     }
 
     /* =============================
@@ -126,11 +126,18 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
     if (stepNow === 'nik') {
         await query(
             `UPDATE users 
-             SET nik=?, step_input=NULL 
-             WHERE id=?`,
+            SET nik=?, step_input='choose_template' 
+            WHERE id=?`,
             [pesan, user.id]
         );
+
         user.nik = pesan;
+        user.step_input = 'choose_template';
+
+        return sendTyping(
+            chat,
+            `Mau pakai template apa?\n\n1. KSPS\n2. LMD\n\nBalas *ksps* atau *lmd*`
+        );
     }
 
     /* =============================
