@@ -181,7 +181,10 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
 async function generatePDFandSend(chat, user, db, paramBulan) {
 
     const nama_wa = user.pushname || user.nama_wa || 'Kak';
-    
+
+    /* =====================
+       VALIDASI DATA
+    ===================== */
     if (!user.nama_lengkap || !user.jabatan || !user.nik || !user.template_export) {
         await sendTyping(
             chat,
@@ -195,6 +198,9 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
             db.query(sql, params, (err, result) => err ? rej(err) : res(result))
         );
 
+    /* =====================
+       PERIODE
+    ===================== */
     const bulanNama = [
         'Januari','Februari','Maret','April','Mei','Juni',
         'Juli','Agustus','September','Oktober','November','Desember'
@@ -218,6 +224,9 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
             ? `${bulanNama[bulan]} ${tahun}`
             : `1 - ${totalHari} ${bulanNama[bulan]} ${tahun}`;
 
+    /* =====================
+       DATA ABSENSI
+    ===================== */
     const absensi = await query(
         `SELECT * FROM absensi
          WHERE user_id=? AND MONTH(tanggal)=? AND YEAR(tanggal)=?
@@ -254,6 +263,9 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         );
     }
 
+    /* =====================
+       TEMPLATE
+    ===================== */
     const templatePath = path.join(
         __dirname,
         `../templates/absensi/${user.template_export}.html`
@@ -286,34 +298,49 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         .replaceAll('{{periode}}', periode)
         .replaceAll('{{rows_absensi}}', rows.join(''));
 
-        const fileName = `${user.nama_lengkap}-${user.template_export}-${bulanNama[bulan]}.pdf`;
-        const output = path.join(__dirname, '../exports', fileName);
+    /* =====================
+       GENERATE PDF
+    ===================== */
+    const exportsDir = path.join(__dirname, '../exports');
+    if (!fs.existsSync(exportsDir)) {
+        fs.mkdirSync(exportsDir, { recursive: true });
+    }
 
-        if (fs.existsSync(output)) fs.unlinkSync(output);
+    const fileName = `${user.nama_lengkap}-${user.template_export}-${bulanNama[bulan]}.pdf`;
+    const output = path.join(exportsDir, fileName);
 
-        /* === INI YANG KEMARIN HILANG === */
-        await generatePDF(html, output);
+    if (fs.existsSync(output)) fs.unlinkSync(output);
 
-        /* === VALIDASI FILE ADA === */
-        if (!fs.existsSync(output)) {
-            await sendTyping(chat, 'Maaf, gagal membuat file PDF.');
-            return;
-        }
+    await generatePDF(html, output);
 
-        /* === KIRIM PDF === */
-        await chat.sendMessage(MessageMedia.fromFilePath(output));
+    if (!fs.existsSync(output)) {
+        await sendTyping(chat, 'Maaf, gagal membuat file PDF.');
+        return;
+    }
 
-        /* === FEEDBACK KE USER === */
-        await sendTyping(
-            chat,
-            'Laporan berhasil dibuat',
-            600
-        );
+    /* =====================
+       SIMPAN KE APPROVALS
+    ===================== */
+    await query(
+        `INSERT INTO approvals
+         (user_id, approver_role, file_path, status, ttd_user_at)
+         VALUES (?, ?, ?, 'pending', NOW())`,
+        [
+            user.id,
+            'spv', // sementara, nanti bisa dinamis
+            output
+        ]
+    );
 
-        await sendTyping(
-            chat,
-            `*${nama_wa}*, kamu bisa langsung approval dengan mengetik */approve*`
-        );
+    /* =====================
+       KIRIM KE USER
+    ===================== */
+    await chat.sendMessage(MessageMedia.fromFilePath(output));
 
-    return;
+    await sendTyping(chat, 'Laporan berhasil dibuat', 600);
+
+    await sendTyping(
+        chat,
+        `*${nama_wa}*, kamu bisa langsung approval dengan mengetik */approve*`
+    );
 }
