@@ -12,12 +12,12 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
     const text = pesan.toLowerCase().trim();
 
-    // ambil approval pending terbaru untuk atasan ini
+    // ambil approval pending terbaru atau menunggu alasan revisi
     const [approval] = await query(
         `SELECT a.*, u.wa_number AS user_wa, u.nama_lengkap AS user_nama, u.nik AS user_nik, u.jabatan AS user_jabatan, u.template_export
          FROM approvals a
          JOIN users u ON u.id = a.user_id
-         WHERE a.approver_wa = ? AND a.status = 'pending'
+         WHERE a.approver_wa = ? AND a.status IN ('pending', 'waiting_revision_reason')
          ORDER BY a.created_at DESC
          LIMIT 1`,
         [user.wa_number]
@@ -90,7 +90,6 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                     </tr>
                 `);
             } else {
-                // KSPS
                 rows.push(`
                     <tr>
                         <td>${i}/${bulan+1}/${tahun}</td>
@@ -104,10 +103,8 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         }
 
         // periode sesuai template
-        let periode = '';
         const bulanNama = moment().month(bulan).locale('id').format('MMMM');
-        if (templateName === 'LMD') periode = `${bulanNama} - ${tahun}`;
-        else periode = `1 - ${totalHari} ${bulanNama} ${tahun}`;
+        const periode = templateName === 'LMD' ? `${bulanNama} - ${tahun}` : `1 - ${totalHari} ${bulanNama} ${tahun}`;
 
         // logo base64
         const logoPath = path.join(__dirname, `../../assets/${templateName.toLowerCase()}.png`);
@@ -152,24 +149,24 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         await chat.client.sendMessage(approval.user_wa, media);
         await chat.client.sendMessage(approval.user_wa, `Laporan kamu telah *DISETUJUI* oleh *${atasan.nama_lengkap}*.`);
 
-
         return sendTyping(chat, `Approval berhasil diproses dan dikirim ke *${approval.user_nama}*.`);
     }
 
     /* ==============================
-    REVISI
+       REVISI
     ============================== */
     if (text === 'revisi') {
         // ubah status sementara agar menunggu input alasan
         await query(`UPDATE approvals SET status='waiting_revision_reason' WHERE id=?`, [approval.id]);
+        approval.status = 'waiting_revision_reason'; // update di memori juga
 
         // beri tahu atasan untuk mengetik alasan
         await chat.client.sendMessage(
             user.wa_number,
-            'Silahkan ketik apa yang harus di revisi untuk laporan absensi *${approval.user_nama}*.'
+            `Silahkan ketik apa yang harus di revisi untuk laporan absensi *${approval.user_nama}*.`
         );
 
-        return sendTyping(chat, 'Menunggu *${atasan.nama_lengkap}* mengetik alasan revisi...');
+        return sendTyping(chat, `Menunggu *${atasan.nama_lengkap}* mengetik alasan revisi...`);
     }
 
     // cek apakah approval menunggu alasan revisi
@@ -185,9 +182,8 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             `Laporan kamu *PERLU REVISI* oleh *${atasan.nama_lengkap}*.\nAlasan revisi: ${alasan}\n\nSilakan perbaiki dan export ulang.`
         );
 
-        return sendTyping(chat, 'Alasan revisi telah diteruskan ke *${approval.user_nama}*.');
+        return sendTyping(chat, `Alasan revisi telah diteruskan ke *${approval.user_nama}*.`);
     }
-
 
     // fallback
     await sendTyping(chat, `Aku belum paham pesan kamu. Coba ketik */help* untuk melihat perintah.`);
