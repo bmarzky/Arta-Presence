@@ -164,7 +164,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     if (text === 'revisi') {
         try {
             // update DB menjadi 'waiting_revision_reason'
-            await query(`UPDATE approvals SET status='waiting_revision_reason' WHERE id=?`, [approval.id]);
+            await query(`UPDATE approvals SET status='revised' WHERE id=?`, [approval.id]);
 
             // beri tahu atasan di chat (bisa pakai sendTyping saja)
             return sendTyping(chat, `Menunggu *${atasan.nama_lengkap}* mengetik alasan revisi...`);
@@ -177,7 +177,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     // ambil ulang status dari DB agar selalu up-to-date
     const [approvalUpdated] = await query(`SELECT * FROM approvals WHERE id=?`, [approval.id]);
 
-    if (approvalUpdated.status === 'waiting_revision_reason') {
+    if (approvalUpdated.status === 'revised') {
         const alasan = pesan.trim();
 
         await query(`UPDATE approvals SET status='revised', alasan_revisi=? WHERE id=?`, [alasan, approval.id]);
