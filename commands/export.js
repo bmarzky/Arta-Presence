@@ -132,9 +132,6 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
 async function generatePDFandSend(chat, user, db, paramBulan) {
     const nama_wa = user.pushname || user.nama_wa || 'Kak';
 
-    /* =====================
-       VALIDASI DATA
-    ===================== */
     if (!user.nama_lengkap || !user.jabatan || !user.nik || !user.template_export) {
         await sendTyping(chat, 'Maaf, data belum lengkap. Silakan gunakan */export* kembali.');
         return;
@@ -145,9 +142,6 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
             db.query(sql, params, (err, result) => err ? rej(err) : res(result))
         );
 
-    /* =====================
-       PERIODE
-    ===================== */
     const bulanNama = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
     const now = new Date();
     let bulan = now.getMonth();
@@ -161,9 +155,6 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
     const totalHari = new Date(tahun, bulan + 1, 0).getDate();
     const periode = user.template_export === 'LMD' ? `${bulanNama[bulan]} ${tahun}` : `1 - ${totalHari} ${bulanNama[bulan]} ${tahun}`;
 
-    /* =====================
-       DATA ABSENSI
-    ===================== */
     const absensi = await query(`SELECT * FROM absensi WHERE user_id=? AND MONTH(tanggal)=? AND YEAR(tanggal)=? ORDER BY tanggal`, [user.id, bulan + 1, tahun]);
 
     const rows = [];
@@ -189,9 +180,6 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
                </tr>`);
     }
 
-    /* =====================
-       TEMPLATE
-    ===================== */
     const templatePath = path.join(__dirname, `../templates/absensi/${user.template_export}.html`);
     if (!fs.existsSync(templatePath)) {
         await sendTyping(chat, 'Maaf, template laporan tidak ditemukan.');
@@ -204,27 +192,22 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
 
     const html = template
         .replaceAll('{{logo_path}}', `data:image/png;base64,${logo}`)
-        .replaceAll('{{nama}}', approval.user_nama)
-        .replaceAll('{{jabatan}}', approval.jabatan)
-        .replaceAll('{{nik}}', approval.user_nik)
+        .replaceAll('{{nama}}', user.nama_lengkap)
+        .replaceAll('{{jabatan}}', user.jabatan)
+        .replaceAll('{{nik}}', user.nik)
         .replaceAll('{{divisi}}', 'Regional Operation')
         .replaceAll('{{lokasi}}', 'Aplikanusa Lintasarta Bandung')
         .replaceAll('{{kelompok_kerja}}', 'Central Regional Operation')
-        .replaceAll('{{periode}}', `${bulan + 1}-${tahun}`)
+        .replaceAll('{{periode}}', periode)
         .replaceAll('{{rows_absensi}}', rows.join(''))
-        // Tambahan untuk tanda tangan
-        .replaceAll('{{ttd_atasan}}', ttdPath ? `<img src="file://${ttdPath}" width="150"/>` : '')
-        .replaceAll('{{nama_atasan}}', atasan.nama_lengkap || '')
-        .replaceAll('{{nik_atasan}}', atasan.nik || '');
+        // TTD atasan masih kosong, akan diisi saat approve
+        .replaceAll('{{ttd_atasan}}', '')
+        .replaceAll('{{nama_atasan}}', '')
+        .replaceAll('{{nik_atasan}}', '');
 
-
-    /* =====================
-       GENERATE PDF BARU
-    ===================== */
     const exportsDir = path.join(__dirname, '../exports');
     if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
 
-    // buat file baru tiap export dengan timestamp
     const timestamp = Date.now();
     const fileName = `${user.nama_lengkap}-${user.template_export}-${bulanNama[bulan]}-${timestamp}.pdf`;
     const output = path.join(exportsDir, fileName);
@@ -236,23 +219,18 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         return;
     }
 
-    // ambil approver SPV
     const [approver] = await query(`SELECT wa_number, nama_lengkap, nik FROM users WHERE jabatan=? LIMIT 1`, ['spv']);
     if (!approver || !approver.wa_number) {
         await sendTyping(chat, 'Maaf, WA atasan belum terdaftar.');
         return;
     }
 
-    // simpan ke approvals
     await query(
         `INSERT INTO approvals (user_id, approver_wa, file_path, status, ttd_user_at, nama_atasan, nik_atasan)
          VALUES (?, ?, ?, 'pending', NOW(), ?, ?)`,
         [user.id, approver.wa_number, output, approver.nama_lengkap || '', approver.nik || '']
     );
 
-    /* =====================
-       KIRIM KE USER
-    ===================== */
     await chat.sendMessage(MessageMedia.fromFilePath(output));
     await sendTyping(chat, 'Laporan berhasil dibuat', 600);
     await sendTyping(chat, `*${nama_wa}*, kamu bisa langsung approval dengan mengetik */approve*`);

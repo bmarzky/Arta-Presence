@@ -17,12 +17,12 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
     // ambil approval pending terbaru untuk atasan ini
     const [approval] = await query(
-        `SELECT a.*, u.wa_number AS user_wa, u.nama_lengkap AS user_nama, u.nik AS user_nik
-        FROM approvals a
-        JOIN users u ON u.id = a.user_id
-        WHERE a.approver_wa = ? AND a.status = 'pending'
-        ORDER BY a.created_at DESC
-        LIMIT 1`,
+        `SELECT a.*, u.wa_number AS user_wa, u.nama_lengkap AS user_nama, u.nik AS user_nik, u.jabatan AS user_jabatan, a.template_export
+         FROM approvals a
+         JOIN users u ON u.id = a.user_id
+         WHERE a.approver_wa = ? AND a.status = 'pending'
+         ORDER BY a.created_at DESC
+         LIMIT 1`,
         [user.wa_number]
     );
 
@@ -31,10 +31,10 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         return;
     }
 
-    // ambil data atasan dari tabel users
+    // ambil data atasan dari tabel users sesuai approval
     const [atasan] = await query(
         `SELECT nama_lengkap, nik, wa_number FROM users WHERE wa_number = ? LIMIT 1`,
-        [user.wa_number]
+        [approval.approver_wa]
     );
 
     if (!atasan) {
@@ -64,23 +64,24 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
 
         const timestamp = Date.now();
-        const fileName = `${approval.user_nama}-${timestamp}.pdf`;
+        const bulanNama = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+        const now = new Date();
+        const bulan = now.getMonth();
+        const tahun = now.getFullYear();
+        const template = approval.template_export || 'LMD';
+        const fileName = `${approval.user_nama}-${template}-${bulanNama[bulan]}-${timestamp}.pdf`;
         const outputPath = path.join(exportsDir, fileName);
 
-        // baca template lama
-        const templatePath = path.join(__dirname, '../../templates/absensi/LMD.html'); // sesuaikan jika template berbeda
+        // baca template
+        const templatePath = path.join(__dirname, `../../templates/absensi/${template}.html`);
         if (!fs.existsSync(templatePath)) {
             await sendTyping(chat, 'Template laporan tidak ditemukan.');
             return;
         }
-        const template = fs.readFileSync(templatePath, 'utf8');
+        const htmlTemplate = fs.readFileSync(templatePath, 'utf8');
 
         // ambil data absensi user
-        const now = new Date();
-        const bulan = now.getMonth();
-        const tahun = now.getFullYear();
         const totalHari = new Date(tahun, bulan + 1, 0).getDate();
-
         const absensi = await query(
             `SELECT * FROM absensi WHERE user_id=? AND MONTH(tanggal)=? AND YEAR(tanggal)=? ORDER BY tanggal`,
             [approval.user_id, bulan + 1, tahun]
@@ -103,19 +104,23 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             );
         }
 
-        const logoPath = path.join(__dirname, '../../assets/lmd.png');
+        const logoPath = path.join(__dirname, `../../assets/${template.toLowerCase()}.png`);
         const logo = fs.existsSync(logoPath) ? fs.readFileSync(logoPath, 'base64') : '';
 
-        const html = template
+        const html = htmlTemplate
             .replaceAll('{{logo_path}}', `data:image/png;base64,${logo}`)
             .replaceAll('{{nama}}', approval.user_nama)
-            .replaceAll('{{jabatan}}', approval.jabatan)
+            .replaceAll('{{jabatan}}', approval.user_jabatan || '')
             .replaceAll('{{nik}}', approval.user_nik)
             .replaceAll('{{divisi}}', 'Regional Operation')
             .replaceAll('{{lokasi}}', 'Aplikanusa Lintasarta Bandung')
             .replaceAll('{{kelompok_kerja}}', 'Central Regional Operation')
             .replaceAll('{{periode}}', `${bulan + 1}-${tahun}`)
-            .replaceAll('{{rows_absensi}}', rows.join(''));
+            .replaceAll('{{rows_absensi}}', rows.join(''))
+            // TTD dan info atasan
+            .replaceAll('{{ttd_atasan}}', `<img src="file://${ttdPath}" width="150"/>`)
+            .replaceAll('{{nama_atasan}}', atasan.nama_lengkap)
+            .replaceAll('{{nik_atasan}}', atasan.nik);
 
         // generate PDF
         await generatePDF(html, outputPath);
@@ -135,7 +140,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                  nik_atasan=?,
                  file_path=?
              WHERE id=?`,
-            [ttdPath, atasan.nama_lengkap, atasan.nik || '', outputPath, approval.id]
+            [ttdPath, atasan.nama_lengkap, atasan.nik, outputPath, approval.id]
         );
 
         // kirim PDF ke user
