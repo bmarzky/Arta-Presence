@@ -1,7 +1,9 @@
+// approveUser.js
 const { MessageMedia } = require('whatsapp-web.js');
 const { sendTyping } = require('../../utils/sendTyping');
 const getGreeting = require('../../data/greetingTime');
 const fs = require('fs');
+const path = require('path');
 
 module.exports = async function approveUser(chat, user, db) {
     const query = (sql, params) =>
@@ -10,31 +12,36 @@ module.exports = async function approveUser(chat, user, db) {
         );
 
     const nama_user = user.pushname || user.nama_wa || 'User';
+    const user_id = user.id;
 
-    // ambil approval pending terakhir dari approvals
-    const [approval] = await query(
-        `SELECT * FROM approvals 
-         WHERE user_id=? AND status='pending'
-         ORDER BY created_at DESC
-         LIMIT 1`,
-        [user.id]
-    );
-
-    if (!approval) return sendTyping(chat, 'Belum ada laporan untuk di-approve.');
-
-    // cek file PDF
-    if (!fs.existsSync(approval.file_path)) {
-        return sendTyping(chat, 'File laporan tidak ditemukan. Silakan export ulang.');
-    }
-
-    let approverWA = approval.approver_wa;
-    if (!approverWA.includes('@')) approverWA += '@c.us';
-
-    const media = MessageMedia.fromFilePath(approval.file_path);
-    const greeting = getGreeting() || '';
-    const nama_atasan = approval.nama_atasan || 'Approver';
+    if (!user_id) return sendTyping(chat, 'ID user tidak tersedia.');
 
     try {
+        // ambil approval pending terakhir dari approvals
+        const [approval] = await query(
+            `SELECT * FROM approvals 
+             WHERE user_id=? AND status='pending'
+             ORDER BY created_at DESC
+             LIMIT 1`,
+            [user_id]
+        );
+
+        if (!approval) return sendTyping(chat, 'Belum ada laporan untuk di-approve.');
+
+        // cek file PDF
+        if (!approval.file_path || !fs.existsSync(path.resolve(approval.file_path))) {
+            return sendTyping(chat, 'File laporan tidak ditemukan. Silakan export ulang.');
+        }
+
+        // format WA number approver
+        let approverWA = approval.approver_wa || '';
+        if (!approverWA) return sendTyping(chat, 'Nomor approver tidak tersedia.');
+        if (!approverWA.includes('@')) approverWA += '@c.us';
+
+        const media = MessageMedia.fromFilePath(path.resolve(approval.file_path));
+        const greeting = getGreeting() || '';
+        const nama_atasan = approval.nama_atasan || 'Approver';
+
         // kirim pesan + PDF ke approver
         await chat.client.sendMessage(
             approverWA,
