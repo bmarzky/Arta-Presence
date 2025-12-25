@@ -14,8 +14,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
     // ambil approval pending terbaru
     const [approval] = await query(
-        `SELECT a.*, u.wa_number AS user_wa, u.nama_lengkap AS user_nama, u.nik AS user_nik, 
-                u.jabatan AS user_jabatan, u.template_export
+        `SELECT a.*, u.wa_number AS user_wa, u.nama_lengkap AS user_nama, u.nik AS user_nik, u.jabatan AS user_jabatan, u.template_export
          FROM approvals a
          JOIN users u ON u.id = a.user_id
          WHERE a.approver_wa = ? AND a.status = 'pending'
@@ -33,7 +32,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     );
     if (!atasan) return sendTyping(chat, 'Data atasan tidak ditemukan di database.');
 
-    // path TTD atasan
+    // path TTD
     let ttdBase64 = '';
     const ttdPng = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.png`);
     const ttdJpg = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.jpg`);
@@ -49,7 +48,6 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
 
         const timestamp = Date.now();
-        // gunakan template_export yang tersimpan di user
         const templateName = (approval.template_export || 'LMD').toUpperCase();
         const fileName = `${approval.user_nama}-${templateName}-${timestamp}.pdf`;
         const outputPath = path.join(exportsDir, fileName);
@@ -73,7 +71,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             [approval.user_id, bulan + 1, tahun]
         );
 
-        // generate rows sesuai template user
+        // generate rows sesuai template
         const rows = [];
         for (let i = 1; i <= totalHari; i++) {
             const dateObj = moment(`${tahun}-${bulan + 1}-${i}`, 'YYYY-M-D');
@@ -91,7 +89,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                     </tr>
                 `);
             } else {
-                // KSPS atau template lain
+                // KSPS
                 rows.push(`
                     <tr>
                         <td>${i}</td>
@@ -104,11 +102,17 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             }
         }
 
-        // logo
+        // periode sesuai template
+        let periode = '';
+        const bulanNama = moment().month(bulan).format('MMMM');
+        if (templateName === 'LMD') periode = `${bulanNama} - ${tahun}`;
+        else periode = `1 - ${totalHari} ${bulanNama} ${tahun}`;
+
+        // logo base64
         const logoPath = path.join(__dirname, `../../assets/${templateName.toLowerCase()}.png`);
         const logo = fs.existsSync(logoPath) ? fs.readFileSync(logoPath, 'base64') : '';
 
-        // replace placeholders
+        // ganti placeholder
         const html = template
             .replaceAll('{{logo_path}}', logo ? `data:image/png;base64,${logo}` : '')
             .replaceAll('{{nama}}', approval.user_nama)
@@ -117,9 +121,9 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             .replaceAll('{{divisi}}', 'Regional Operation')
             .replaceAll('{{lokasi}}', 'Aplikanusa Lintasarta Bandung')
             .replaceAll('{{kelompok_kerja}}', 'Central Regional Operation')
-            .replaceAll('{{periode}}', `${bulan + 1}-${tahun}`)
+            .replaceAll('{{periode}}', periode)
             .replaceAll('{{rows_absensi}}', rows.join(''))
-            .replaceAll('{{ttd_atasan}}', `<img src="data:image/png;base64,${ttdBase64}" width="80"/>`)
+            .replaceAll('{{ttd_atasan}}', ttdBase64 ? `<img src="data:image/png;base64,${ttdBase64}" width="80"/>` : '')
             .replaceAll('{{nama_atasan}}', atasan.nama_lengkap || '')
             .replaceAll('{{nik_atasan}}', atasan.nik || '');
 
@@ -139,7 +143,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                  file_path=?,
                  template_export=?
              WHERE id=?`,
-            [outputPath, atasan.nama_lengkap, atasan.nik || '', outputPath, approval.template_export, approval.id]
+            [ttdBase64 ? outputPath : '', atasan.nama_lengkap, atasan.nik || '', outputPath, approval.template_export, approval.id]
         );
 
         // kirim PDF ke user
@@ -150,7 +154,9 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         return sendTyping(chat, 'Approval berhasil diproses dan PDF baru dikirim.');
     }
 
-    // REVISI
+    /* ================================
+       REVISI
+    ================================ */
     if (text === 'revisi') {
         await query(`UPDATE approvals SET status='revised' WHERE id=?`, [approval.id]);
         await query(`UPDATE users SET step_input='alasan_revisi' WHERE id=?`, [approval.user_id]);
