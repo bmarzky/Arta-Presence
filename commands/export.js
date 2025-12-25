@@ -204,14 +204,19 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
 
     const html = template
         .replaceAll('{{logo_path}}', `data:image/png;base64,${logo}`)
-        .replaceAll('{{nama}}', user.nama_lengkap)
-        .replaceAll('{{jabatan}}', user.jabatan)
-        .replaceAll('{{nik}}', user.nik)
+        .replaceAll('{{nama}}', approval.user_nama)
+        .replaceAll('{{jabatan}}', approval.jabatan)
+        .replaceAll('{{nik}}', approval.user_nik)
         .replaceAll('{{divisi}}', 'Regional Operation')
         .replaceAll('{{lokasi}}', 'Aplikanusa Lintasarta Bandung')
         .replaceAll('{{kelompok_kerja}}', 'Central Regional Operation')
-        .replaceAll('{{periode}}', periode)
-        .replaceAll('{{rows_absensi}}', rows.join(''));
+        .replaceAll('{{periode}}', `${bulan + 1}-${tahun}`)
+        .replaceAll('{{rows_absensi}}', rows.join(''))
+        // Tambahan untuk tanda tangan
+        .replaceAll('{{ttd_atasan}}', ttdPath ? `<img src="file://${ttdPath}" width="150"/>` : '')
+        .replaceAll('{{nama_atasan}}', atasan.nama_lengkap || '')
+        .replaceAll('{{nik_atasan}}', atasan.nik || '');
+
 
     /* =====================
        GENERATE PDF BARU
