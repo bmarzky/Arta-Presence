@@ -8,13 +8,11 @@ const moment = require('moment');
 
 module.exports = async function approveAtasan(chat, user, pesan, db) {
     const query = (sql, params) =>
-        new Promise((res, rej) =>
-            db.query(sql, params, (e, r) => e ? rej(e) : res(r))
-        );
+        new Promise((res, rej) => db.query(sql, params, (e, r) => e ? rej(e) : res(r)));
 
     const text = pesan.toLowerCase().trim();
 
-    // ambil approval pending terbaru untuk atasan ini
+    // ambil approval pending terbaru
     const [approval] = await query(
         `SELECT a.*, u.wa_number AS user_wa, u.nama_lengkap AS user_nama, u.nik AS user_nik, u.jabatan AS user_jabatan, a.template_export
          FROM approvals a
@@ -25,56 +23,44 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         [user.wa_number]
     );
 
-    if (!approval) {
-        await sendTyping(chat, 'Tidak ada approval pending untukmu.');
-        return;
-    }
+    if (!approval) return sendTyping(chat, 'Tidak ada approval pending untukmu.');
 
-    // ambil data atasan dari tabel users
+    // ambil data atasan
     const [atasan] = await query(
         `SELECT nama_lengkap, nik, wa_number FROM users WHERE wa_number = ? LIMIT 1`,
         [user.wa_number]
     );
+    if (!atasan) return sendTyping(chat, 'Data atasan tidak ditemukan di database.');
 
-    if (!atasan) {
-        await sendTyping(chat, 'Data atasan tidak ditemukan di database.');
-        return;
-    }
-
-    // path TTD berdasarkan wa_number atasan
-    let ttdPath = '';
+    // path TTD
+    let ttdBase64 = '';
     const ttdPng = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.png`);
     const ttdJpg = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.jpg`);
-    if (fs.existsSync(ttdPng)) ttdPath = ttdPng;
-    else if (fs.existsSync(ttdJpg)) ttdPath = ttdJpg;
+    if (fs.existsSync(ttdPng)) ttdBase64 = fs.readFileSync(ttdPng, 'base64');
+    else if (fs.existsSync(ttdJpg)) ttdBase64 = fs.readFileSync(ttdJpg, 'base64');
+    if (!ttdBase64) return sendTyping(chat, 'TTD atasan tidak ditemukan di folder /assets/ttd.');
 
-    if (!ttdPath) {
-        await sendTyping(chat, 'TTD atasan tidak ditemukan. Pastikan file ada di folder /assets/ttd dengan nama wa_number.png/jpg');
-        return;
-    }
-
-    /* ==============================
-       APPROVE DAN BUAT PDF BARU
-    ============================== */
+    /* ================================
+       APPROVE DAN GENERATE PDF
+    ================================ */
     if (text === 'approve') {
         const exportsDir = path.join(__dirname, '../../exports');
         if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
 
         const timestamp = Date.now();
-        const fileName = `${approval.user_nama}-${(approval.template_export || 'LMD').toUpperCase()}-${timestamp}.pdf`;
+        const templateName = (approval.template_export || 'LMD').toUpperCase();
+        const fileName = `${approval.user_nama}-${templateName}-${timestamp}.pdf`;
         const outputPath = path.join(exportsDir, fileName);
 
-        // baca template
-        const templateFileName = (approval.template_export || 'LMD').toUpperCase() + '.html';
-        const templatePath = path.join(__dirname, '../../templates/absensi', templateFileName);
+        // template path
+        const templatePath = path.join(__dirname, '../../templates/absensi', `${templateName}.html`);
         if (!fs.existsSync(templatePath)) {
             console.log('Template path:', templatePath);
-            await sendTyping(chat, 'Template laporan tidak ditemukan.');
-            return;
+            return sendTyping(chat, 'Template laporan tidak ditemukan.');
         }
         const template = fs.readFileSync(templatePath, 'utf8');
 
-        // ambil data absensi user
+        // data absensi
         const now = new Date();
         const bulan = now.getMonth();
         const tahun = now.getFullYear();
@@ -85,30 +71,44 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             [approval.user_id, bulan + 1, tahun]
         );
 
+        // generate rows LMD
         const rows = [];
         for (let i = 1; i <= totalHari; i++) {
             const dateObj = moment(`${tahun}-${bulan + 1}-${i}`, 'YYYY-M-D');
             const iso = dateObj.format('YYYY-MM-DD');
             const r = absensi.find(a => moment(a.tanggal).format('YYYY-MM-DD') === iso);
 
-            rows.push(
-                `<tr>
-                    <td>${i}</td>
-                    <td>${r?.jam_masuk || ''}</td>
-                    <td>${r?.jam_pulang || ''}</td>
-                    <td>${r?.deskripsi || ''}</td>
-                    <td></td>
-                 </tr>`
-            );
+            if (templateName === 'LMD') {
+                rows.push(`
+                    <tr>
+                        <td>${dateObj.format('DD/MM/YYYY')}</td>
+                        <td>${dateObj.format('dddd')}</td>
+                        <td>${r?.jam_masuk || '-'}</td>
+                        <td>${r?.jam_pulang || '-'}</td>
+                        <td>${r?.deskripsi || '-'}</td>
+                    </tr>
+                `);
+            } else {
+                // template KSPS atau lainnya
+                rows.push(`
+                    <tr>
+                        <td>${i}</td>
+                        <td>${r?.jam_masuk || ''}</td>
+                        <td>${r?.jam_pulang || ''}</td>
+                        <td>${r?.deskripsi || ''}</td>
+                        <td></td>
+                    </tr>
+                `);
+            }
         }
 
-        // logo
-        const logoPath = path.join(__dirname, `../../assets/${(approval.template_export || 'LMD').toUpperCase()}.png`);
+        // logo base64
+        const logoPath = path.join(__dirname, `../../assets/${templateName.toLowerCase()}.png`);
         const logo = fs.existsSync(logoPath) ? fs.readFileSync(logoPath, 'base64') : '';
 
-        // ganti placeholder di template
+        // ganti placeholder
         const html = template
-            .replaceAll('{{logo_path}}', `data:image/png;base64,${logo}`)
+            .replaceAll('{{logo_path}}', logo ? `data:image/png;base64,${logo}` : '')
             .replaceAll('{{nama}}', approval.user_nama)
             .replaceAll('{{jabatan}}', approval.user_jabatan || '')
             .replaceAll('{{nik}}', approval.user_nik)
@@ -117,17 +117,14 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             .replaceAll('{{kelompok_kerja}}', 'Central Regional Operation')
             .replaceAll('{{periode}}', `${bulan + 1}-${tahun}`)
             .replaceAll('{{rows_absensi}}', rows.join(''))
-            .replaceAll('{{ttd_atasan}}', ttdPath ? `<img src="file://${ttdPath}" width="150"/>` : '')
+            .replaceAll('{{ttd_atasan}}', ttdBase64 ? `<img src="data:image/png;base64,${ttdBase64}" width="150"/>` : '')
             .replaceAll('{{nama_atasan}}', atasan.nama_lengkap || '')
             .replaceAll('{{nik_atasan}}', atasan.nik || '');
 
         // generate PDF
         await generatePDF(html, outputPath);
 
-        if (!fs.existsSync(outputPath)) {
-            await sendTyping(chat, 'Gagal membuat file PDF baru.');
-            return;
-        }
+        if (!fs.existsSync(outputPath)) return sendTyping(chat, 'Gagal membuat file PDF baru.');
 
         // update approvals
         await query(
@@ -140,7 +137,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                  file_path=?,
                  template_export=?
              WHERE id=?`,
-            [ttdPath, atasan.nama_lengkap, atasan.nik || '', outputPath, approval.template_export, approval.id]
+            [ttdBase64 ? outputPath : '', atasan.nama_lengkap, atasan.nik || '', outputPath, approval.template_export, approval.id]
         );
 
         // kirim PDF ke user
@@ -151,18 +148,12 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         return sendTyping(chat, 'Approval berhasil diproses dan PDF baru dikirim.');
     }
 
-    /* ==============================
+    /* ================================
        REVISI
-    ============================== */
+    ================================ */
     if (text === 'revisi') {
-        await query(
-            `UPDATE approvals SET status='revised' WHERE id=?`,
-            [approval.id]
-        );
-        await query(
-            `UPDATE users SET step_input='alasan_revisi' WHERE id=?`,
-            [approval.user_id]
-        );
+        await query(`UPDATE approvals SET status='revised' WHERE id=?`, [approval.id]);
+        await query(`UPDATE users SET step_input='alasan_revisi' WHERE id=?`, [approval.user_id]);
         await chat.client.sendMessage(approval.user_wa, 'Laporan kamu *PERLU REVISI*. Silakan perbaiki dan export ulang.');
         return sendTyping(chat, 'Permintaan revisi telah dikirim.');
     }
