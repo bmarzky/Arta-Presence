@@ -33,9 +33,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
     // gabungkan data WA + DB
     user = { ...user, ...dbUser };
 
-    // ===== FIX UTAMA =====
     const nama_wa = user.pushname || user.nama_wa || 'Kak';
-
     const text = pesan.toLowerCase();
     const step = user.step_input;
 
@@ -44,16 +42,13 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
     ============================= */
     if (text === '/export') {
 
-        // reset state lama
         await query(
-            `UPDATE users 
-             SET step_input=NULL, template_export=NULL 
-             WHERE id=?`,
+            `UPDATE users SET step_input=NULL, template_export=NULL WHERE id=?`,
             [user.id]
         );
 
         const [userDb] = await query(
-            `SELECT nama_lengkap, jabatan, nik, intro
+            `SELECT nama_lengkap, jabatan, nik, export_intro
              FROM users WHERE id=?`,
             [user.id]
         );
@@ -62,14 +57,14 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
             !userDb.nama_lengkap || !userDb.jabatan || !userDb.nik;
 
         /* ===============================
-           USER BARU / DATA BELUM LENGKAP
+           DATA BELUM LENGKAP
         =============================== */
         if (dataBelumLengkap) {
 
             if (!userDb.export_intro) {
                 await sendTyping(
                     chat,
-                    `Maaf ${nama_wa}, kami belum mendapatkan data lengkap kamu untuk menyiapkan laporan absensi.`,
+                    `Maaf *${nama_wa}*, kami belum mendapatkan data lengkap kamu untuk menyiapkan laporan absensi.`,
                     800
                 );
 
@@ -91,7 +86,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
         }
 
         /* ===============================
-           USER LAMA (DATA LENGKAP)
+           DATA LENGKAP
         =============================== */
         await sendTyping(chat, 'Sedang membuat laporan PDF...', 800);
         return generatePDFandSend(chat, user, db, paramBulan);
@@ -103,9 +98,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
     if (step === 'confirm_name') {
         if (text === 'iya') {
             await query(
-                `UPDATE users 
-                 SET nama_lengkap=?, step_input='jabatan' 
-                 WHERE id=?`,
+                `UPDATE users SET nama_lengkap=?, step_input='jabatan' WHERE id=?`,
                 [nama_wa, user.id]
             );
             return sendTyping(chat, 'Silakan isi *Jabatan* kamu:');
@@ -127,9 +120,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
     ============================= */
     if (step === 'nama_lengkap') {
         await query(
-            `UPDATE users 
-             SET nama_lengkap=?, step_input='jabatan' 
-             WHERE id=?`,
+            `UPDATE users SET nama_lengkap=?, step_input='jabatan' WHERE id=?`,
             [pesan, user.id]
         );
         return sendTyping(chat, 'Silakan isi *Jabatan* kamu:');
@@ -140,9 +131,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
     ============================= */
     if (step === 'jabatan') {
         await query(
-            `UPDATE users 
-             SET jabatan=?, step_input='nik' 
-             WHERE id=?`,
+            `UPDATE users SET jabatan=?, step_input='nik' WHERE id=?`,
             [pesan, user.id]
         );
         return sendTyping(chat, 'Silakan isi *NIK* kamu:');
@@ -153,9 +142,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
     ============================= */
     if (step === 'nik') {
         await query(
-            `UPDATE users 
-             SET nik=?, step_input='choose_template' 
-             WHERE id=?`,
+            `UPDATE users SET nik=?, step_input='choose_template' WHERE id=?`,
             [pesan, user.id]
         );
         return sendTyping(
@@ -175,9 +162,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
         const template = text.toUpperCase();
 
         await query(
-            `UPDATE users 
-             SET template_export=?, step_input=NULL 
-             WHERE id=?`,
+            `UPDATE users SET template_export=?, step_input=NULL WHERE id=?`,
             [template, user.id]
         );
 
@@ -192,9 +177,27 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
 };
 
 /* ======================================================
-   GENERATE PDF
+   GENERATE PDF (AMAN TOTAL)
 ====================================================== */
 async function generatePDFandSend(chat, user, db, paramBulan) {
+
+    /* ===== VALIDASI FINAL ===== */
+    if (!user.nama_lengkap || !user.jabatan || !user.nik) {
+        await sendTyping(
+            chat,
+            'Maaf, data profil kamu belum lengkap. Silakan gunakan */export* kembali.'
+        );
+        return;
+    }
+
+    if (!user.template_export) {
+        await sendTyping(
+            chat,
+            'Maaf, template laporan belum dipilih. Silakan gunakan */export* kembali.'
+        );
+        return;
+    }
+
     const query = (sql, params) =>
         new Promise((res, rej) =>
             db.query(sql, params, (err, result) => err ? rej(err) : res(result))
@@ -210,8 +213,8 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
     let tahun = now.getFullYear();
 
     if (paramBulan) {
-        const idx = bulanNama.findIndex(b =>
-            b.toLowerCase() === paramBulan.toLowerCase()
+        const idx = bulanNama.findIndex(
+            b => b.toLowerCase() === paramBulan.toLowerCase()
         );
         if (idx >= 0) bulan = idx;
     }
@@ -259,16 +262,26 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         );
     }
 
-    const templateName = user.template_export;
-    const template = fs.readFileSync(
-        path.join(__dirname, `../templates/absensi/${templateName}.html`),
-        'utf8'
+    const templatePath = path.join(
+        __dirname,
+        `../templates/absensi/${user.template_export}.html`
     );
 
-    const logo = fs.readFileSync(
-        path.join(__dirname, `../assets/${templateName.toLowerCase()}.png`),
-        'base64'
+    if (!fs.existsSync(templatePath)) {
+        await sendTyping(chat, 'Maaf, template laporan tidak ditemukan.');
+        return;
+    }
+
+    const template = fs.readFileSync(templatePath, 'utf8');
+
+    const logoPath = path.join(
+        __dirname,
+        `../assets/${user.template_export.toLowerCase()}.png`
     );
+
+    const logo = fs.existsSync(logoPath)
+        ? fs.readFileSync(logoPath, 'base64')
+        : '';
 
     const html = template
         .replaceAll('{{logo_path}}', `data:image/png;base64,${logo}`)
@@ -281,7 +294,7 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         .replaceAll('{{periode}}', periode)
         .replaceAll('{{rows_absensi}}', rows.join(''));
 
-    const fileName = `${user.nama_lengkap}-${templateName}-${bulanNama[bulan]}.pdf`;
+    const fileName = `${user.nama_lengkap}-${user.template_export}-${bulanNama[bulan]}.pdf`;
     const output = path.join(__dirname, '../exports', fileName);
 
     if (fs.existsSync(output)) fs.unlinkSync(output);
