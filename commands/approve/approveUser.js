@@ -3,7 +3,6 @@ const { sendTyping } = require('../../utils/sendTyping');
 const getGreeting = require('../../data/greetingTime');
 
 module.exports = async function approveUser(chat, user, db) {
-
     const query = (sql, params) =>
         new Promise((res, rej) =>
             db.query(sql, params, (e, r) => e ? rej(e) : res(r))
@@ -28,10 +27,22 @@ module.exports = async function approveUser(chat, user, db) {
         );
     }
 
-    const media = MessageMedia.fromFilePath(approval.file_path);
-    const greeting = getGreeting();
+    // ambil info approver agar bisa tampil nama
+    const [approver] = await query(
+        `SELECT nama_lengkap FROM users WHERE wa_number = ? LIMIT 1`,
+        [approval.approver_wa]
+    );
 
-    // kirim pesan ke atasan
+    // kirim file PDF ke approver
+    if (!approval.file_path || !require('fs').existsSync(approval.file_path)) {
+        return sendTyping(chat, 'File laporan tidak ditemukan. Silakan export ulang.');
+    }
+    const media = MessageMedia.fromFilePath(approval.file_path);
+
+    const greeting = getGreeting();
+    const approverName = approver?.nama_lengkap || 'Approver';
+
+    // kirim pesan dan file ke approver
     await chat.client.sendMessage(
         approval.approver_wa,
         `${greeting}
@@ -44,12 +55,11 @@ Balas dengan:
 • approve
 • revisi`
     );
-
     await chat.client.sendMessage(approval.approver_wa, media);
 
     // balasan ke user
     return sendTyping(
         chat,
-        'Permintaan approval sudah dikirim ke *${atasan.nama_lengkap}*.'
+        `Permintaan approval sudah dikirim ke *${approverName}*.`
     );
 };

@@ -12,7 +12,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
     const text = pesan.toLowerCase().trim();
 
-    // ambil approval pending terbaru
+    // ambil approval pending terbaru untuk atasan ini
     const [approval] = await query(
         `SELECT a.*, u.wa_number AS user_wa, u.nama_lengkap AS user_nama, u.nik AS user_nik, u.jabatan AS user_jabatan, u.template_export
          FROM approvals a
@@ -30,19 +30,20 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         `SELECT nama_lengkap, nik, wa_number FROM users WHERE wa_number = ? LIMIT 1`,
         [user.wa_number]
     );
-    if (!atasan) return sendTyping(chat, 'Data *${atasan.nama_lengkap}* tidak ditemukan di database.');
+    if (!atasan) return sendTyping(chat, `Data atasan tidak ditemukan di database.`);
 
-    // path TTD
+    // path TTD base64
     let ttdBase64 = '';
     const ttdPng = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.png`);
     const ttdJpg = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.jpg`);
     if (fs.existsSync(ttdPng)) ttdBase64 = fs.readFileSync(ttdPng, 'base64');
     else if (fs.existsSync(ttdJpg)) ttdBase64 = fs.readFileSync(ttdJpg, 'base64');
-    if (!ttdBase64) return sendTyping(chat, 'TTD *${atasan.nama_lengkap}* tidak ditemukan di folder /assets/ttd.');
 
-    /* ================================
+    if (!ttdBase64) return sendTyping(chat, `TTD atasan tidak ditemukan di folder /assets/ttd.`);
+
+    /* ==============================
        APPROVE DAN GENERATE PDF
-    ================================ */
+    ============================== */
     if (text === 'approve') {
         const exportsDir = path.join(__dirname, '../../exports');
         if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
@@ -82,7 +83,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 rows.push(`
                     <tr>
                         <td>${dateObj.format('DD/MM/YYYY')}</td>
-                        <td>${dateObj.format('dddd')}</td>
+                        <td>${dateObj.locale('id').format('dddd')}</td>
                         <td>${r?.jam_masuk || '-'}</td>
                         <td>${r?.jam_pulang || '-'}</td>
                         <td>${r?.deskripsi || '-'}</td>
@@ -92,7 +93,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 // KSPS
                 rows.push(`
                     <tr>
-                        <td>${i}</td>
+                        <td>${i}/${bulan+1}/${tahun}</td>
                         <td>${r?.jam_masuk || ''}</td>
                         <td>${r?.jam_pulang || ''}</td>
                         <td>${r?.deskripsi || ''}</td>
@@ -104,7 +105,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
         // periode sesuai template
         let periode = '';
-        const bulanNama = moment().month(bulan).format('MMMM');
+        const bulanNama = moment().month(bulan).locale('id').format('MMMM');
         if (templateName === 'LMD') periode = `${bulanNama} - ${tahun}`;
         else periode = `1 - ${totalHari} ${bulanNama} ${tahun}`;
 
@@ -143,7 +144,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                  file_path=?,
                  template_export=?
              WHERE id=?`,
-            [ttdBase64 ? outputPath : '', atasan.nama_lengkap, atasan.nik || '', outputPath, approval.template_export, approval.id]
+            [ttdBase64, atasan.nama_lengkap, atasan.nik || '', outputPath, approval.template_export, approval.id]
         );
 
         // kirim PDF ke user
@@ -154,9 +155,9 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         return sendTyping(chat, 'Approval berhasil diproses dan dikirim kembali ke pengguna.');
     }
 
-    /* ================================
+    /* ==============================
        REVISI
-    ================================ */
+    ============================== */
     if (text === 'revisi') {
         await query(`UPDATE approvals SET status='revised' WHERE id=?`, [approval.id]);
         await query(`UPDATE users SET step_input='alasan_revisi' WHERE id=?`, [approval.user_id]);

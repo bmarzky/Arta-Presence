@@ -43,8 +43,8 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
 
         /* === VALIDASI DATA PROFIL === */
         if (!user.nama_lengkap) {
-            await sendTyping(chat, `Maaf *${nama_wa}*, kami belum memiliki *nama lengkap* kamu.`, 800);
             await query(`UPDATE users SET step_input='confirm_name' WHERE id=?`, [user.id]);
+            await sendTyping(chat, `Maaf *${nama_wa}*, kami belum memiliki *nama lengkap* kamu.`, 800);
             return sendTyping(chat, `Apakah benar nama lengkap kamu *${nama_wa}*? (iya/tidak)`);
         }
 
@@ -153,9 +153,14 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
     }
 
     const totalHari = new Date(tahun, bulan + 1, 0).getDate();
-    const periode = user.template_export === 'LMD' ? `${bulanNama[bulan]} ${tahun}` : `1 - ${totalHari} ${bulanNama[bulan]} ${tahun}`;
+    const periode = user.template_export === 'LMD'
+        ? `${bulanNama[bulan]} ${tahun}`
+        : `1 - ${totalHari} ${bulanNama[bulan]} ${tahun}`;
 
-    const absensi = await query(`SELECT * FROM absensi WHERE user_id=? AND MONTH(tanggal)=? AND YEAR(tanggal)=? ORDER BY tanggal`, [user.id, bulan + 1, tahun]);
+    const absensi = await query(
+        `SELECT * FROM absensi WHERE user_id=? AND MONTH(tanggal)=? AND YEAR(tanggal)=? ORDER BY tanggal`,
+        [user.id, bulan + 1, tahun]
+    );
 
     const rows = [];
     for (let i = 1; i <= totalHari; i++) {
@@ -191,7 +196,7 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
     const logo = fs.existsSync(logoPath) ? fs.readFileSync(logoPath, 'base64') : '';
 
     const html = template
-        .replaceAll('{{logo_path}}', `data:image/png;base64,${logo}`)
+        .replaceAll('{{logo_path}}', logo ? `data:image/png;base64,${logo}` : '')
         .replaceAll('{{nama}}', user.nama_lengkap)
         .replaceAll('{{jabatan}}', user.jabatan)
         .replaceAll('{{nik}}', user.nik)
@@ -200,8 +205,7 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         .replaceAll('{{kelompok_kerja}}', 'Central Regional Operation')
         .replaceAll('{{periode}}', periode)
         .replaceAll('{{rows_absensi}}', rows.join(''))
-        // TTD atasan masih kosong, akan diisi saat approve
-        .replaceAll('{{ttd_atasan}}', '')
+        .replaceAll('{{ttd_atasan}}', '') // akan diisi saat approve
         .replaceAll('{{nama_atasan}}', '')
         .replaceAll('{{nik_atasan}}', '');
 
@@ -219,9 +223,10 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         return;
     }
 
+    // ambil approver dari DB
     const [approver] = await query(`SELECT wa_number, nama_lengkap, nik FROM users WHERE jabatan=? LIMIT 1`, ['spv']);
     if (!approver || !approver.wa_number) {
-        await sendTyping(chat, 'Maaf, WA *${atasan.nama_lengkap}* belum terdaftar.');
+        await sendTyping(chat, 'Maaf, approver belum terdaftar.');
         return;
     }
 
@@ -233,5 +238,5 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
 
     await chat.sendMessage(MessageMedia.fromFilePath(output));
     await sendTyping(chat, 'Laporan berhasil dibuat', 600);
-    await sendTyping(chat, `*${nama_wa}*, kamu bisa langsung approval kepada *${atasan.nama_lengkap}* dengan mengetik */approve*`);
+    await sendTyping(chat, `*${nama_wa}*, kamu bisa langsung approval kepada *${approver.nama_lengkap}* dengan mengetik */approve*`);
 }
