@@ -163,14 +163,10 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     ============================== */
     if (text === 'revisi') {
         try {
-            await query(`UPDATE approvals SET status='revised' WHERE id=?`, [approval.id]);
-            approval.status = 'revised';
+            // update DB menjadi 'waiting_revision_reason'
+            await query(`UPDATE approvals SET status='waiting_revision_reason' WHERE id=?`, [approval.id]);
 
-            await chat.client.sendMessage(
-                atasanWA,
-                `Silahkan ketik apa yang harus di revisi untuk laporan absensi *${approval.user_nama}*.` 
-            );
-
+            // beri tahu atasan di chat (bisa pakai sendTyping saja)
             return sendTyping(chat, `Menunggu *${atasan.nama_lengkap}* mengetik alasan revisi...`);
         } catch (err) {
             console.error(err);
@@ -178,23 +174,28 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         }
     }
 
-    // cek apakah menunggu alasan revisi
-    if (approval.status === 'revised') {
+    // ambil ulang status dari DB agar selalu up-to-date
+    const [approvalUpdated] = await query(`SELECT * FROM approvals WHERE id=?`, [approval.id]);
+
+    if (approvalUpdated.status === 'waiting_revision_reason') {
         const alasan = pesan.trim();
+
         await query(`UPDATE approvals SET status='revised', alasan_revisi=? WHERE id=?`, [alasan, approval.id]);
 
         try {
+            // kirim alasan ke user
             await chat.client.sendMessage(
-                userWA,
+                approvalUpdated.user_wa,
                 `Laporan kamu *PERLU REVISI* oleh *${atasan.nama_lengkap}*.\nAlasan revisi: ${alasan}\n\nSilakan perbaiki dan export ulang.`
             );
 
-            return sendTyping(chat, `Alasan revisi telah diteruskan ke *${approval.user_nama}*.`);
+            return sendTyping(chat, `Alasan revisi telah diteruskan ke *${approvalUpdated.user_nama}*.`);
         } catch (err) {
             console.error(err);
             return sendTyping(chat, 'Terjadi error saat mengirim alasan revisi.');
         }
     }
+
 
     await sendTyping(chat, `Aku belum paham pesan kamu. Coba ketik */help* untuk melihat perintah.`);
 };
