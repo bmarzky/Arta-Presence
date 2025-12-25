@@ -44,10 +44,8 @@ module.exports = async function approveUser(chat, user, db) {
     // 1️⃣ teks pertama: sapaan + info user
     await chat.client.sendMessage(
         approval.approver_wa,
-        `${greeting} ${approverName},
-
-*${nama_wa}* meminta approval absensi berikut.
-Silakan diperiksa.`
+        `${greeting} *${approverName}*,\n` +
+        `*${nama_wa}* meminta approval absensi berikut. Silakan diperiksa.`
     );
 
     // 2️⃣ kirim file PDF
