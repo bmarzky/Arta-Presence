@@ -1,6 +1,6 @@
 const { MessageMedia } = require('whatsapp-web.js');
 const { sendTyping } = require('../../utils/sendTyping');
-const getGreeting = require('../../utils/greetingTime');
+const getGreeting = require('../../data/greetingTime');
 
 module.exports = async function approveUser(chat, user, db) {
 
