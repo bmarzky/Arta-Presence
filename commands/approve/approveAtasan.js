@@ -1,3 +1,4 @@
+// approveAtasan.js
 const { MessageMedia } = require('whatsapp-web.js');
 const { sendTyping } = require('../../utils/sendTyping');
 const path = require('path');
@@ -28,10 +29,10 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         return;
     }
 
-    // ambil data atasan dari approver_wa
+    // ambil data atasan dari database
     const [atasan] = await query(
         `SELECT nama_lengkap, nik, wa_number FROM users WHERE wa_number = ? LIMIT 1`,
-        [approval.approver_wa] // <--- penting
+        [approval.approver_wa]
     );
 
     if (!atasan) {
@@ -39,11 +40,16 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         return;
     }
 
-    // path TTD berdasarkan wa_number atasan
-    const ttdPath = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.png`);
+    // path TTD berdasarkan wa_number atasan, cek PNG dan JPG
+    let ttdPath = '';
+    const ttdPng = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.png`);
+    const ttdJpg = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.jpg`);
 
-    if (!fs.existsSync(ttdPath)) {
-        await sendTyping(chat, 'TTD atasan tidak ditemukan. Pastikan file ada di folder /assets/ttd dengan nama wa_number.png');
+    if (fs.existsSync(ttdPng)) ttdPath = ttdPng;
+    else if (fs.existsSync(ttdJpg)) ttdPath = ttdJpg;
+
+    if (!ttdPath) {
+        await sendTyping(chat, 'TTD atasan tidak ditemukan. Pastikan file ada di folder /assets/ttd dengan nama wa_number.png/jpg');
         return;
     }
 
@@ -65,8 +71,14 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
         // kirim PDF ke user
         const media = MessageMedia.fromFilePath(approval.file_path);
-        await chat.client.sendMessage(approval.user_wa, `Laporan kamu telah *DISETUJUI* oleh atasan.`);
-        await chat.client.sendMessage(approval.user_wa, media);
+        await chat.client.sendMessage(
+            approval.user_wa,
+            `Laporan kamu telah *DISETUJUI* oleh atasan.`
+        );
+        await chat.client.sendMessage(
+            approval.user_wa,
+            media
+        );
 
         return sendTyping(chat, 'Approval berhasil diproses.');
     }
@@ -90,9 +102,13 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             [approval.user_id]
         );
 
-        await chat.client.sendMessage(approval.user_wa, 'Laporan kamu *PERLU REVISI*. Silakan perbaiki dan export ulang.');
+        await chat.client.sendMessage(
+            approval.user_wa,
+            'Laporan kamu *PERLU REVISI*. Silakan perbaiki dan export ulang.'
+        );
         return sendTyping(chat, 'Permintaan revisi telah dikirim.');
     }
 
+    // fallback jika pesan tidak dikenali
     await sendTyping(chat, `Hmm… aku belum paham pesan kamu. Coba ketik */help* untuk melihat perintah.`);
 };

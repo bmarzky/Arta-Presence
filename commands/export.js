@@ -320,7 +320,7 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
 
     // search approver (SPV)
     const [approver] = await query(
-        `SELECT wa_number 
+        `SELECT wa_number, nama_lengkap, nik 
         FROM users 
         WHERE jabatan = ? 
         LIMIT 1`,
@@ -331,16 +331,18 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         await sendTyping(chat, 'Maaf, WA atasan belum terdaftar.');
         return;
     }
-    
+
     // save to approvals
     await query(
         `INSERT INTO approvals
-        (user_id, approver_wa, file_path, status, ttd_user_at)
-        VALUES (?, ?, ?, 'pending', NOW())`,
+        (user_id, approver_wa, file_path, status, ttd_user_at, nama_atasan, nik_atasan)
+        VALUES (?, ?, ?, 'pending', NOW(), ?, ?)`,
         [
             user.id,
             approver.wa_number,
-            output
+            output,
+            approver.nama_lengkap,
+            approver.nik
         ]
     );
 
