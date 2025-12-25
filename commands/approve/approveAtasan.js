@@ -30,7 +30,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         `SELECT nama_lengkap, nik, wa_number FROM users WHERE wa_number = ? LIMIT 1`,
         [user.wa_number]
     );
-    if (!atasan) return sendTyping(chat, 'Data atasan tidak ditemukan di database.');
+    if (!atasan) return sendTyping(chat, 'Data *${atasan.nama_lengkap}* tidak ditemukan di database.');
 
     // path TTD
     let ttdBase64 = '';
@@ -38,7 +38,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     const ttdJpg = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.jpg`);
     if (fs.existsSync(ttdPng)) ttdBase64 = fs.readFileSync(ttdPng, 'base64');
     else if (fs.existsSync(ttdJpg)) ttdBase64 = fs.readFileSync(ttdJpg, 'base64');
-    if (!ttdBase64) return sendTyping(chat, 'TTD atasan tidak ditemukan di folder /assets/ttd.');
+    if (!ttdBase64) return sendTyping(chat, 'TTD *${atasan.nama_lengkap}* tidak ditemukan di folder /assets/ttd.');
 
     /* ================================
        APPROVE DAN GENERATE PDF
@@ -148,10 +148,10 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
         // kirim PDF ke user
         const media = MessageMedia.fromFilePath(outputPath);
-        await chat.client.sendMessage(approval.user_wa, `Laporan kamu telah *DISETUJUI* oleh atasan.`);
+        await chat.client.sendMessage(approval.user_wa, `Laporan kamu telah *DISETUJUI* oleh *${atasan.nama_lengkap}*.`);
         await chat.client.sendMessage(approval.user_wa, media);
 
-        return sendTyping(chat, 'Approval berhasil diproses dan PDF baru dikirim.');
+        return sendTyping(chat, 'Approval berhasil diproses dan dikirim kembali ke pengguna.');
     }
 
     /* ================================

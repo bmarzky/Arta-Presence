@@ -221,7 +221,7 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
 
     const [approver] = await query(`SELECT wa_number, nama_lengkap, nik FROM users WHERE jabatan=? LIMIT 1`, ['spv']);
     if (!approver || !approver.wa_number) {
-        await sendTyping(chat, 'Maaf, WA atasan belum terdaftar.');
+        await sendTyping(chat, 'Maaf, WA *${atasan.nama_lengkap}* belum terdaftar.');
         return;
     }
 
@@ -233,5 +233,5 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
 
     await chat.sendMessage(MessageMedia.fromFilePath(output));
     await sendTyping(chat, 'Laporan berhasil dibuat', 600);
-    await sendTyping(chat, `*${nama_wa}*, kamu bisa langsung approval dengan mengetik */approve*`);
+    await sendTyping(chat, `*${nama_wa}*, kamu bisa langsung approval kepada *${atasan.nama_lengkap}* dengan mengetik */approve*`);
 }

@@ -50,6 +50,6 @@ Balas dengan:
     // balasan ke user
     return sendTyping(
         chat,
-        'Permintaan approval sudah dikirim ke atasan.'
+        'Permintaan approval sudah dikirim ke *${atasan.nama_lengkap}*.'
     );
 };
