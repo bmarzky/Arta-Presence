@@ -286,22 +286,34 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         .replaceAll('{{periode}}', periode)
         .replaceAll('{{rows_absensi}}', rows.join(''));
 
-    const fileName = `${user.nama_lengkap}-${user.template_export}-${bulanNama[bulan]}.pdf`;
-    const output = path.join(__dirname, '../exports', fileName);
+        const fileName = `${user.nama_lengkap}-${user.template_export}-${bulanNama[bulan]}.pdf`;
+        const output = path.join(__dirname, '../exports', fileName);
 
-    if (fs.existsSync(output)) fs.unlinkSync(output);
+        if (fs.existsSync(output)) fs.unlinkSync(output);
 
-await chat.sendMessage(MessageMedia.fromFilePath(output));
+        /* === INI YANG KEMARIN HILANG === */
+        await generatePDF(html, output);
 
-await sendTyping(
-    chat,
-    'Laporan berhasil dibuat',
-    600
-);
+        /* === VALIDASI FILE ADA === */
+        if (!fs.existsSync(output)) {
+            await sendTyping(chat, 'Maaf, gagal membuat file PDF.');
+            return;
+        }
 
-await sendTyping(
-    chat,
-    `*${nama_wa}*, kamu bisa langsung approval dengan mengetik */approve*`
-);
+        /* === KIRIM PDF === */
+        await chat.sendMessage(MessageMedia.fromFilePath(output));
+
+        /* === FEEDBACK KE USER === */
+        await sendTyping(
+            chat,
+            'Laporan berhasil dibuat',
+            600
+        );
+
+        await sendTyping(
+            chat,
+            `*${nama_wa}*, kamu bisa langsung approval dengan mengetik */approve*`
+        );
+
     return;
 }
