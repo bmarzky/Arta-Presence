@@ -30,35 +30,40 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
     const [dbUser] = await query(`SELECT * FROM users WHERE id=?`, [user.id]);
     if (!dbUser) return;
 
+    // gabungkan data WA + DB
     user = { ...user, ...dbUser };
+
+    // ===== FIX UTAMA =====
+    const nama_wa = user.pushname || user.nama_wa || 'Kak';
+
     const text = pesan.toLowerCase();
     const step = user.step_input;
 
-    // =============================
-    // COMMAND / EXPORT
-    // =============================
+    /* =============================
+       COMMAND /EXPORT
+    ============================= */
     if (text === '/export') {
 
-        // RESET STATE LAMA
+        // reset state lama
         await query(
             `UPDATE users 
-            SET step_input=NULL, template_export=NULL 
-            WHERE id=?`,
+             SET step_input=NULL, template_export=NULL 
+             WHERE id=?`,
             [user.id]
         );
 
         const [userDb] = await query(
             `SELECT nama_lengkap, jabatan, nik, intro
-            FROM users WHERE id=?`,
+             FROM users WHERE id=?`,
             [user.id]
         );
 
         const dataBelumLengkap =
             !userDb.nama_lengkap || !userDb.jabatan || !userDb.nik;
 
-        // ===============================
-        // USER BARU / DATA BELUM LENGKAP
-        // ===============================
+        /* ===============================
+           USER BARU / DATA BELUM LENGKAP
+        =============================== */
         if (dataBelumLengkap) {
 
             if (userDb.intro === 0) {
@@ -81,17 +86,16 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
 
             return sendTyping(
                 chat,
-                `Apakah benar nama lengkap kamu ${nama_wa}? (iya/tidak)`
+                `Apakah benar nama lengkap kamu *${nama_wa}*? (iya/tidak)`
             );
         }
 
-        // ===============================
-        // USER LAMA (DATA LENGKAP)
-        // ===============================
+        /* ===============================
+           USER LAMA (DATA LENGKAP)
+        =============================== */
         await sendTyping(chat, 'Sedang membuat laporan PDF...', 800);
         return generatePDFandSend(chat, user, db, paramBulan);
     }
-
 
     /* =============================
        CONFIRM NAME
@@ -99,8 +103,10 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
     if (step === 'confirm_name') {
         if (text === 'iya') {
             await query(
-                `UPDATE users SET nama_lengkap=?, step_input='jabatan' WHERE id=?`,
-                [nama_lengkap, user.id]
+                `UPDATE users 
+                 SET nama_lengkap=?, step_input='jabatan' 
+                 WHERE id=?`,
+                [nama_wa, user.id]
             );
             return sendTyping(chat, 'Silakan isi *Jabatan* kamu:');
         }
@@ -117,11 +123,13 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
     }
 
     /* =============================
-       INPUT NAMA
+       INPUT NAMA LENGKAP
     ============================= */
     if (step === 'nama_lengkap') {
         await query(
-            `UPDATE users SET nama_lengkap=?, step_input='jabatan' WHERE id=?`,
+            `UPDATE users 
+             SET nama_lengkap=?, step_input='jabatan' 
+             WHERE id=?`,
             [pesan, user.id]
         );
         return sendTyping(chat, 'Silakan isi *Jabatan* kamu:');
@@ -132,7 +140,9 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
     ============================= */
     if (step === 'jabatan') {
         await query(
-            `UPDATE users SET jabatan=?, step_input='nik' WHERE id=?`,
+            `UPDATE users 
+             SET jabatan=?, step_input='nik' 
+             WHERE id=?`,
             [pesan, user.id]
         );
         return sendTyping(chat, 'Silakan isi *NIK* kamu:');
@@ -143,7 +153,9 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
     ============================= */
     if (step === 'nik') {
         await query(
-            `UPDATE users SET nik=?, step_input='choose_template' WHERE id=?`,
+            `UPDATE users 
+             SET nik=?, step_input='choose_template' 
+             WHERE id=?`,
             [pesan, user.id]
         );
         return sendTyping(
@@ -163,7 +175,9 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
         const template = text.toUpperCase();
 
         await query(
-            `UPDATE users SET template_export=?, step_input=NULL WHERE id=?`,
+            `UPDATE users 
+             SET template_export=?, step_input=NULL 
+             WHERE id=?`,
             [template, user.id]
         );
 
