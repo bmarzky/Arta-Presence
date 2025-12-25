@@ -157,14 +157,37 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     }
 
     /* ==============================
-       REVISI
+    REVISI
     ============================== */
     if (text === 'revisi') {
-        await query(`UPDATE approvals SET status='revised' WHERE id=?`, [approval.id]);
-        await query(`UPDATE users SET step_input='alasan_revisi' WHERE id=?`, [approval.user_id]);
-        await chat.client.sendMessage(approval.user_wa, 'Laporan kamu *PERLU REVISI*. Silakan perbaiki dan export ulang.');
-        return sendTyping(chat, 'Permintaan revisi telah dikirim.');
+        // ubah status sementara agar menunggu input alasan
+        await query(`UPDATE approvals SET status='waiting_revision_reason' WHERE id=?`, [approval.id]);
+
+        // beri tahu atasan untuk mengetik alasan
+        await chat.client.sendMessage(
+            user.wa_number,
+            'Silahkan ketik apa yang harus di revisi untuk laporan absensi *${approval.user_nama}*.'
+        );
+
+        return sendTyping(chat, 'Menunggu *${atasan.nama_lengkap}* mengetik alasan revisi...');
     }
+
+    // cek apakah approval menunggu alasan revisi
+    if (approval.status === 'waiting_revision_reason') {
+        const alasan = pesan.trim();
+
+        // update status dan simpan alasan
+        await query(`UPDATE approvals SET status='revised', alasan_revisi=? WHERE id=?`, [alasan, approval.id]);
+
+        // kirim notifikasi ke user
+        await chat.client.sendMessage(
+            approval.user_wa,
+            `Laporan kamu *PERLU REVISI* oleh *${atasan.nama_lengkap}*.\nAlasan revisi: ${alasan}\n\nSilakan perbaiki dan export ulang.`
+        );
+
+        return sendTyping(chat, 'Alasan revisi telah diteruskan ke *${approval.user_nama}*.');
+    }
+
 
     // fallback
     await sendTyping(chat, `Aku belum paham pesan kamu. Coba ketik */help* untuk melihat perintah.`);
