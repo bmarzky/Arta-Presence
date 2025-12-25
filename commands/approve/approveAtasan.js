@@ -13,26 +13,32 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     const text = pesan.trim();
 
     // ambil data atasan
-    const [atasan] = await query(
-        `SELECT * FROM users WHERE wa_number=? LIMIT 1`,
-        [user.wa_number]
-    );
-    if (!atasan) return sendTyping(chat, `Data atasan tidak ditemukan.`);
+    const [atasan] = await query(`SELECT * FROM users WHERE wa_number=? LIMIT 1`, [user.wa_number]);
+    if (!atasan) return sendTyping(chat, 'Data atasan tidak ditemukan.');
 
-    // ambil approval pending terbaru untuk atasan ini
+    // ambil approval pending terbaru
     const [approval] = await query(
         `SELECT a.*, u.wa_number AS user_wa, u.nama_lengkap AS user_nama, u.nik AS user_nik, u.jabatan AS user_jabatan, u.template_export
          FROM approvals a
          JOIN users u ON u.id = a.user_id
-         WHERE a.approver_wa = ? AND a.status IN ('pending','revised')
-         ORDER BY a.created_at DESC
-         LIMIT 1`,
+         WHERE a.approver_wa=? AND a.status IN ('pending','revised')
+         ORDER BY a.created_at DESC LIMIT 1`,
         [user.wa_number]
     );
     if (!approval) return sendTyping(chat, 'Tidak ada approval pending untukmu.');
 
-    // pastikan WA number format
+    // pastikan WA number user
     const userWA = approval.user_wa.includes('@') ? approval.user_wa : approval.user_wa + '@c.us';
+
+    // handle step_input alasan revisi
+    if (approval.step_input === 'alasan_revisi') {
+        const alasan = pesan.trim();
+        await query(`UPDATE approvals SET revisi_catatan=?, step_input=NULL WHERE id=?`, [alasan, approval.id]);
+        await chat.client.sendMessage(userWA,
+            `Laporan kamu *PERLU REVISI* oleh *${atasan.nama_lengkap}*.\nAlasan revisi: ${alasan}\nSilakan perbaiki dan export ulang.`
+        );
+        return sendTyping(chat, `Alasan revisi telah diteruskan ke *${approval.user_nama}*.`);
+    }
 
     // Path TTD
     let ttdBase64 = '';
@@ -42,24 +48,10 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     else if (fs.existsSync(ttdJpg)) ttdBase64 = fs.readFileSync(ttdJpg, 'base64');
     if (!ttdBase64) return sendTyping(chat, 'TTD atasan tidak ditemukan.');
 
-    // Handle step_input untuk alasan revisi
-    if (atasan.step_input === 'alasan_revisi') {
-        const alasan = pesan.trim();
-        await query(`UPDATE approvals SET revisi_catatan=? WHERE id=?`, [alasan, approval.id]);
-        await query(`UPDATE users SET step_input=NULL WHERE wa_number=?`, [user.wa_number]);
-
-        await chat.client.sendMessage(
-            userWA,
-            `Laporan kamu *PERLU REVISI* oleh *${atasan.nama_lengkap}*.\nAlasan revisi: ${alasan}\nSilakan perbaiki dan export ulang.`
-        );
-        return sendTyping(chat, `Alasan revisi telah diteruskan ke *${approval.user_nama}*.`);
-    }
-
-    /* ==========================
-       APPROVE
-    ========================== */
+    // ==========================
+    // APPROVE
+    // ==========================
     if (text.toLowerCase() === 'approve') {
-        // generate PDF
         const exportsDir = path.join(__dirname, '../../exports');
         if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
 
@@ -109,7 +101,6 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
         const bulanNama = moment().month(bulan).locale('id').format('MMMM');
         const periode = templateName === 'LMD' ? `${bulanNama} - ${tahun}` : `1 - ${totalHari} ${bulanNama} ${tahun}`;
-
         const logoPath = path.join(__dirname, `../../assets/${templateName.toLowerCase()}.png`);
         const logo = fs.existsSync(logoPath) ? fs.readFileSync(logoPath, 'base64') : '';
 
@@ -142,23 +133,21 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             [ttdBase64, atasan.nama_lengkap, atasan.nik || '', outputPath, approval.template_export, approval.id]
         );
 
-        // kirim ke user
         await chat.client.sendMessage(userWA, MessageMedia.fromFilePath(outputPath));
         await chat.client.sendMessage(userWA, `Laporan kamu telah *DISETUJUI* oleh *${atasan.nama_lengkap}*.`);
 
         return sendTyping(chat, `Approval berhasil diproses dan dikirim ke *${approval.user_nama}*.`);
     }
 
-    /* ==========================
-       REVISI (MINTA ALASAN)
-    ========================== */
+    // ==========================
+    // REVISI
+    // ==========================
     if (text.toLowerCase() === 'revisi') {
-        await query(`UPDATE approvals SET status='revised' WHERE id=?`, [approval.id]);
-        await query(`UPDATE users SET step_input='alasan_revisi' WHERE wa_number=?`, [user.wa_number]);
+        // set step_input untuk alasan revisi
+        await query(`UPDATE approvals SET status='revised', step_input='alasan_revisi' WHERE id=?`, [approval.id]);
         await chat.client.sendMessage(userWA, 'Laporan kamu *PERLU REVISI*. Silakan tunggu catatan dari atasan.');
         return sendTyping(chat, `Permintaan revisi telah dikirim ke *${approval.user_nama}*.`);
     }
 
-    // fallback
     return sendTyping(chat, 'Aku belum paham pesan kamu. Coba ketik */help* untuk melihat perintah.');
 };
