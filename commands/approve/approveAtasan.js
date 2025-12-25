@@ -117,7 +117,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             .replaceAll('{{kelompok_kerja}}', 'Central Regional Operation')
             .replaceAll('{{periode}}', `${bulan + 1}-${tahun}`)
             .replaceAll('{{rows_absensi}}', rows.join(''))
-            .replaceAll('{{ttd_atasan}}', ttdBase64 ? `<img src="data:image/png;base64,${ttdBase64}" width="150"/>` : '')
+            .replaceAll('{{ttd_atasan}}', ttdBase64 ? `<img src="data:image/png;base64,${ttdBase64}" width="80"/>` : '')
             .replaceAll('{{nama_atasan}}', atasan.nama_lengkap || '')
             .replaceAll('{{nik_atasan}}', atasan.nik || '');
 
