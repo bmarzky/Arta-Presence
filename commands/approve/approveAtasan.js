@@ -7,7 +7,6 @@ const generatePDF = require('../../utils/pdfGenerator');
 const moment = require('moment');
 
 module.exports = async function approveAtasan(chat, user, pesan, db) {
-
     const query = (sql, params) =>
         new Promise((res, rej) =>
             db.query(sql, params, (e, r) => e ? rej(e) : res(r))
@@ -58,18 +57,18 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
        APPROVE DAN BUAT PDF BARU
     ============================== */
     if (text === 'approve') {
-
-        // generate file PDF baru dengan timestamp
         const exportsDir = path.join(__dirname, '../../exports');
         if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
 
         const timestamp = Date.now();
-        const fileName = `${approval.user_nama}-${approval.template_export}-${timestamp}.pdf`;
+        const fileName = `${approval.user_nama}-${(approval.template_export || 'LMD').toUpperCase()}-${timestamp}.pdf`;
         const outputPath = path.join(exportsDir, fileName);
 
-        // baca template lama
-        const templatePath = path.join(__dirname, '../../templates/absensi', `${approval.template_export}.html`);
+        // baca template
+        const templateFileName = (approval.template_export || 'LMD').toUpperCase() + '.html';
+        const templatePath = path.join(__dirname, '../../templates/absensi', templateFileName);
         if (!fs.existsSync(templatePath)) {
+            console.log('Template path:', templatePath);
             await sendTyping(chat, 'Template laporan tidak ditemukan.');
             return;
         }
@@ -103,9 +102,11 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             );
         }
 
-        const logoPath = path.join(__dirname, `../../assets/${approval.template_export.toLowerCase()}.png`);
+        // logo
+        const logoPath = path.join(__dirname, `../../assets/${(approval.template_export || 'LMD').toUpperCase()}.png`);
         const logo = fs.existsSync(logoPath) ? fs.readFileSync(logoPath, 'base64') : '';
 
+        // ganti placeholder di template
         const html = template
             .replaceAll('{{logo_path}}', `data:image/png;base64,${logo}`)
             .replaceAll('{{nama}}', approval.user_nama)
