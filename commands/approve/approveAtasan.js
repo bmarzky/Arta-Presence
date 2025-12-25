@@ -149,10 +149,11 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
         // kirim PDF ke user
         const media = MessageMedia.fromFilePath(outputPath);
-        await chat.client.sendMessage(approval.user_wa, `Laporan kamu telah *DISETUJUI* oleh *${atasan.nama_lengkap}*.`);
         await chat.client.sendMessage(approval.user_wa, media);
+        await chat.client.sendMessage(approval.user_wa, `Laporan kamu telah *DISETUJUI* oleh *${atasan.nama_lengkap}*.`);
 
-        return sendTyping(chat, 'Approval berhasil diproses dan dikirim kembali ke pengguna.');
+
+        return sendTyping(chat, `Approval berhasil diproses dan dikirim ke *${approval.user_nama}*.`);
     }
 
     /* ==============================
