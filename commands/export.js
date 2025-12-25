@@ -320,29 +320,26 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
 
     // search approver (SPV)
     const [approver] = await query(
-        `SELECT no_wa 
+        `SELECT wa_number 
         FROM users 
         WHERE jabatan = ? 
         LIMIT 1`,
         ['spv']
     );
 
-    if (!approver || !approver.no_wa) {
-        await sendTyping(
-            chat,
-            'Maaf, atasan (SPV) belum terdaftar di sistem.'
-        );
+    if (!approver || !approver.wa_number) {
+        await sendTyping(chat, 'Maaf, WA atasan belum terdaftar.');
         return;
     }
+    
     // save to approvals
     await query(
         `INSERT INTO approvals
-        (user_id, approver_role, approver_wa, file_path, status, ttd_user_at)
-        VALUES (?, ?, ?, ?, 'pending', NOW())`,
+        (user_id, approver_wa, file_path, status, ttd_user_at)
+        VALUES (?, ?, ?, 'pending', NOW())`,
         [
             user.id,
-            'spv',
-            approver.no_wa,
+            approver.wa_number,
             output
         ]
     );
