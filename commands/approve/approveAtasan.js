@@ -12,7 +12,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
     const text = pesan.toLowerCase().trim();
 
-    // ambil approval pending terbaru atau menunggu alasan revisi
+    // Ambil approval pending/revised terbaru
     const [approval] = await query(
         `SELECT a.*, u.wa_number AS user_wa, u.nama_lengkap AS user_nama, u.nik AS user_nik, u.jabatan AS user_jabatan, u.template_export
          FROM approvals a
@@ -25,18 +25,17 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
     if (!approval) return sendTyping(chat, 'Tidak ada approval pending untukmu.');
 
-    // ambil data atasan
+    // Ambil data atasan
     const [atasan] = await query(
         `SELECT nama_lengkap, nik, wa_number FROM users WHERE wa_number = ? LIMIT 1`,
         [user.wa_number]
     );
     if (!atasan) return sendTyping(chat, `Data atasan tidak ditemukan di database.`);
 
-    // pastikan nomor WA lengkap
     const atasanWA = atasan.wa_number.includes('@') ? atasan.wa_number : atasan.wa_number + '@c.us';
     const userWA = approval.user_wa.includes('@') ? approval.user_wa : approval.user_wa + '@c.us';
 
-    // path TTD base64
+    // Path TTD base64
     let ttdBase64 = '';
     const ttdPng = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.png`);
     const ttdJpg = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.jpg`);
@@ -45,7 +44,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
     if (!ttdBase64) return sendTyping(chat, `TTD atasan tidak ditemukan di folder /assets/ttd.`);
 
-    // cek file PDF user
+    // Cek file PDF user
     if (!approval.file_path || !fs.existsSync(approval.file_path)) {
         return sendTyping(chat, 'File laporan user tidak ditemukan. Pastikan user sudah melakukan /export.');
     }
@@ -54,8 +53,13 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
        APPROVE
     ============================== */
     if (text === 'approve') {
+        // cek jika sudah diapprove
+        if (approval.status === 'approved') {
+            return sendTyping(chat, `Laporan *${approval.user_nama}* sudah pernah di-approve sebelumnya.`);
+        }
+
         try {
-            // generate file PDF baru dengan TTD
+            // Generate PDF baru dengan TTD
             const exportsDir = path.join(__dirname, '../../exports');
             if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
 
@@ -69,7 +73,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
             const template = fs.readFileSync(templatePath, 'utf8');
 
-            // data absensi
+            // Data absensi
             const now = new Date();
             const bulan = now.getMonth();
             const tahun = now.getFullYear();
@@ -80,7 +84,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 [approval.user_id, bulan + 1, tahun]
             );
 
-            // generate rows
+            // Generate rows
             const rows = [];
             for (let i = 1; i <= totalHari; i++) {
                 const dateObj = moment(`${tahun}-${bulan + 1}-${i}`, 'YYYY-M-D');
@@ -126,14 +130,13 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 .replaceAll('{{kelompok_kerja}}', 'Central Regional Operation')
                 .replaceAll('{{periode}}', periode)
                 .replaceAll('{{rows_absensi}}', rows.join(''))
-                .replaceAll('{{ttd_atasan}}', ttdBase64 ? `<img src="data:image/png;base64,${ttdBase64}" width="80"/>` : '')
+                .replaceAll('{{ttd_atasan}}', `<img src="data:image/png;base64,${ttdBase64}" width="80"/>`)
                 .replaceAll('{{nama_atasan}}', atasan.nama_lengkap || '')
                 .replaceAll('{{nik_atasan}}', atasan.nik || '');
 
             await generatePDF(html, outputPath);
 
-            if (!fs.existsSync(outputPath)) return sendTyping(chat, 'Gagal membuat file PDF baru.');
-
+            // Update status ke approved
             await query(
                 `UPDATE approvals
                  SET status='approved',
@@ -147,7 +150,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 [ttdBase64, atasan.nama_lengkap, atasan.nik || '', outputPath, approval.template_export, approval.id]
             );
 
-            // kirim PDF ke user
+            // Kirim PDF ke user
             await chat.client.sendMessage(userWA, MessageMedia.fromFilePath(outputPath));
             await chat.client.sendMessage(userWA, `Laporan kamu telah *DISETUJUI* oleh *${atasan.nama_lengkap}*.`);
 
@@ -161,13 +164,14 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     /* ==============================
        REVISI
     ============================== */
-    // Jika atasan ketik 'revisi'
     if (text === 'revisi') {
+        // cek jika sudah revisi
+        if (approval.status === 'revised' && approval.revisi_catatan) {
+            return sendTyping(chat, `Laporan *${approval.user_nama}* sudah diberi catatan revisi.`);
+        }
+
         try {
-            // update status menjadi 'revised', reset revisi_catatan
             await query(`UPDATE approvals SET status='revised', revisi_catatan=NULL WHERE id=?`, [approval.id]);
-            
-            // beri tahu atasan untuk mengetik alasan
             return sendTyping(chat, `Silakan ketik alasan revisi untuk laporan *${approval.user_nama}*.`);
         } catch (err) {
             console.error(err);
@@ -175,35 +179,25 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         }
     }
 
-    // Ambil ulang approval
+    /* ==============================
+       CATATAN REVISI
+    ============================== */
     const [approvalUpdated] = await query(`SELECT * FROM approvals WHERE id=?`, [approval.id]);
-
-    // Cek apakah menunggu alasan revisi
-    if (approvalUpdated.status === 'revised' && !approvalUpdated.revisi_catatan) {
-        // pastikan pesan yang masuk **bukan 'revisi' lagi**, baru diproses sebagai alasan
-        if (text !== 'revisi') {
+    if (approvalUpdated.status === 'revised' && !approvalUpdated.revisi_catatan && text !== 'revisi') {
+        try {
             const alasan = pesan.trim();
-            try {
-                // update revisi_catatan di DB
-                await query(`UPDATE approvals SET revisi_catatan=? WHERE id=?`, [alasan, approval.id]);
-
-                // kirim ke user
-                await chat.client.sendMessage(
-                    approvalUpdated.user_wa,
-                    `Laporan kamu *PERLU REVISI* oleh *${atasan.nama_lengkap}*.\nAlasan revisi: ${alasan}\n\nSilakan perbaiki dan export ulang.`
-                );
-
-                return sendTyping(chat, `Alasan revisi telah diteruskan ke *${approvalUpdated.user_nama}*.`);
-            } catch (err) {
-                console.error(err);
-                return sendTyping(chat, 'Terjadi error saat mengirim alasan revisi.');
-            }
-        } else {
-            // pesan masih 'revisi', jangan diproses
-            return;
+            await query(`UPDATE approvals SET revisi_catatan=? WHERE id=?`, [alasan, approval.id]);
+            await chat.client.sendMessage(
+                approvalUpdated.user_wa,
+                `Laporan kamu *PERLU REVISI* oleh *${atasan.nama_lengkap}*.\nAlasan revisi: ${alasan}\n\nSilakan perbaiki dan export ulang.`
+            );
+            return sendTyping(chat, `Alasan revisi telah diteruskan ke *${approvalUpdated.user_nama}*.`);
+        } catch (err) {
+            console.error(err);
+            return sendTyping(chat, 'Terjadi error saat mengirim alasan revisi.');
         }
     }
 
-    // default response jika tidak sesuai kondisi di atas
+    // Default response
     await sendTyping(chat, `Aku belum paham pesan kamu. Coba ketik */help* untuk melihat perintah.`);
 };
