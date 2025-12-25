@@ -48,14 +48,14 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     /* =============================
        TERIMA GAMBAR TTD
     ============================= */
-    if (chat.hasMedia && !fs.existsSync(ttdPath)) {
-        const media = await chat.downloadMedia();
+    if (message.hasMedia && !fs.existsSync(ttdPath)) {
+        const media = await message.downloadMedia();
         if (!media || !media.data) return;
 
         const buffer = Buffer.from(media.data, 'base64');
         fs.writeFileSync(ttdPath, buffer);
 
-        await chat.client.sendMessage(
+        await chat.sendMessage(
             user.wa_number,
             'TTD berhasil diterima. Sekarang kamu bisa approve laporan.'
         );
