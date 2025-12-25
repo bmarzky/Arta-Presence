@@ -51,9 +51,8 @@ module.exports = {
                 sendingIntro[wa_number] = true;
                 await typeAndDelay(chat);
                 await chat.sendMessage(
-                    `Halo *${nama_wa}*\nSaya *Arta Presence*, bot absensi otomatis.\n\n` +
-                    `• */absen* — absensi masuk/pulang\n` +
-                    `• */export* — laporan PDF`
+                    `Halo *${nama_wa}*\nSaya *Arta Presence*, bot absensi otomatis.\n\n\n` +
+                    `silakan gunakan perintah */help* untuk melihat daftar perintah yang tersedia.`
                 );
                 await query("UPDATE users SET intro=1 WHERE id=?", [user.id]);
                 sendingIntro[wa_number] = false;
