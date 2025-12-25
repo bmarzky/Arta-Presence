@@ -17,7 +17,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         `SELECT a.*, u.wa_number AS user_wa, u.nama_lengkap AS user_nama, u.nik AS user_nik, u.jabatan AS user_jabatan, u.template_export
          FROM approvals a
          JOIN users u ON u.id = a.user_id
-         WHERE a.approver_wa = ? AND a.status IN ('pending', 'waiting_revision_reason')
+         WHERE a.approver_wa = ? AND a.status IN ('pending', 'revised')
          ORDER BY a.created_at DESC
          LIMIT 1`,
         [user.wa_number]
@@ -163,8 +163,8 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     ============================== */
     if (text === 'revisi') {
         try {
-            await query(`UPDATE approvals SET status='waiting_revision_reason' WHERE id=?`, [approval.id]);
-            approval.status = 'waiting_revision_reason';
+            await query(`UPDATE approvals SET status='revised' WHERE id=?`, [approval.id]);
+            approval.status = 'revised';
 
             await chat.client.sendMessage(
                 atasanWA,
@@ -179,7 +179,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     }
 
     // cek apakah menunggu alasan revisi
-    if (approval.status === 'waiting_revision_reason') {
+    if (approval.status === 'revised') {
         const alasan = pesan.trim();
         await query(`UPDATE approvals SET status='revised', alasan_revisi=? WHERE id=?`, [alasan, approval.id]);
 
