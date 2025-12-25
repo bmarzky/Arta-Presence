@@ -31,10 +31,10 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         return;
     }
 
-    // ambil data atasan dari tabel users sesuai approval
+    // ambil data atasan dari tabel users
     const [atasan] = await query(
         `SELECT nama_lengkap, nik, wa_number FROM users WHERE wa_number = ? LIMIT 1`,
-        [approval.approver_wa]
+        [user.wa_number]
     );
 
     if (!atasan) {
@@ -64,24 +64,23 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
 
         const timestamp = Date.now();
-        const bulanNama = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-        const now = new Date();
-        const bulan = now.getMonth();
-        const tahun = now.getFullYear();
-        const template = approval.template_export || 'LMD';
-        const fileName = `${approval.user_nama}-${template}-${bulanNama[bulan]}-${timestamp}.pdf`;
+        const fileName = `${approval.user_nama}-${approval.template_export}-${timestamp}.pdf`;
         const outputPath = path.join(exportsDir, fileName);
 
-        // baca template
-        const templatePath = path.join(__dirname, `../../templates/absensi/${template}.html`);
+        // baca template lama
+        const templatePath = path.join(__dirname, '../../templates/absensi', `${approval.template_export}.html`);
         if (!fs.existsSync(templatePath)) {
             await sendTyping(chat, 'Template laporan tidak ditemukan.');
             return;
         }
-        const htmlTemplate = fs.readFileSync(templatePath, 'utf8');
+        const template = fs.readFileSync(templatePath, 'utf8');
 
         // ambil data absensi user
+        const now = new Date();
+        const bulan = now.getMonth();
+        const tahun = now.getFullYear();
         const totalHari = new Date(tahun, bulan + 1, 0).getDate();
+
         const absensi = await query(
             `SELECT * FROM absensi WHERE user_id=? AND MONTH(tanggal)=? AND YEAR(tanggal)=? ORDER BY tanggal`,
             [approval.user_id, bulan + 1, tahun]
@@ -104,10 +103,10 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             );
         }
 
-        const logoPath = path.join(__dirname, `../../assets/${template.toLowerCase()}.png`);
+        const logoPath = path.join(__dirname, `../../assets/${approval.template_export.toLowerCase()}.png`);
         const logo = fs.existsSync(logoPath) ? fs.readFileSync(logoPath, 'base64') : '';
 
-        const html = htmlTemplate
+        const html = template
             .replaceAll('{{logo_path}}', `data:image/png;base64,${logo}`)
             .replaceAll('{{nama}}', approval.user_nama)
             .replaceAll('{{jabatan}}', approval.user_jabatan || '')
@@ -117,10 +116,9 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             .replaceAll('{{kelompok_kerja}}', 'Central Regional Operation')
             .replaceAll('{{periode}}', `${bulan + 1}-${tahun}`)
             .replaceAll('{{rows_absensi}}', rows.join(''))
-            // TTD dan info atasan
-            .replaceAll('{{ttd_atasan}}', `<img src="file://${ttdPath}" width="150"/>`)
-            .replaceAll('{{nama_atasan}}', atasan.nama_lengkap)
-            .replaceAll('{{nik_atasan}}', atasan.nik);
+            .replaceAll('{{ttd_atasan}}', ttdPath ? `<img src="file://${ttdPath}" width="150"/>` : '')
+            .replaceAll('{{nama_atasan}}', atasan.nama_lengkap || '')
+            .replaceAll('{{nik_atasan}}', atasan.nik || '');
 
         // generate PDF
         await generatePDF(html, outputPath);
@@ -138,9 +136,10 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                  ttd_atasan=?,
                  nama_atasan=?,
                  nik_atasan=?,
-                 file_path=?
+                 file_path=?,
+                 template_export=?
              WHERE id=?`,
-            [ttdPath, atasan.nama_lengkap, atasan.nik, outputPath, approval.id]
+            [ttdPath, atasan.nama_lengkap, atasan.nik || '', outputPath, approval.template_export, approval.id]
         );
 
         // kirim PDF ke user
