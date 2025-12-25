@@ -66,7 +66,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
         =============================== */
         if (dataBelumLengkap) {
 
-            if (userDb.intro === 0) {
+            if (!userDb.intro) {
                 await sendTyping(
                     chat,
                     `Maaf ${nama_wa}, kami belum mendapatkan data lengkap kamu untuk menyiapkan laporan absensi.`,
