@@ -10,7 +10,7 @@ module.exports = async function approveUser(chat, user, db) {
             db.query(sql, params, (e, r) => e ? rej(e) : res(r))
         );
 
-    const nama_user = user.pushname || user.nama_wa || 'Approver';
+    const nama_user = user.pushname || user.nama_wa || 'User';
 
     // ambil PDF terakhir
     const [laporan] = await query(
