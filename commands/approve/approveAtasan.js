@@ -161,53 +161,13 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     /* ==============================
        REVISI
     ============================== */
-    // jika atasan ketik 'revisi'
     if (text === 'revisi') {
-        try {
-            // update status approval
-            await query(`UPDATE approvals SET status='revised' WHERE id=?`, [approval.id]);
-
-            // tandai user sedang menunggu alasan revisi
-            await query(`UPDATE users SET step_input='alasan_revisi' WHERE id=?`, [approval.user_id]);
-
-            // beri tahu user bahwa laporannya perlu revisi
-            await chat.client.sendMessage(
-                approval.user_wa,
-                `Laporan kamu *PERLU REVISI*. Silakan perbaiki dan export ulang.`
-            );
-
-            return sendTyping(chat, 'Permintaan revisi telah dikirim.');
-        } catch (err) {
-            console.error(err);
-            return sendTyping(chat, 'Terjadi error saat meminta revisi.');
-        }
+        await query(`UPDATE approvals SET status='revised' WHERE id=?`, [approval.id]);
+        await query(`UPDATE users SET step_input='alasan_revisi' WHERE id=?`, [approval.user_id]);
+        await chat.client.sendMessage(approval.user_wa, 'Laporan kamu *PERLU REVISI*. Silakan perbaiki dan export ulang.');
+        return sendTyping(chat, 'Permintaan revisi telah dikirim.');
     }
 
-    // cek apakah user sedang mengirim alasan revisi
-    if (user.step_input === 'alasan_revisi') {
-        const alasan = pesan.trim();
-
-        try {
-            // simpan alasan revisi di kolom revisi_catatan
-            await query(`UPDATE approvals SET revisi_catatan=? WHERE id=?`, [alasan, approval.id]);
-
-            // reset step_input agar tidak terus menganggap pesan berikutnya adalah alasan
-            await query(`UPDATE users SET step_input=NULL WHERE id=?`, [approval.user_id]);
-
-            // kirim pesan ke user
-            await chat.client.sendMessage(
-                approval.user_wa,
-                `Alasan revisi dari *${atasan.nama_lengkap}*:\n${alasan}\n\nSilakan perbaiki laporan dan lakukan /export lagi.`
-            );
-
-            return sendTyping(chat, `Alasan revisi telah diteruskan ke *${approval.user_nama}*.`);
-        } catch (err) {
-            console.error(err);
-            return sendTyping(chat, 'Terjadi error saat mengirim alasan revisi.');
-        }
-    }
-
-
-        // default response jika tidak sesuai kondisi di atas
-        await sendTyping(chat, `Aku belum paham pesan kamu. Coba ketik */help* untuk melihat perintah.`);
-    };
+    // default response jika tidak sesuai kondisi di atas
+    await sendTyping(chat, `Aku belum paham pesan kamu. Coba ketik */help* untuk melihat perintah.`);
+};
