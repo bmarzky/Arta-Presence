@@ -41,7 +41,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     }
 
     // path TTD berdasarkan wa_number.png
-    const ttdPath = path.join(__dirname, '../../ttd', `${user.wa_number}.png`);
+    const ttdPath = path.join(__dirname, '../../assets/ttd', `${user.wa_number}.png`);
 
     if (!fs.existsSync(ttdPath)) {
         await sendTyping(chat, 'TTD atasan tidak ditemukan. Pastikan file ada di folder /ttd dengan nama wa_number.png');
