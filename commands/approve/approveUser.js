@@ -11,41 +11,45 @@ module.exports = async function approveUser(chat, user, db) {
 
     const nama_wa = user.pushname || user.nama_wa || 'User';
 
-    // ambil PDF terakhir
-    const [laporan] = await query(
-        `SELECT file_path FROM exports 
-         WHERE user_id=? ORDER BY created_at DESC LIMIT 1`,
+    // ambil approval pending milik user
+    const [approval] = await query(
+        `SELECT id, approver_wa, file_path
+         FROM approvals
+         WHERE user_id = ? AND status = 'pending'
+         ORDER BY created_at DESC
+         LIMIT 1`,
         [user.id]
     );
 
-    if (!laporan) {
-        return sendTyping(chat, 'Belum ada laporan untuk di-approve.');
+    if (!approval) {
+        return sendTyping(
+            chat,
+            'Tidak ada laporan yang menunggu approval.'
+        );
     }
 
-    // nomor atasan (STATIS / DB)
-    const approverWA = '62812xxxxxxx@c.us';
-
-    await query(
-        `INSERT INTO approvals
-         (user_id, approver_wa, file_path, ttd_user_at)
-         VALUES (?, ?, ?, NOW())`,
-        [user.id, approverWA, laporan.file_path]
-    );
-
-    const media = MessageMedia.fromFilePath(laporan.file_path);
+    const media = MessageMedia.fromFilePath(approval.file_path);
     const greeting = getGreeting();
 
+    // kirim pesan ke atasan
     await chat.client.sendMessage(
-        approverWA,
-        `${greeting}, *${nama_wa}* meminta approval absensi berikut.\n\n` +
-        `Silakan diperiksa.\n\n` +
-        `Ketik:\n• approve\n• revisi`
+        approval.approver_wa,
+        `${greeting}
+
+*${nama_wa}* meminta approval absensi berikut.
+
+Silakan diperiksa.
+
+Balas dengan:
+• approve
+• revisi`
     );
 
-    await chat.client.sendMessage(approverWA, media);
+    await chat.client.sendMessage(approval.approver_wa, media);
 
+    // balasan ke user
     return sendTyping(
         chat,
-        `*${nama_wa}*, laporan sudah dikirim ke atasan untuk approval.`
+        'Permintaan approval sudah dikirim ke atasan.'
     );
 };
