@@ -1,7 +1,6 @@
 const { MessageMedia } = require('whatsapp-web.js');
 const { sendTyping } = require('../../utils/sendTyping');
 const getGreeting = require('../../data/greetingTime');
-const fs = require('fs');
 
 module.exports = async function approveUser(chat, user, db) {
     const query = (sql, params) =>
@@ -22,7 +21,10 @@ module.exports = async function approveUser(chat, user, db) {
     );
 
     if (!approval) {
-        return sendTyping(chat, 'Tidak ada laporan yang menunggu approval.');
+        return sendTyping(
+            chat,
+            'Tidak ada laporan yang menunggu approval.'
+        );
     }
 
     // ambil info approver agar bisa tampil nama
@@ -31,34 +33,33 @@ module.exports = async function approveUser(chat, user, db) {
         [approval.approver_wa]
     );
 
-    const approverName = approver?.nama_lengkap || 'Atasan';
-
-    // cek file PDF
-    if (!approval.file_path || !fs.existsSync(approval.file_path)) {
+    // kirim file PDF ke approver
+    if (!approval.file_path || !require('fs').existsSync(approval.file_path)) {
         return sendTyping(chat, 'File laporan tidak ditemukan. Silakan export ulang.');
     }
     const media = MessageMedia.fromFilePath(approval.file_path);
 
     const greeting = getGreeting();
+    const approverName = approver?.nama_lengkap || 'Approver';
 
-    // 1️⃣ teks pertama: sapaan + info user
+    // kirim pesan dan file ke approver
     await chat.client.sendMessage(
         approval.approver_wa,
-        `${greeting} *${approverName}*\n\n` +
-        `*${nama_wa}* meminta approval absensi berikut. Silakan diperiksa.`
-    );
+        `${greeting}
 
-    // 2️⃣ kirim file PDF
-    await chat.client.sendMessage(approval.approver_wa, media);
+*${nama_wa}* meminta approval absensi berikut.
 
-    // 3️⃣ teks ketiga: instruksi balasan
-    await chat.client.sendMessage(
-        approval.approver_wa,
-        `Silakan balas dengan:
+Silakan diperiksa.
+
+Balas dengan:
 • approve
 • revisi`
     );
+    await chat.client.sendMessage(approval.approver_wa, media);
 
-    // balasan ke user pengirim dokumen
-    return sendTyping(chat, `Permintaan approval sudah dikirim ke *${approverName}*.`);
+    // balasan ke user
+    return sendTyping(
+        chat,
+        `Permintaan approval sudah dikirim ke *${approverName}*.`
+    );
 };

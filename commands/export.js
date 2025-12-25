@@ -240,3 +240,4 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
     await sendTyping(chat, 'Laporan berhasil dibuat', 600);
     await sendTyping(chat, `*${nama_wa}*, kamu bisa langsung meminta approval kepada *${approver.nama_lengkap}* dengan mengetik */approve*`);
 }
+    
