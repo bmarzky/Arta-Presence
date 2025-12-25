@@ -3,7 +3,10 @@ const handleExport = require('./export');
 const greetings = require('../data/greetings');
 const greetingReplies = require('../data/greetingReplies');
 const sendingIntro = {};
+const approveUser = require('./approve/approveUser');
+const approveAtasan = require('./approve/approveAtasan');
 const { sendTyping } = require('../utils/sendTyping');
+
 
 const typeAndDelay = async (chat, ms = 800, random = 400) => {
     await chat.sendStateTyping();
@@ -75,6 +78,15 @@ module.exports = {
 
             if (lowerMsg === '/absen' || user.step_absen) {
                 return handleAbsen(chat, user, lowerMsg, pesan, query);
+            }
+
+            if (lowerMsg === '/approve') {
+                return approveUser(chat, user, db);
+            }
+
+            // Respond to approve/revisi commands from approver
+            if (['approve', 'revisi'].includes(lowerMsg)) {
+                return approveAtasan(chat, user, lowerMsg, db);
             }
 
             // =========================
