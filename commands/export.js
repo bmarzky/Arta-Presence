@@ -291,5 +291,11 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
 
     await generatePDF(html, output);
     await chat.sendMessage(MessageMedia.fromFilePath(output));
-    return sendTyping(chat, 'Laporan berhasil dibuat');
-}
+
+    await sendTyping(
+        chat,
+        `*$${nama_wa}*, kamu bisa langsung approval dengan mengetik */approve*`
+    );
+
+    return;
+    }
