@@ -32,6 +32,10 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     );
     if (!atasan) return sendTyping(chat, `Data atasan tidak ditemukan di database.`);
 
+    // pastikan nomor WA lengkap
+    const atasanWA = atasan.wa_number.includes('@') ? atasan.wa_number : atasan.wa_number + '@c.us';
+    const userWA = approval.user_wa.includes('@') ? approval.user_wa : approval.user_wa + '@c.us';
+
     // path TTD base64
     let ttdBase64 = '';
     const ttdPng = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.png`);
@@ -41,150 +45,156 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
     if (!ttdBase64) return sendTyping(chat, `TTD atasan tidak ditemukan di folder /assets/ttd.`);
 
+    // cek file PDF user
+    if (!approval.file_path || !fs.existsSync(approval.file_path)) {
+        return sendTyping(chat, 'File laporan user tidak ditemukan. Pastikan user sudah melakukan /export.');
+    }
+
     /* ==============================
-       APPROVE DAN GENERATE PDF
+       APPROVE
     ============================== */
     if (text === 'approve') {
-        const exportsDir = path.join(__dirname, '../../exports');
-        if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
+        try {
+            // generate file PDF baru dengan TTD
+            const exportsDir = path.join(__dirname, '../../exports');
+            if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
 
-        const timestamp = Date.now();
-        const templateName = (approval.template_export || 'LMD').toUpperCase();
-        const fileName = `${approval.user_nama}-${templateName}-${timestamp}.pdf`;
-        const outputPath = path.join(exportsDir, fileName);
+            const timestamp = Date.now();
+            const templateName = (approval.template_export || 'LMD').toUpperCase();
+            const fileName = `${approval.user_nama}-${templateName}-${timestamp}.pdf`;
+            const outputPath = path.join(exportsDir, fileName);
 
-        // template path
-        const templatePath = path.join(__dirname, '../../templates/absensi', `${templateName}.html`);
-        if (!fs.existsSync(templatePath)) {
-            console.log('Template path:', templatePath);
-            return sendTyping(chat, 'Template laporan tidak ditemukan.');
-        }
-        const template = fs.readFileSync(templatePath, 'utf8');
+            const templatePath = path.join(__dirname, '../../templates/absensi', `${templateName}.html`);
+            if (!fs.existsSync(templatePath)) return sendTyping(chat, 'Template laporan tidak ditemukan.');
 
-        // data absensi
-        const now = new Date();
-        const bulan = now.getMonth();
-        const tahun = now.getFullYear();
-        const totalHari = new Date(tahun, bulan + 1, 0).getDate();
+            const template = fs.readFileSync(templatePath, 'utf8');
 
-        const absensi = await query(
-            `SELECT * FROM absensi WHERE user_id=? AND MONTH(tanggal)=? AND YEAR(tanggal)=? ORDER BY tanggal`,
-            [approval.user_id, bulan + 1, tahun]
-        );
+            // data absensi
+            const now = new Date();
+            const bulan = now.getMonth();
+            const tahun = now.getFullYear();
+            const totalHari = new Date(tahun, bulan + 1, 0).getDate();
 
-        // generate rows sesuai template
-        const rows = [];
-        for (let i = 1; i <= totalHari; i++) {
-            const dateObj = moment(`${tahun}-${bulan + 1}-${i}`, 'YYYY-M-D');
-            const iso = dateObj.format('YYYY-MM-DD');
-            const r = absensi.find(a => moment(a.tanggal).format('YYYY-MM-DD') === iso);
+            const absensi = await query(
+                `SELECT * FROM absensi WHERE user_id=? AND MONTH(tanggal)=? AND YEAR(tanggal)=? ORDER BY tanggal`,
+                [approval.user_id, bulan + 1, tahun]
+            );
 
-            if (templateName === 'LMD') {
-                rows.push(`
-                    <tr>
-                        <td>${dateObj.format('DD/MM/YYYY')}</td>
-                        <td>${dateObj.locale('id').format('dddd')}</td>
-                        <td>${r?.jam_masuk || '-'}</td>
-                        <td>${r?.jam_pulang || '-'}</td>
-                        <td>${r?.deskripsi || '-'}</td>
-                    </tr>
-                `);
-            } else {
-                rows.push(`
-                    <tr>
-                        <td>${i}/${bulan+1}/${tahun}</td>
-                        <td>${r?.jam_masuk || ''}</td>
-                        <td>${r?.jam_pulang || ''}</td>
-                        <td>${r?.deskripsi || ''}</td>
-                        <td></td>
-                    </tr>
-                `);
+            // generate rows
+            const rows = [];
+            for (let i = 1; i <= totalHari; i++) {
+                const dateObj = moment(`${tahun}-${bulan + 1}-${i}`, 'YYYY-M-D');
+                const iso = dateObj.format('YYYY-MM-DD');
+                const r = absensi.find(a => moment(a.tanggal).format('YYYY-MM-DD') === iso);
+
+                if (templateName === 'LMD') {
+                    rows.push(`
+                        <tr>
+                            <td>${dateObj.format('DD/MM/YYYY')}</td>
+                            <td>${dateObj.locale('id').format('dddd')}</td>
+                            <td>${r?.jam_masuk || '-'}</td>
+                            <td>${r?.jam_pulang || '-'}</td>
+                            <td>${r?.deskripsi || '-'}</td>
+                        </tr>
+                    `);
+                } else {
+                    rows.push(`
+                        <tr>
+                            <td>${i}/${bulan+1}/${tahun}</td>
+                            <td>${r?.jam_masuk || ''}</td>
+                            <td>${r?.jam_pulang || ''}</td>
+                            <td>${r?.deskripsi || ''}</td>
+                            <td></td>
+                        </tr>
+                    `);
+                }
             }
+
+            const bulanNama = moment().month(bulan).locale('id').format('MMMM');
+            const periode = templateName === 'LMD' ? `${bulanNama} - ${tahun}` : `1 - ${totalHari} ${bulanNama} ${tahun}`;
+
+            const logoPath = path.join(__dirname, `../../assets/${templateName.toLowerCase()}.png`);
+            const logo = fs.existsSync(logoPath) ? fs.readFileSync(logoPath, 'base64') : '';
+
+            const html = template
+                .replaceAll('{{logo_path}}', logo ? `data:image/png;base64,${logo}` : '')
+                .replaceAll('{{nama}}', approval.user_nama)
+                .replaceAll('{{jabatan}}', approval.user_jabatan || '')
+                .replaceAll('{{nik}}', approval.user_nik)
+                .replaceAll('{{divisi}}', 'Regional Operation')
+                .replaceAll('{{lokasi}}', 'Aplikanusa Lintasarta Bandung')
+                .replaceAll('{{kelompok_kerja}}', 'Central Regional Operation')
+                .replaceAll('{{periode}}', periode)
+                .replaceAll('{{rows_absensi}}', rows.join(''))
+                .replaceAll('{{ttd_atasan}}', ttdBase64 ? `<img src="data:image/png;base64,${ttdBase64}" width="80"/>` : '')
+                .replaceAll('{{nama_atasan}}', atasan.nama_lengkap || '')
+                .replaceAll('{{nik_atasan}}', atasan.nik || '');
+
+            await generatePDF(html, outputPath);
+
+            if (!fs.existsSync(outputPath)) return sendTyping(chat, 'Gagal membuat file PDF baru.');
+
+            await query(
+                `UPDATE approvals
+                 SET status='approved',
+                     ttd_atasan_at=NOW(),
+                     ttd_atasan=?,
+                     nama_atasan=?,
+                     nik_atasan=?,
+                     file_path=?,
+                     template_export=?
+                 WHERE id=?`,
+                [ttdBase64, atasan.nama_lengkap, atasan.nik || '', outputPath, approval.template_export, approval.id]
+            );
+
+            // kirim PDF ke user
+            await chat.client.sendMessage(userWA, MessageMedia.fromFilePath(outputPath));
+            await chat.client.sendMessage(userWA, `Laporan kamu telah *DISETUJUI* oleh *${atasan.nama_lengkap}*.`);
+
+            return sendTyping(chat, `Approval berhasil diproses dan dikirim ke *${approval.user_nama}*.`);
+        } catch (err) {
+            console.error(err);
+            return sendTyping(chat, 'Terjadi error saat memproses approval. Cek log server.');
         }
-
-        // periode sesuai template
-        const bulanNama = moment().month(bulan).locale('id').format('MMMM');
-        const periode = templateName === 'LMD' ? `${bulanNama} - ${tahun}` : `1 - ${totalHari} ${bulanNama} ${tahun}`;
-
-        // logo base64
-        const logoPath = path.join(__dirname, `../../assets/${templateName.toLowerCase()}.png`);
-        const logo = fs.existsSync(logoPath) ? fs.readFileSync(logoPath, 'base64') : '';
-
-        // ganti placeholder
-        const html = template
-            .replaceAll('{{logo_path}}', logo ? `data:image/png;base64,${logo}` : '')
-            .replaceAll('{{nama}}', approval.user_nama)
-            .replaceAll('{{jabatan}}', approval.user_jabatan || '')
-            .replaceAll('{{nik}}', approval.user_nik)
-            .replaceAll('{{divisi}}', 'Regional Operation')
-            .replaceAll('{{lokasi}}', 'Aplikanusa Lintasarta Bandung')
-            .replaceAll('{{kelompok_kerja}}', 'Central Regional Operation')
-            .replaceAll('{{periode}}', periode)
-            .replaceAll('{{rows_absensi}}', rows.join(''))
-            .replaceAll('{{ttd_atasan}}', ttdBase64 ? `<img src="data:image/png;base64,${ttdBase64}" width="80"/>` : '')
-            .replaceAll('{{nama_atasan}}', atasan.nama_lengkap || '')
-            .replaceAll('{{nik_atasan}}', atasan.nik || '');
-
-        // generate PDF
-        await generatePDF(html, outputPath);
-
-        if (!fs.existsSync(outputPath)) return sendTyping(chat, 'Gagal membuat file PDF baru.');
-
-        // update approvals
-        await query(
-            `UPDATE approvals
-             SET status='approved',
-                 ttd_atasan_at=NOW(),
-                 ttd_atasan=?,
-                 nama_atasan=?,
-                 nik_atasan=?,
-                 file_path=?,
-                 template_export=?
-             WHERE id=?`,
-            [ttdBase64, atasan.nama_lengkap, atasan.nik || '', outputPath, approval.template_export, approval.id]
-        );
-
-        // kirim PDF ke user
-        const media = MessageMedia.fromFilePath(outputPath);
-        await chat.client.sendMessage(approval.user_wa, media);
-        await chat.client.sendMessage(approval.user_wa, `Laporan kamu telah *DISETUJUI* oleh *${atasan.nama_lengkap}*.`);
-
-        return sendTyping(chat, `Approval berhasil diproses dan dikirim ke *${approval.user_nama}*.`);
     }
 
     /* ==============================
        REVISI
     ============================== */
     if (text === 'revisi') {
-        // ubah status sementara agar menunggu input alasan
-        await query(`UPDATE approvals SET status='waiting_revision_reason' WHERE id=?`, [approval.id]);
-        approval.status = 'waiting_revision_reason'; // update di memori juga
+        try {
+            await query(`UPDATE approvals SET status='waiting_revision_reason' WHERE id=?`, [approval.id]);
+            approval.status = 'waiting_revision_reason';
 
-        // beri tahu atasan untuk mengetik alasan
-        await chat.client.sendMessage(
-            user.wa_number,
-            `Silahkan ketik apa yang harus di revisi untuk laporan absensi *${approval.user_nama}*.`
-        );
+            await chat.client.sendMessage(
+                atasanWA,
+                `Silahkan ketik apa yang harus di revisi untuk laporan absensi *${approval.user_nama}*.` 
+            );
 
-        return sendTyping(chat, `Menunggu *${atasan.nama_lengkap}* mengetik alasan revisi...`);
+            return sendTyping(chat, `Menunggu *${atasan.nama_lengkap}* mengetik alasan revisi...`);
+        } catch (err) {
+            console.error(err);
+            return sendTyping(chat, 'Terjadi error saat meminta revisi. Cek log server.');
+        }
     }
 
-    // cek apakah approval menunggu alasan revisi
+    // cek apakah menunggu alasan revisi
     if (approval.status === 'waiting_revision_reason') {
         const alasan = pesan.trim();
-
-        // update status dan simpan alasan
         await query(`UPDATE approvals SET status='revised', alasan_revisi=? WHERE id=?`, [alasan, approval.id]);
 
-        // kirim notifikasi ke user
-        await chat.client.sendMessage(
-            approval.user_wa,
-            `Laporan kamu *PERLU REVISI* oleh *${atasan.nama_lengkap}*.\nAlasan revisi: ${alasan}\n\nSilakan perbaiki dan export ulang.`
-        );
+        try {
+            await chat.client.sendMessage(
+                userWA,
+                `Laporan kamu *PERLU REVISI* oleh *${atasan.nama_lengkap}*.\nAlasan revisi: ${alasan}\n\nSilakan perbaiki dan export ulang.`
+            );
 
-        return sendTyping(chat, `Alasan revisi telah diteruskan ke *${approval.user_nama}*.`);
+            return sendTyping(chat, `Alasan revisi telah diteruskan ke *${approval.user_nama}*.`);
+        } catch (err) {
+            console.error(err);
+            return sendTyping(chat, 'Terjadi error saat mengirim alasan revisi.');
+        }
     }
 
-    // fallback
     await sendTyping(chat, `Aku belum paham pesan kamu. Coba ketik */help* untuk melihat perintah.`);
 };
