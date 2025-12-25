@@ -1,54 +1,51 @@
 const { MessageMedia } = require('whatsapp-web.js');
 const { sendTyping } = require('../../utils/sendTyping');
 const getGreeting = require('../../data/greetingTime');
-const fs = require('fs');
 
 module.exports = async function approveUser(chat, user, db) {
+
     const query = (sql, params) =>
-        new Promise((res, rej) => db.query(sql, params, (e, r) => e ? rej(e) : res(r)));
+        new Promise((res, rej) =>
+            db.query(sql, params, (e, r) => e ? rej(e) : res(r))
+        );
 
     const nama_wa = user.pushname || user.nama_wa || 'User';
 
-    // ambil approval pending
-    const [approval] = await query(
-        `SELECT id, approver_wa, file_path FROM approvals WHERE user_id = ? AND status = 'pending' ORDER BY created_at DESC LIMIT 1`,
+    // ambil PDF terakhir
+    const [laporan] = await query(
+        `SELECT file_path FROM exports 
+         WHERE user_id=? ORDER BY created_at DESC LIMIT 1`,
         [user.id]
     );
-    if (!approval) return sendTyping(chat, 'Tidak ada laporan yang menunggu approval.');
 
-    // pastikan nomor WA valid
-    let approverWA = approval.approver_wa.replace(/@.*/, '') + '@c.us';
+    if (!laporan) {
+        return sendTyping(chat, 'Belum ada laporan untuk di-approve.');
+    }
 
-    // ambil info approver
-    const [approver] = await query(
-        `SELECT nama_lengkap FROM users WHERE wa_number = ? LIMIT 1`,
-        [approverWA]
+    // nomor atasan (STATIS / DB)
+    const approverWA = '62812xxxxxxx@c.us';
+
+    await query(
+        `INSERT INTO approvals
+         (user_id, approver_wa, file_path, ttd_user_at)
+         VALUES (?, ?, ?, NOW())`,
+        [user.id, approverWA, laporan.file_path]
     );
-    const approverName = approver?.nama_lengkap || 'Approver';
 
-    // cek file
-    if (!approval.file_path || !fs.existsSync(approval.file_path)) {
-        return sendTyping(chat, 'File laporan tidak ditemukan. Silakan export ulang.');
-    }
-    let media;
-    try { media = MessageMedia.fromFilePath(approval.file_path); }
-    catch { return sendTyping(chat, 'File laporan tidak bisa dibuka.'); }
+    const media = MessageMedia.fromFilePath(laporan.file_path);
+    const greeting = getGreeting();
 
-    // greeting
-    let greeting = '';
-    try { greeting = getGreeting() || ''; } catch {}
+    await chat.client.sendMessage(
+        approverWA,
+        `${greeting}, *${nama_wa}* meminta approval absensi berikut.\n\n` +
+        `Silakan diperiksa.\n\n` +
+        `Ketik:\n• approve\n• revisi`
+    );
 
-    // kirim pesan + file ke approver
-    try {
-        await chat.client.sendMessage(
-            approverWA,
-            `${greeting}\n\n*${nama_wa}* meminta approval absensi berikut.\nSilakan diperiksa.\n\nBalas dengan:\n• approve\n• revisi`
-        );
-        await chat.client.sendMessage(approverWA, media);
+    await chat.client.sendMessage(approverWA, media);
 
-        return sendTyping(chat, `Permintaan approval sudah dikirim ke *${approverName}*.`);
-    } catch (err) {
-        console.error('Gagal kirim approval:', err);
-        return sendTyping(chat, 'Terjadi kesalahan saat mengirim approval. Silakan coba lagi.');
-    }
+    return sendTyping(
+        chat,
+        `*${nama_wa}*, laporan sudah dikirim ke atasan untuk approval.`
+    );
 };
