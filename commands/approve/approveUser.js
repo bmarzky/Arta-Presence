@@ -25,32 +25,44 @@ module.exports = async function approveUser(chat, user, db) {
         return sendTyping(chat, 'Tidak ada laporan yang menunggu approval.');
     }
 
+    // pastikan nomor approver valid (@c.us)
+    let approverWA = approval.approver_wa || '';
+    if (!approverWA) {
+        console.error('approver_wa kosong di DB untuk approval id:', approval.id);
+        return sendTyping(chat, 'Nomor WA approver tidak valid. Silakan periksa database.');
+    }
+    approverWA = approverWA.replace(/@.*/, '') + '@c.us';
+    console.log('Approver WA:', approverWA);
+
     // ambil info approver agar bisa tampil nama
     const [approver] = await query(
         `SELECT nama_lengkap FROM users WHERE wa_number = ? LIMIT 1`,
-        [approval.approver_wa]
+        [approval.approver_wa.replace(/@.*/, '') + '@c.us']
     );
-
     const approverName = approver?.nama_lengkap || 'Atasan';
 
     // cek file PDF
     if (!approval.file_path || !fs.existsSync(approval.file_path)) {
+        console.error('File PDF tidak ditemukan:', approval.file_path);
         return sendTyping(chat, 'File laporan tidak ditemukan. Silakan export ulang.');
     }
-    const media = MessageMedia.fromFilePath(approval.file_path);
 
-    // pastikan greeting aman
+    let media;
+    try {
+        media = MessageMedia.fromFilePath(approval.file_path);
+    } catch (err) {
+        console.error('Gagal load file PDF:', err);
+        return sendTyping(chat, 'File laporan tidak dapat dibuka. Silakan export ulang.');
+    }
+
+    // greeting
     let greeting = '';
     try {
         const greetResult = getGreeting();
         greeting = typeof greetResult === 'string' ? greetResult : '';
-    } catch (err) {
+    } catch {
         greeting = '';
     }
-
-    // pastikan nomor WhatsApp approver valid
-    let approverWA = approval.approver_wa;
-    if (!approverWA.includes('@')) approverWA = approverWA + '@c.us';
 
     try {
         // 1️⃣ teks pertama: sapaan + info user
