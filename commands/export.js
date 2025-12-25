@@ -66,7 +66,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
         =============================== */
         if (dataBelumLengkap) {
 
-            if (!userDb.intro) {
+            if (!userDb.export_intro) {
                 await sendTyping(
                     chat,
                     `Maaf ${nama_wa}, kami belum mendapatkan data lengkap kamu untuk menyiapkan laporan absensi.`,
@@ -74,7 +74,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
                 );
 
                 await query(
-                    `UPDATE users SET intro=1 WHERE id=?`,
+                    `UPDATE users SET export_intro=1 WHERE id=?`,
                     [user.id]
                 );
             }
