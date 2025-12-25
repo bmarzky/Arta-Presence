@@ -3,7 +3,7 @@ const { MessageMedia } = require('whatsapp-web.js');
 const { sendTyping } = require('../../utils/sendTyping');
 const path = require('path');
 const fs = require('fs');
-const generatePDF = require('../utils/pdfGenerator');
+const generatePDF = require('../../utils/pdfGenerator');
 const moment = require('moment');
 
 module.exports = async function approveAtasan(chat, user, pesan, db) {
