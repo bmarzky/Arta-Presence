@@ -294,7 +294,7 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
 
     await sendTyping(
         chat,
-        `*${user.pushname || user.nama_lengkap}*, kamu bisa langsung approval dengan mengetik */approve*`
+        `*${nama_wa}*, kamu bisa langsung approval dengan mengetik */approve*`
     );
 
     return;
