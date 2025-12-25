@@ -32,7 +32,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     );
     if (!atasan) return sendTyping(chat, 'Data atasan tidak ditemukan di database.');
 
-    // path TTD
+    // path TTD atasan
     let ttdBase64 = '';
     const ttdPng = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.png`);
     const ttdJpg = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.jpg`);
@@ -71,7 +71,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             [approval.user_id, bulan + 1, tahun]
         );
 
-        // generate rows LMD
+        // generate rows
         const rows = [];
         for (let i = 1; i <= totalHari; i++) {
             const dateObj = moment(`${tahun}-${bulan + 1}-${i}`, 'YYYY-M-D');
@@ -102,7 +102,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             }
         }
 
-        // logo base64
+        // logo
         const logoPath = path.join(__dirname, `../../assets/${templateName.toLowerCase()}.png`);
         const logo = fs.existsSync(logoPath) ? fs.readFileSync(logoPath, 'base64') : '';
 
@@ -117,7 +117,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             .replaceAll('{{kelompok_kerja}}', 'Central Regional Operation')
             .replaceAll('{{periode}}', `${bulan + 1}-${tahun}`)
             .replaceAll('{{rows_absensi}}', rows.join(''))
-            .replaceAll('{{ttd_atasan}}', ttdBase64 ? `<img src="data:image/png;base64,${ttdBase64}" width="80"/>` : '')
+            .replaceAll('{{ttd_atasan}}', `<img src="data:image/png;base64,${ttdBase64}" width="80"/>`)
             .replaceAll('{{nama_atasan}}', atasan.nama_lengkap || '')
             .replaceAll('{{nik_atasan}}', atasan.nik || '');
 
@@ -137,7 +137,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                  file_path=?,
                  template_export=?
              WHERE id=?`,
-            [ttdBase64 ? outputPath : '', atasan.nama_lengkap, atasan.nik || '', outputPath, approval.template_export, approval.id]
+            [outputPath, atasan.nama_lengkap, atasan.nik || '', outputPath, approval.template_export, approval.id]
         );
 
         // kirim PDF ke user
