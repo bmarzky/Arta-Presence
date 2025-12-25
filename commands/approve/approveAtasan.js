@@ -1,5 +1,8 @@
+// approveAtasan.js
 const { MessageMedia } = require('whatsapp-web.js');
 const { sendTyping } = require('../../utils/sendTyping');
+const path = require('path');
+const fs = require('fs');
 
 module.exports = async function approveAtasan(chat, user, pesan, db) {
 
@@ -10,9 +13,9 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
     const text = pesan.toLowerCase().trim();
 
-    // cari approval pending milik atasan ini
+    // ambil approval pending terbaru milik atasan ini
     const [approval] = await query(
-        `SELECT a.*, u.wa_number
+        `SELECT a.*, u.wa_number as user_wa, u.nama_lengkap as user_nama, u.nik as user_nik, u.template_export
          FROM approvals a
          JOIN users u ON u.id = a.user_id
          WHERE a.approver_wa = ? AND a.status = 'pending'
@@ -23,6 +26,42 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
     if (!approval) return;
 
+    // ambil data atasan sendiri
+    const [atasan] = await query(
+        `SELECT * FROM users WHERE wa_number = ? LIMIT 1`,
+        [user.wa_number]
+    );
+
+    if (!atasan) return;
+
+    const ttdPath = path.join(__dirname, '../../ttd', `${user.id}.png`);
+
+    // jika atasan belum punya TTD
+    if (!fs.existsSync(ttdPath) && text !== 'kirim ttd') {
+        await chat.client.sendMessage(
+            user.wa_number,
+            'Kamu belum mengirim TTD untuk approve. Silakan kirim gambarnya sekarang (format PNG/JPG).'
+        );
+        return sendTyping(chat, 'Menunggu TTD atasan...');
+    }
+
+    /* =============================
+       TERIMA GAMBAR TTD
+    ============================= */
+    if (chat.hasMedia && !fs.existsSync(ttdPath)) {
+        const media = await chat.downloadMedia();
+        if (!media || !media.data) return;
+
+        const buffer = Buffer.from(media.data, 'base64');
+        fs.writeFileSync(ttdPath, buffer);
+
+        await chat.client.sendMessage(
+            user.wa_number,
+            'TTD berhasil diterima. Sekarang kamu bisa approve laporan.'
+        );
+        return sendTyping(chat, 'TTD tersimpan.');
+    }
+
     /* =============================
        APPROVE
     ============================= */
@@ -30,21 +69,25 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
         await query(
             `UPDATE approvals
-             SET status = 'approved',
-                 ttd_atasan_at = NOW()
-             WHERE id = ?`,
-            [approval.id]
+            SET status='approved',
+                ttd_atasan_at=NOW(),
+                ttd_atasan=?,
+                nama_atasan=?,
+                nik_atasan=?
+            WHERE id=?`,
+            [ttdPath, atasan.nama_lengkap, atasan.nik, approval.id]
         );
 
+        // generate media PDF
         const media = MessageMedia.fromFilePath(approval.file_path);
 
+        // kirim ke user
         await chat.client.sendMessage(
-            approval.wa_number,
-            'Laporan kamu telah *DISETUJUI* oleh atasan.'
+            approval.user_wa,
+            `Laporan kamu telah *DISETUJUI* oleh atasan.`
         );
-
         await chat.client.sendMessage(
-            approval.wa_number,
+            approval.user_wa,
             media
         );
 
@@ -58,13 +101,19 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
         await query(
             `UPDATE approvals
-             SET status = 'revised'
-             WHERE id = ?`,
+             SET status='revised'
+             WHERE id=?`,
             [approval.id]
         );
 
+        await query(
+            `UPDATE users SET step_input='alasan_revisi'
+             WHERE id=?`,
+            [approval.user_id]
+        );
+
         await chat.client.sendMessage(
-            approval.wa_number,
+            approval.user_wa,
             'Laporan kamu *PERLU REVISI*. Silakan perbaiki dan export ulang.'
         );
 
