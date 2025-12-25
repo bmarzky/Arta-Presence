@@ -332,7 +332,7 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         return;
     }
 
-    // save to approvals
+    // save to approvals dengan semua field lengkap
     await query(
         `INSERT INTO approvals
         (user_id, approver_wa, file_path, status, ttd_user_at, nama_atasan, nik_atasan)
@@ -341,10 +341,11 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
             user.id,
             approver.wa_number,
             output,
-            approver.nama_lengkap,
-            approver.nik
+            approver.nama_lengkap || '',  // fallback jika kosong
+            approver.nik || ''           // fallback jika kosong
         ]
     );
+
 
     /* =====================
        KIRIM KE USER

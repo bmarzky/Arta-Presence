@@ -16,11 +16,11 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     // ambil approval pending terbaru untuk atasan ini
     const [approval] = await query(
         `SELECT a.*, u.wa_number AS user_wa, u.nama_lengkap AS user_nama, u.nik AS user_nik
-         FROM approvals a
-         JOIN users u ON u.id = a.user_id
-         WHERE a.approver_wa = ? AND a.status = 'pending'
-         ORDER BY a.created_at DESC
-         LIMIT 1`,
+        FROM approvals a
+        JOIN users u ON u.id = a.user_id
+        WHERE a.approver_wa = ? AND a.status = 'pending'
+        ORDER BY a.created_at DESC
+        LIMIT 1`,
         [user.wa_number]
     );
 
@@ -29,21 +29,10 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         return;
     }
 
-    // ambil data atasan dari database
-    const [atasan] = await query(
-        `SELECT nama_lengkap, nik, wa_number FROM users WHERE wa_number = ? LIMIT 1`,
-        [approval.approver_wa]
-    );
-
-    if (!atasan) {
-        await sendTyping(chat, 'Data atasan tidak ditemukan di database.');
-        return;
-    }
-
     // path TTD berdasarkan wa_number atasan, cek PNG dan JPG
     let ttdPath = '';
-    const ttdPng = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.png`);
-    const ttdJpg = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.jpg`);
+    const ttdPng = path.join(__dirname, '../../assets/ttd', `${user.wa_number}.png`);
+    const ttdJpg = path.join(__dirname, '../../assets/ttd', `${user.wa_number}.jpg`);
 
     if (fs.existsSync(ttdPng)) ttdPath = ttdPng;
     else if (fs.existsSync(ttdJpg)) ttdPath = ttdJpg;
@@ -54,19 +43,24 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     }
 
     /* =============================
-       APPROVE
+    APPROVE
     ============================= */
     if (text === 'approve') {
 
         await query(
             `UPDATE approvals
-             SET status='approved',
-                 ttd_atasan_at=NOW(),
-                 ttd_atasan=?,
-                 nama_atasan=?,
-                 nik_atasan=?
-             WHERE id=?`,
-            [ttdPath, atasan.nama_lengkap, atasan.nik || '', approval.id]
+            SET status='approved',
+                ttd_atasan_at=NOW(),
+                ttd_atasan=?,
+                nama_atasan=?,
+                nik_atasan=?
+            WHERE id=?`,
+            [
+                ttdPath,
+                approval.nama_atasan || user.pushname || '',
+                approval.nik_atasan || '',
+                approval.id
+            ]
         );
 
         // kirim PDF ke user
