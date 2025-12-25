@@ -180,6 +180,8 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
 ====================================================== */
 async function generatePDFandSend(chat, user, db, paramBulan) {
 
+    const nama_wa = user.pushname || user.nama_wa || 'Kak';
+    
     if (!user.nama_lengkap || !user.jabatan || !user.nik || !user.template_export) {
         await sendTyping(
             chat,
