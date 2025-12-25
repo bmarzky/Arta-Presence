@@ -14,7 +14,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
     // ambil approval pending terbaru untuk atasan ini
     const [approval] = await query(
-        `SELECT a.*, u.wa_number AS user_wa, u.nama_lengkap AS user_nama, u.nik AS user_nik, u.template_export
+        `SELECT a.*, u.wa_number AS user_wa, u.nama_lengkap AS user_nama, u.nik AS user_nik
          FROM approvals a
          JOIN users u ON u.id = a.user_id
          WHERE a.approver_wa = ? AND a.status = 'pending'
@@ -28,10 +28,10 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         return;
     }
 
-    // ambil data atasan lengkap dari database
+    // ambil data atasan dari approver_wa
     const [atasan] = await query(
-        `SELECT * FROM users WHERE wa_number = ? LIMIT 1`,
-        [user.wa_number]
+        `SELECT nama_lengkap, nik, wa_number FROM users WHERE wa_number = ? LIMIT 1`,
+        [approval.approver_wa] // <--- penting
     );
 
     if (!atasan) {
@@ -52,7 +52,6 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     ============================= */
     if (text === 'approve') {
 
-        // update approvals dengan semua data
         await query(
             `UPDATE approvals
              SET status='approved',
@@ -95,6 +94,5 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         return sendTyping(chat, 'Permintaan revisi telah dikirim.');
     }
 
-    // fallback jika pesan tidak dikenali
     await sendTyping(chat, `Hmm… aku belum paham pesan kamu. Coba ketik */help* untuk melihat perintah.`);
 };
