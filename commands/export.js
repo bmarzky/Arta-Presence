@@ -30,7 +30,6 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
     const [dbUser] = await query(`SELECT * FROM users WHERE id=?`, [user.id]);
     if (!dbUser) return;
 
-    // gabungkan data WA + DB
     user = { ...user, ...dbUser };
 
     const nama_wa = user.pushname || user.nama_wa || 'Kak';
@@ -42,52 +41,52 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
     ============================= */
     if (text === '/export') {
 
-        await query(
-            `UPDATE users SET step_input=NULL, template_export=NULL WHERE id=?`,
-            [user.id]
-        );
-
-        const [userDb] = await query(
-            `SELECT nama_lengkap, jabatan, nik, export_intro
-             FROM users WHERE id=?`,
-            [user.id]
-        );
-
-        const dataBelumLengkap =
-            !userDb.nama_lengkap || !userDb.jabatan || !userDb.nik;
-
-        /* ===============================
-           DATA BELUM LENGKAP
-        =============================== */
-        if (dataBelumLengkap) {
-
-            if (!userDb.export_intro) {
-                await sendTyping(
-                    chat,
-                    `Maaf *${nama_wa}*, kami belum mendapatkan data lengkap kamu untuk menyiapkan laporan absensi.`,
-                    800
-                );
-
-                await query(
-                    `UPDATE users SET export_intro=1 WHERE id=?`,
-                    [user.id]
-                );
-            }
-
+        /* === VALIDASI DATA PROFIL === */
+        if (!user.nama_lengkap) {
+            await sendTyping(
+                chat,
+                `Maaf *${nama_wa}*, kami belum memiliki *nama lengkap* kamu.`,
+                800
+            );
             await query(
                 `UPDATE users SET step_input='confirm_name' WHERE id=?`,
                 [user.id]
             );
-
             return sendTyping(
                 chat,
                 `Apakah benar nama lengkap kamu *${nama_wa}*? (iya/tidak)`
             );
         }
 
-        /* ===============================
-           DATA LENGKAP
-        =============================== */
+        if (!user.jabatan) {
+            await query(
+                `UPDATE users SET step_input='jabatan' WHERE id=?`,
+                [user.id]
+            );
+            return sendTyping(chat, 'Silakan isi *Jabatan* kamu:');
+        }
+
+        if (!user.nik) {
+            await query(
+                `UPDATE users SET step_input='nik' WHERE id=?`,
+                [user.id]
+            );
+            return sendTyping(chat, 'Silakan isi *NIK* kamu:');
+        }
+
+        /* === TEMPLATE BELUM DIPILIH === */
+        if (!user.template_export) {
+            await query(
+                `UPDATE users SET step_input='choose_template' WHERE id=?`,
+                [user.id]
+            );
+            return sendTyping(
+                chat,
+                `Mau pakai template apa?\n\n1. KSPS\n2. LMD\n\nBalas *ksps* atau *lmd*`
+            );
+        }
+
+        /* === SEMUA VALID === */
         await sendTyping(chat, 'Sedang membuat laporan PDF...', 800);
         return generatePDFandSend(chat, user, db, paramBulan);
     }
@@ -181,19 +180,10 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
 ====================================================== */
 async function generatePDFandSend(chat, user, db, paramBulan) {
 
-    /* ===== VALIDASI FINAL ===== */
-    if (!user.nama_lengkap || !user.jabatan || !user.nik) {
+    if (!user.nama_lengkap || !user.jabatan || !user.nik || !user.template_export) {
         await sendTyping(
             chat,
-            'Maaf, data profil kamu belum lengkap. Silakan gunakan */export* kembali.'
-        );
-        return;
-    }
-
-    if (!user.template_export) {
-        await sendTyping(
-            chat,
-            'Maaf, template laporan belum dipilih. Silakan gunakan */export* kembali.'
+            'Maaf, data belum lengkap. Silakan gunakan */export* kembali.'
         );
         return;
     }
