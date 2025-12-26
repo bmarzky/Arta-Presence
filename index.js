@@ -63,20 +63,26 @@ function startWhatsAppBot() {
   // MESSAGE HANDLER
   // =====================
   client.on('message', async msg => {
-    try {
-      const chat = await msg.getChat();
-      const wa_number = msg.from.replace('@c.us', '');
-      const nama = msg._data?.notifyName || 'User';
-      const pesan = msg.body?.trim() || '';
+      try {
+          const chat = await msg.getChat();
+          const wa_number = msg.from.replace('@c.us', '');
+          const nama = msg._data?.notifyName || 'User';
+          const pesan = msg.body?.trim() || '';
 
-      // HANDLE COMMANDS
-      if (commands.message) {
-        await commands.message(chat, wa_number, nama, db, pesan);
+          // Ambil media jika ada
+          let messageMedia = null;
+          if (msg.hasMedia) {
+              messageMedia = await msg.downloadMedia();
+          }
+
+          // HANDLE COMMANDS
+          if (commands.message) {
+              await commands.message(chat, wa_number, nama, db, pesan, messageMedia);
+          }
+      } catch (err) {
+          console.error('Message handling error:', err);
       }
-    } catch (err) {
-      console.error('Message handling error:', err);
-    }
   });
-
+  
   client.initialize();
 }
