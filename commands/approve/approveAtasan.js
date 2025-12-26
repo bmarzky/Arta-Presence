@@ -176,20 +176,18 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                     moment(a.tanggal).format('YYYY-MM-DD') === d.format('YYYY-MM-DD')
                 );
 
-                // Cek hari Sabtu/Minggu dari tanggal
                 const dayOfWeek = d.day(); // 0 = Minggu, 6 = Sabtu
                 let rowColor = '';
                 if (dayOfWeek === 0 || dayOfWeek === 6) { // weekend
-                    if (templateHTML === 'KSPS') rowColor = 'background-color:#f0f0f0;';
-                    else if (templateHTML === 'LMD') rowColor = 'background-color:#f15a5a;';
+                    if (templateHTML === 'LMD') rowColor = 'background-color:#f15a5a;';
                 }
-
-                // Bold untuk deskripsi libur jika weekend
-                const deskripsi = r?.deskripsi?.toUpperCase() || '-';
-                const deskripsiHTML = (dayOfWeek === 0 || dayOfWeek === 6) ? `<b>${deskripsi}</b>` : deskripsi;
 
                 if (templateHTML === 'KSPS') {
                     // KSPS: kolom hari tidak ada
+                    const deskripsiHTML = (dayOfWeek === 0 || dayOfWeek === 6)
+                        ? '<b>LIBUR</b>'
+                        : r?.deskripsi || '-';
+
                     rows.push(`
                         <tr style="${rowColor}">
                             <td>${d.format('DD/MM/YYYY')}</td>
@@ -202,6 +200,10 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 } else {
                     // LMD: kolom hari tetap ada
                     const hari = d.locale('id').format('dddd');
+                    const deskripsiHTML = (dayOfWeek === 0 || dayOfWeek === 6)
+                        ? `<b>${(r?.deskripsi || '').toUpperCase()}</b>`
+                        : r?.deskripsi || '-';
+
                     rows.push(`
                         <tr style="${rowColor}">
                             <td>${d.format('DD/MM/YYYY')}</td>
