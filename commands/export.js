@@ -223,7 +223,7 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         const template = fs.readFileSync(templatePath, 'utf8');
 
         const html = template
-            .replaceAll('{{logo}}', logoBase64)
+            .replaceAll('{{logo-path}}', logoBase64)
             .replaceAll('{{nama}}', user.nama_lengkap)
             .replaceAll('{{jabatan}}', user.jabatan)
             .replaceAll('{{nik}}', user.nik)
