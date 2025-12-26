@@ -49,7 +49,7 @@ module.exports = async function approveUser(chat, user, db) {
         else if (fs.existsSync(ttdJpg)) ttdFile = ttdJpg;
 
         if (!ttdFile)
-            return sendTyping(chat, `Kamu belum mengunggah TTD. Silakan kirim gambar PNG/JPG dan ketik */approve* lagi.`);
+            return sendTyping(chat, `Kamu belum mengiim tanda tangan.`);
 
         // generate ulang PDF dari DB + template
         const updatedFilePath = await generatePDFwithTTD(user, db, ttdFile);
@@ -146,7 +146,7 @@ async function generatePDFwithTTD(user, db, ttdFile) {
     // export PDF
     const exportsDir = path.join(__dirname, '../../exports');
     if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
-    const output = path.join(exportsDir, `ABSENSI-${user.nama_lengkap}-${user.template_export}-TTD.pdf`);
+    const output = path.join(exportsDir, `ABSENSI-${user.nama_lengkap}-${user.template_export}.pdf`);
 
     await generatePDF(html, output);
     return output;
