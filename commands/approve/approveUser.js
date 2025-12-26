@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 
 module.exports = async function approveUser(chat, user, db) {
-    const query = (sql, params) =>
+    const query = (sql, params = []) =>
         new Promise((res, rej) =>
             db.query(sql, params, (e, r) => (e ? rej(e) : res(r)))
         );
@@ -41,19 +41,32 @@ module.exports = async function approveUser(chat, user, db) {
         }
 
         /* =====================================================
-           SUDAH FINAL (APPROVED / REVISED)
+           JIKA REVISI → WAJIB EXPORT ULANG
+        ===================================================== */
+        if (approval.status === 'revisi') {
+            return sendTyping(
+                chat,
+                '❌ Laporan kamu *perlu revisi*.\nSilakan perbaiki lalu */export* ulang.'
+            );
+        }
+
+        /* =====================================================
+           SUDAH APPROVED
         ===================================================== */
         if (approval.status === 'approved') {
             return sendTyping(
                 chat,
-                '❌ Laporan kamu sudah *DISETUJUI*. Tidak bisa mengajukan approval lagi.'
+                '❌ Laporan kamu sudah *DISETUJUI*.\nTidak bisa diajukan kembali.'
             );
         }
 
-        if (approval.status === 'revised') {
+        /* =====================================================
+           STATUS HARUS PENDING
+        ===================================================== */
+        if (approval.status !== 'pending') {
             return sendTyping(
                 chat,
-                '❌ Laporan kamu sudah *DIREVISI*. Silakan perbaiki dan export ulang.'
+                '❌ Laporan tidak dalam status pending approval.'
             );
         }
 
@@ -76,16 +89,6 @@ module.exports = async function approveUser(chat, user, db) {
         }
 
         /* =====================================================
-           STATUS HARUS PENDING
-        ===================================================== */
-        if (approval.status !== 'pending') {
-            return sendTyping(
-                chat,
-                '❌ Laporan tidak dalam status pending approval.'
-            );
-        }
-
-        /* =====================================================
            KIRIM KE ATASAN
         ===================================================== */
         let approverWA = approval.approver_wa;
@@ -102,9 +105,12 @@ module.exports = async function approveUser(chat, user, db) {
         await chat.client.sendMessage(
             approverWA,
             `${greeting}\n\n` +
-            `*${nama_user}* meminta *approval laporan absensi*.\n` +
-            `Silakan diperiksa oleh *${nama_atasan}*.\n\n` +
-            `Ketik:\n• approve\n• revisi`
+            `📌 *Permintaan Approval Laporan*\n\n` +
+            `Dari: *${nama_user}*\n` +
+            `Mohon diperiksa oleh *${nama_atasan}*.\n\n` +
+            `Balas dengan:\n` +
+            `• approve\n` +
+            `• revisi`
         );
 
         await chat.client.sendMessage(approverWA, media);
