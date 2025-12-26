@@ -56,23 +56,19 @@ module.exports = {
             }
 
             // CEK JIKA USER MENGIRIM MEDIA
-            client.on('message', async (msg) => {
-                const chat = await msg.getChat();
-
-                if (msg.hasMedia) {
-                    const media = await msg.downloadMedia();
-                    if (media.mimetype === 'image/png') {
-                        const filename = `ttd-${msg.from}.png`;
-                        const filePath = path.join(ttdFolder, filename);
-                        fs.writeFileSync(filePath, media.data, { encoding: 'base64' });
-                        await chat.sendMessage('TTD berhasil diterima dan disimpan!');
-                    } else {
-                        await chat.sendMessage('Format TTD harus PNG.');
-                    }
-                } else {
-                    await chat.sendMessage('Kamu belum mengunggah TTD. Silakan kirim gambar TTD dalam format PNG.');
+            if (messageMedia && messageMedia.mimetype === 'image/png') {
+                const filename = `${wa_number}.png`;
+                const filePath = path.join(ttdFolder, filename);
+                fs.writeFileSync(filePath, messageMedia.data, { encoding: 'base64' });
+                await chat.sendMessage('TTD berhasil diterima dan disimpan!');
+                // jika user menunggu TTD untuk approve, langsung jalankan approve
+                if (waitingTTD[wa_number]) {
+                    const waitingUser = waitingTTD[wa_number].user;
+                    delete waitingTTD[wa_number];
+                    return await approveUser(chat, waitingUser, db);
                 }
-            });
+                return; // selesai
+            }
 
             // =========================
             // INTRO
