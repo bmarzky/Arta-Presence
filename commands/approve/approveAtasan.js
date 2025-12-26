@@ -136,13 +136,17 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             if (fs.existsSync(ttdPng)) ttdAtasanBase64 = fs.readFileSync(ttdPng, 'base64');
             else if (fs.existsSync(ttdJpg)) ttdAtasanBase64 = fs.readFileSync(ttdJpg, 'base64');
 
-            // Jika TTD atasan belum ada, minta kirim gambar
-            if (!ttdAtasanBase64) {
+            // jika TTD belum ada dan step_input belum 'ttd_atasan', minta kirim TTD
+            if (!ttdAtasanBase64 && approval.step_input !== 'ttd_atasan') {
                 await sendTyping(chat, 'Silakan kirim foto TTD kamu untuk approve laporan ini.');
-
-                // Tandai approval agar listener tahu ini menunggu TTD atasan
                 await query(`UPDATE approvals SET step_input='ttd_atasan' WHERE id=?`, [approval.id]);
                 return;
+            }
+
+            // jika TTD sudah ada dan step_input='ttd_atasan', langsung lanjut approve
+            if (ttdAtasanBase64 && approval.step_input === 'ttd_atasan') {
+                await query(`UPDATE approvals SET step_input=NULL WHERE id=?`, [approval.id]);
+                // lanjut ke proses approve (kode generate PDF dan kirim pesan user)
             }
 
             /* ===== TTD USER ===== */
