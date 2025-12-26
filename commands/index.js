@@ -62,16 +62,16 @@ module.exports = {
 
                     await chat.sendMessage('TTD berhasil tersimpan.');
 
-                    // jika user sedang menunggu approval
+                    // jika user sedang menunggu approval karena pernah ketik /approve
                     if (waitingTTD[wa_number]) {
                         await approveUser(chat, waitingTTD[wa_number].user, db);
                         delete waitingTTD[wa_number];
                     }
 
-                    return; // jangan lanjut ke perintah lain
+                    return; // stop handler agar tidak lanjut ke /approve atau default
                 }
             }
-
+            
             // =========================
             // INTRO
             // =========================
@@ -137,7 +137,7 @@ module.exports = {
                         'Kamu belum mengunggah TTD. Silakan kirim gambar TTD dalam format PNG.'
                     );
 
-                    waitingTTD[wa_number] = { user }; // simpan state
+                    waitingTTD[wa_number] = { user }; // simpan state untuk menunggu TTD
                     return;
                 }
 
