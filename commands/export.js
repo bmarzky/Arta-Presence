@@ -42,6 +42,18 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
            ❗ TIDAK ADA BLOKIR PENDING
         ============================= */
         if (text === '/export') {
+            
+        const [pending] = await query(
+            `SELECT id FROM approvals WHERE user_id=? AND status='pending' LIMIT 1`,
+            [user.id]
+        );
+
+        if (pending) {
+            return sendTyping(
+                chat,
+                'Masih ada laporan *menunggu approval*. Tunggu disetujui atau direvisi.'
+            );
+        }
 
             if (!user.nama_lengkap) {
                 await query(`UPDATE users SET step_input='confirm_name' WHERE id=?`, [user.id]);
@@ -227,7 +239,14 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         const exportsDir = path.join(__dirname, '../exports');
         if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
 
-        const output = path.join(exportsDir, `ABSENSI-${user.nama_lengkap}-${templateHTML}.pdf`);
+        // ambil dari user / approval / default
+        const templateRaw = user.template_export || 'LMD';
+        const templateHTML = templateRaw.toUpperCase();
+
+        const output = path.join(
+        exportsDir,
+        `ABSENSI-${user.nama_lengkap}-${templateHTML}.pdf`
+        );
         await generatePDF(html, output);
 
         const [approver] = await query(
