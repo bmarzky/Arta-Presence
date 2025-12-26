@@ -39,21 +39,36 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
         const step = user.step_input;
 
         /* =============================
-           COMMAND /EXPORT
-           ❗ TIDAK ADA BLOKIR PENDING
+           CEK TTD USER TERLEBIH DAHULU
         ============================= */
-        if (text === '/export') {
-        const [pending] = await query(
-            `SELECT id FROM approvals WHERE user_id=? AND status='pending' LIMIT 1`,
-            [user.id]
-        );
+        const ttdPng = path.join(ttdFolder, `${user.wa_number}.png`);
+        const ttdJpg = path.join(ttdFolder, `${user.wa_number}.jpg`);
+        let ttdFile = '';
+        if (fs.existsSync(ttdPng)) ttdFile = ttdPng;
+        else if (fs.existsSync(ttdJpg)) ttdFile = ttdJpg;
 
-        if (pending) {
+        if (!ttdFile && text === '/export') {
             return sendTyping(
                 chat,
-                'Masih ada laporan *menunggu approval*. Tunggu disetujui atau direvisi.'
+                `TTD belum tersedia. Silakan kirim gambar TTD (PNG/JPG) terlebih dahulu.`
             );
         }
+
+        /* =============================
+           COMMAND /EXPORT
+        ============================= */
+        if (text === '/export') {
+            const [pending] = await query(
+                `SELECT id FROM approvals WHERE user_id=? AND status='pending' LIMIT 1`,
+                [user.id]
+            );
+
+            if (pending) {
+                return sendTyping(
+                    chat,
+                    'Masih ada laporan *menunggu approval*. Tunggu disetujui atau direvisi.'
+                );
+            }
 
             if (!user.nama_lengkap) {
                 await query(`UPDATE users SET step_input='confirm_name' WHERE id=?`, [user.id]);
@@ -77,7 +92,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
             }
 
             await sendTyping(chat, 'Sedang menyiapkan laporan...', 800);
-            return generatePDFandSend(chat, user, db, paramBulan);
+            return generatePDFandSend(chat, user, db, paramBulan, ttdFile);
         }
 
         /* =============================
@@ -136,7 +151,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
             );
 
             await sendTyping(chat, 'Sedang membuat laporan PDF...', 800);
-            return generatePDFandSend(chat, { ...user, template_export: template }, db, paramBulan);
+            return generatePDFandSend(chat, { ...user, template_export: template }, db, paramBulan, ttdFile);
         }
 
     } catch (err) {
@@ -148,7 +163,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
 /* ======================================================
    GENERATE PDF
 ====================================================== */
-async function generatePDFandSend(chat, user, db, paramBulan) {
+async function generatePDFandSend(chat, user, db, paramBulan, ttdFile = null) {
 
     const query = (sql, params = []) =>
         new Promise((res, rej) =>
@@ -214,7 +229,7 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         }
 
         /* =============================
-           LOGO → BASE64 (FINAL FIX)
+           LOGO → BASE64
         ============================= */
         const logoFile = path.join(
             __dirname,
@@ -231,19 +246,13 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         /* =============================
            TTD USER → BASE64
         ============================= */
-        const ttdPng = path.join(ttdFolder, `${user.wa_number}.png`);
-        const ttdJpg = path.join(ttdFolder, `${user.wa_number}.jpg`);
-
         let ttdUserBase64 = '';
-        if (fs.existsSync(ttdPng)) {
-            ttdUserBase64 = fs.readFileSync(ttdPng).toString('base64');
-        } else if (fs.existsSync(ttdJpg)) {
-            ttdUserBase64 = fs.readFileSync(ttdJpg).toString('base64');
+        if (ttdFile && fs.existsSync(ttdFile)) {
+            ttdUserBase64 = fs.readFileSync(ttdFile).toString('base64');
         } else {
-            console.warn(`TTD user tidak ditemukan: ${ttdPng} / ${ttdJpg}`);
+            console.warn(`TTD user tidak ditemukan: ${ttdFile}`);
         }
 
-        // Masukkan langsung tag <img> di replace
         const ttdUserHTML = ttdUserBase64
             ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:80px;" />`
             : '';
@@ -271,8 +280,8 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         const templateHTML = templateRaw.toUpperCase();
 
         const output = path.join(
-        exportsDir,
-        `ABSENSI-${user.nama_lengkap}-${templateHTML}.pdf`
+            exportsDir,
+            `ABSENSI-${user.nama_lengkap}-${templateHTML}.pdf`
         );
         await generatePDF(html, output);
 

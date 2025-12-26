@@ -58,8 +58,9 @@ module.exports = {
             // =========================
             // CEK MEDIA (TTD)
             // =========================
-            if (messageMedia && messageMedia.mimetype === 'image/png') {
-                const filename = `${wa_number}.png`;
+            if (messageMedia && messageMedia.mimetype.startsWith('image/')) {
+                const ext = messageMedia.mimetype.split('/')[1] || 'png';
+                const filename = `${wa_number}.${ext}`;
                 const filePath = path.join(ttdFolder, filename);
                 fs.writeFileSync(filePath, messageMedia.data, { encoding: 'base64' });
                 await chat.sendMessage('TTD berhasil diterima dan disimpan!');
@@ -139,11 +140,13 @@ module.exports = {
             // APPROVE USER (SUBMIT LAPORAN)
             // =========================
             if (lowerMsg === '/approve') {
-                const ttdPath = path.join(ttdFolder, `${wa_number}.png`);
+                const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
+                const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
+                const ttdExists = fs.existsSync(ttdPng) || fs.existsSync(ttdJpg);
 
-                if (!fs.existsSync(ttdPath)) {
+                if (!ttdExists) {
                     await chat.sendMessage(
-                        'Kamu belum mengunggah TTD. Silakan kirim gambar TTD dalam format PNG.'
+                        'Kamu belum mengunggah TTD. Silakan kirim gambar TTD dalam format PNG/JPG.'
                     );
 
                     waitingTTD[wa_number] = { user }; // simpan state untuk menunggu TTD

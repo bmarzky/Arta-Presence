@@ -24,13 +24,18 @@ module.exports = async function approveUser(chat, user, db) {
 
     try {
         /* =====================================================
-           CEK TTD USER
+           CEK TTD USER (PNG / JPG)
         ===================================================== */
-        const ttdPath = path.join(ttdFolder, `${wa_number}.png`);
-        if (!fs.existsSync(ttdPath)) {
+        const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
+        const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
+        let ttdExists = false;
+        if (fs.existsSync(ttdPng)) ttdExists = true;
+        else if (fs.existsSync(ttdJpg)) ttdExists = true;
+
+        if (!ttdExists) {
             await sendTyping(
                 chat,
-                `Kamu belum mengunggah TTD. Silakan kirim gambar TTD dalam format PNG.\n` +
+                `Kamu belum mengunggah TTD. Silakan kirim gambar TTD dalam format PNG atau JPG.\n` +
                 `Setelah dikirim, laporan akan otomatis diajukan.`
             );
             return; // berhenti dulu sampai user kirim TTD
@@ -49,7 +54,7 @@ module.exports = async function approveUser(chat, user, db) {
         );
 
         /* =====================================================
-           BELUM PERNAH EXPORT
+           CEK STATUS APPROVAL
         ===================================================== */
         if (!approval) {
             return sendTyping(
@@ -58,9 +63,6 @@ module.exports = async function approveUser(chat, user, db) {
             );
         }
 
-        /* =====================================================
-           JIKA REVISED → WAJIB EXPORT ULANG
-        ===================================================== */
         if (approval.status === 'revised') {
             return sendTyping(
                 chat,
@@ -68,9 +70,6 @@ module.exports = async function approveUser(chat, user, db) {
             );
         }
 
-        /* =====================================================
-           SUDAH APPROVED
-        ===================================================== */
         if (approval.status === 'approved') {
             return sendTyping(
                 chat,
@@ -78,9 +77,6 @@ module.exports = async function approveUser(chat, user, db) {
             );
         }
 
-        /* =====================================================
-           STATUS HARUS PENDING
-        ===================================================== */
         if (approval.status !== 'pending') {
             return sendTyping(
                 chat,
@@ -89,15 +85,8 @@ module.exports = async function approveUser(chat, user, db) {
         }
 
         /* =====================================================
-           FILE EXPORT WAJIB ADA
+           CEK FILE EXPORT
         ===================================================== */
-        if (!approval.file_path) {
-            return sendTyping(
-                chat,
-                'Laporan belum di-export.\nSilakan ketik */export* terlebih dahulu.'
-            );
-        }
-
         const filePath = path.resolve(approval.file_path);
         if (!fs.existsSync(filePath)) {
             return sendTyping(
@@ -110,11 +99,8 @@ module.exports = async function approveUser(chat, user, db) {
            KIRIM KE ATASAN
         ===================================================== */
         let approverWA = approval.approver_wa;
-        if (!approverWA)
-            return sendTyping(chat, 'Nomor approver belum disetel.');
-
-        if (!approverWA.includes('@'))
-            approverWA += '@c.us';
+        if (!approverWA) return sendTyping(chat, 'Nomor approver belum disetel.');
+        if (!approverWA.includes('@')) approverWA += '@c.us';
 
         const media = MessageMedia.fromFilePath(filePath);
         const greeting = getGreeting() || '';
