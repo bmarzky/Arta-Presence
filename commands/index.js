@@ -76,7 +76,7 @@ module.exports = {
                 if (waitingTTD[wa_number]?.atasan) {
                     const [dbAtasan] = await query(`SELECT * FROM users WHERE wa_number=?`, [wa_number]);
                     delete waitingTTD[wa_number];
-                    // langsung jalankan approveAtasan, jangan minta ketik approve lagi
+                    // langsung jalankan approveAtasan tanpa harus ketik approve lagi
                     return await approveAtasan(chat, dbAtasan, 'approve', db);
                 }
 
@@ -191,7 +191,7 @@ module.exports = {
                     if (approval.status !== 'pending') {
                         return sendTyping(chat, 'Laporan mungkin sedang direvisi, silahkan tunggu dikirim kembali.');
                     }
-                    // jalankan revisi
+                    // jalankan revisi langsung tanpa TTD
                     return approveAtasan(chat, user, pesan, db);
                 }
 
@@ -199,7 +199,8 @@ module.exports = {
                     if (approval.status === 'revised') {
                         return sendTyping(chat, 'Laporan ini sudah direvisi.');
                     }
-                    // cek TTD dan jalankan approve
+
+                    // cek TTD atasan
                     const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
                     const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
                     const ttdExists = fs.existsSync(ttdPng) || fs.existsSync(ttdJpg);
@@ -207,9 +208,11 @@ module.exports = {
                     if (!ttdExists && approval.step_input !== 'ttd_atasan') {
                         await sendTyping(chat, 'Silakan kirim tanda tangan untuk approve laporan ini.');
                         await query(`UPDATE approvals SET step_input='ttd_atasan' WHERE id=?`, [approval.id]);
+                        waitingTTD[wa_number] = { atasan: true }; // simpan state menunggu TTD
                         return;
                     }
 
+                    // langsung approve jika TTD sudah ada
                     return approveAtasan(chat, user, pesan, db);
                 }
             }
