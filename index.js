@@ -75,7 +75,7 @@ function startWhatsAppBot() {
               messageMedia = await msg.downloadMedia();
           }
 
-          // HANDLE COMMANDS
+          // Panggil module message dengan 6 parameter
           if (commands.message) {
               await commands.message(chat, wa_number, nama, db, pesan, messageMedia);
           }
@@ -83,6 +83,7 @@ function startWhatsAppBot() {
           console.error('Message handling error:', err);
       }
   });
-  
+
+
   client.initialize();
 }
