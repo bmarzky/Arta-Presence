@@ -169,7 +169,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 [approval.user_id, bulan + 1, tahun]
             );
 
-            // Tentukan periode untuk KSPS
+            // Tentukan periode sesuai template
             let periodeStr = '';
             if (templateHTML === 'KSPS') {
                 const firstDay = moment(`${tahun}-${bulan + 1}-01`);
@@ -188,15 +188,12 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
                 const dayOfWeek = d.day(); // 0 = Minggu, 6 = Sabtu
                 let rowColor = '';
-                if (dayOfWeek === 0 || dayOfWeek === 6) { // weekend
-                    if (templateHTML === 'LMD') rowColor = 'background-color:#f15a5a;';
+                if (dayOfWeek === 0 || dayOfWeek === 6) {
+                    rowColor = templateHTML === 'KSPS' ? 'background-color:#f0f0f0;' : 'background-color:#f15a5a;';
                 }
 
                 if (templateHTML === 'KSPS') {
-                    const deskripsiHTML = (dayOfWeek === 0 || dayOfWeek === 6)
-                        ? '<b>LIBUR</b>'
-                        : r?.deskripsi || '-';
-
+                    const deskripsiHTML = (dayOfWeek === 0 || dayOfWeek === 6) ? '<b>LIBUR</b>' : r?.deskripsi || '-';
                     rows.push(`
                         <tr style="${rowColor}">
                             <td>${d.format('DD/MM/YYYY')}</td>
@@ -207,12 +204,9 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                         </tr>
                     `);
                 } else {
-                    // LMD: hapus kolom disetujui
+                    // LMD
                     const hari = d.locale('id').format('dddd');
-                    const deskripsiHTML = (dayOfWeek === 0 || dayOfWeek === 6)
-                        ? `<b>${(r?.deskripsi || '').toUpperCase()}</b>`
-                        : r?.deskripsi || '-';
-
+                    const deskripsiHTML = (dayOfWeek === 0 || dayOfWeek === 6) ? `<b>${(r?.deskripsi || '').toUpperCase()}</b>` : r?.deskripsi || '-';
                     rows.push(`
                         <tr style="${rowColor}">
                             <td>${d.format('DD/MM/YYYY')}</td>
