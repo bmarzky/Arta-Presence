@@ -5,6 +5,8 @@ const getGreeting = require('../../data/greetingTime');
 const fs = require('fs');
 const path = require('path');
 
+const ttdFolder = path.resolve('./ttd/');
+
 module.exports = async function approveUser(chat, user, db) {
     const query = (sql, params = []) =>
         new Promise((res, rej) =>
@@ -13,11 +15,22 @@ module.exports = async function approveUser(chat, user, db) {
 
     const nama_user = user.pushname || user.nama_wa || 'User';
     const user_id = user.id;
+    const wa_number = user.number; // pastikan ini nomor WA user yang valid
 
     if (!user_id)
         return sendTyping(chat, 'ID user tidak tersedia.');
 
     try {
+        /* =====================================================
+           CEK TTD USER
+        ===================================================== */
+        const ttdPath = path.join(ttdFolder, `${wa_number}.png`);
+        if (!fs.existsSync(ttdPath)) {
+            await sendTyping(chat, `Kamu belum mengunggah TTD. Silakan kirim gambar TTD dalam format PNG.`);
+            // Bisa juga listen message baru dan simpan otomatis
+            return; // berhenti dulu sampai user kirim TTD
+        }
+
         /* =====================================================
            AMBIL APPROVAL TERAKHIR USER
         ===================================================== */
@@ -42,7 +55,6 @@ module.exports = async function approveUser(chat, user, db) {
 
         /* =====================================================
            JIKA REVISED → WAJIB EXPORT ULANG
-           (ENUM DATABASE: revised)
         ===================================================== */
         if (approval.status === 'revised') {
             return sendTyping(
