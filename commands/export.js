@@ -189,20 +189,24 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
 
             rows.push(
                 user.template_export === 'LMD'
-                    ? `<tr>
+                    ? `<tr style="background-color: ${
+                        [0,6].includes(dateObj.day()) ? '#f15a5a' : '#FFFFFF'
+                    }">
                         <td>${formatTanggalLMD(dateObj)}</td>
                         <td>${hariIndonesia(dateObj)}</td>
                         <td>${r?.jam_masuk || '-'}</td>
                         <td>${r?.jam_pulang || '-'}</td>
                         <td>${r?.deskripsi || '-'}</td>
-                      </tr>`
-                    : `<tr>
+                    </tr>`
+                    : `<tr style="background-color: ${
+                        [0,6].includes(dateObj.day()) ? '#f0f0f0' : '#FFFFFF'
+                    }">
                         <td>${i}</td>
                         <td>${r?.jam_masuk || ''}</td>
                         <td>${r?.jam_pulang || ''}</td>
                         <td>${r?.deskripsi || ''}</td>
                         <td></td>
-                      </tr>`
+                    </tr>`
             );
         }
 
