@@ -75,7 +75,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
                 return sendTyping(chat, `Mau pakai template apa?\n\n1. KSPS\n2. LMD\n\nBalas *ksps* atau *lmd*`);
             }
 
-            await sendTyping(chat, 'Sedang membuat laporan PDF...', 800);
+            await sendTyping(chat, 'Sedang menyiapkan laporan...', 800);
             return generatePDFandSend(chat, user, db, paramBulan);
         }
 

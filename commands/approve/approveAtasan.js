@@ -75,12 +75,12 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             await chat.client.sendMessage(
                 userWA,
                 `*LAPORAN PERLU REVISI*\n\n` +
-                `Atasan: *${atasan.nama_lengkap}*\n\n` +
+                `Approval: *${atasan.nama_lengkap}*\n\n` +
                 `*Catatan revisi:*\n${rawText.trim()}\n\n` +
                 `Silakan perbaiki dan lakukan */export* ulang.`
             );
 
-            return sendTyping(chat, 'Alasan revisi berhasil dikirim.');
+            return sendTyping(chat, 'Revisi berhasil dikirim.');
         }
 
         /* =========================
@@ -217,7 +217,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             );
 
             await chat.client.sendMessage(userWA, MessageMedia.fromFilePath(outputPath));
-            await chat.client.sendMessage(userWA,`*Laporan Absensi Berhasil Di-Approve*\n\n` + `Halo *${approval.user_nama}*,\n` + `Laporan absensi kamu telah *disetujui* oleh *${atasan.nama_lengkap}*.\n\n` + `File PDF resmi sudah dikirim.\n` + `Terima kasih.`);
+            await chat.client.sendMessage(userWA,`*Laporan Absensi Berhasil Di-Approve*\n\n` + `Halo *${approval.user_nama}*,\n` + `Laporan absensi kamu telah *DISETUJUI* oleh *${atasan.nama_lengkap}*.\n\n` + `Terima kasih.`);
             return sendTyping(chat, 'Approval berhasil dikirim ke *${approval.user_nama}*.');
         }
 

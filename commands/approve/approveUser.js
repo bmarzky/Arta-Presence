@@ -36,7 +36,7 @@ module.exports = async function approveUser(chat, user, db) {
         if (!approval) {
             return sendTyping(
                 chat,
-                'Kamu belum melakukan *export laporan*.\nSilakan ketik */export* terlebih dahulu.'
+                'Kamu belum menyiapkan laporan.\nSilakan ketik */export* terlebih dahulu.'
             );
         }
 
@@ -57,7 +57,7 @@ module.exports = async function approveUser(chat, user, db) {
         if (approval.status === 'approved') {
             return sendTyping(
                 chat,
-                'Laporan kamu sudah *DISETUJUI*.\nTidak bisa diajukan kembali.'
+                'Laporan kamu bulan ini sudah *DISETUJUI*.\nTidak bisa diajukan kembali.'
             );
         }
 
@@ -121,7 +121,7 @@ module.exports = async function approveUser(chat, user, db) {
         );
         return sendTyping(
             chat,
-            `*${nama_user}*, laporan berhasil dikirim ke *${nama_atasan}* untuk approval.`
+            `*${nama_user}*, laporan berhasil dikirim ke *${nama_atasan}* untuk proses approval.`
         );
 
     } catch (err) {
