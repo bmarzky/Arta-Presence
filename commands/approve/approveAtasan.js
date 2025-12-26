@@ -124,23 +124,27 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             /* ===== LOGO ===== */
             let logoBase64 = '';
             let logoPath = path.join(__dirname, '../../assets/logo', `${templateLogo}.png`);
-
             if (!fs.existsSync(logoPath))
                 logoPath = path.join(__dirname, '../../assets/logo/default.png');
-
             if (fs.existsSync(logoPath))
                 logoBase64 = fs.readFileSync(logoPath, 'base64');
 
-            /* ===== TTD ===== */
-            let ttdBase64 = '';
+            /* ===== TTD ATASAN ===== */
+            let ttdAtasanBase64 = '';
             const ttdPng = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.png`);
             const ttdJpg = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.jpg`);
-
-            if (fs.existsSync(ttdPng)) ttdBase64 = fs.readFileSync(ttdPng, 'base64');
-            else if (fs.existsSync(ttdJpg)) ttdBase64 = fs.readFileSync(ttdJpg, 'base64');
-
-            if (!ttdBase64)
+            if (fs.existsSync(ttdPng)) ttdAtasanBase64 = fs.readFileSync(ttdPng, 'base64');
+            else if (fs.existsSync(ttdJpg)) ttdAtasanBase64 = fs.readFileSync(ttdJpg, 'base64');
+            if (!ttdAtasanBase64)
                 return sendTyping(chat, 'TTD atasan tidak ditemukan.');
+
+            /* ===== TTD USER ===== */
+            let ttdUserBase64 = '';
+            const ttdUserPng = path.join(__dirname, '../../assets/ttd', `${approval.user_wa}.png`);
+            const ttdUserJpg = path.join(__dirname, '../../assets/ttd', `${approval.user_wa}.jpg`);
+            if (fs.existsSync(ttdUserPng)) ttdUserBase64 = fs.readFileSync(ttdUserPng, 'base64');
+            else if (fs.existsSync(ttdUserJpg)) ttdUserBase64 = fs.readFileSync(ttdUserJpg, 'base64');
+            // tidak return error kalau user belum upload TTD, biarkan kosong
 
             /* ===== TEMPLATE ===== */
             const templatePath = path.join(
@@ -148,10 +152,8 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 '../../templates/absensi',
                 `${templateHTML}.html`
             );
-
             if (!fs.existsSync(templatePath))
                 return sendTyping(chat, `Template ${templateHTML}.html tidak ditemukan.`);
-
             const template = fs.readFileSync(templatePath, 'utf8');
 
             /* ===== DATA ABSENSI ===== */
@@ -162,9 +164,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
             const absensi = await query(
                 `SELECT * FROM absensi
-                 WHERE user_id=?
-                   AND MONTH(tanggal)=?
-                   AND YEAR(tanggal)=?
+                 WHERE user_id=? AND MONTH(tanggal)=? AND YEAR(tanggal)=?
                  ORDER BY tanggal`,
                 [approval.user_id, bulan + 1, tahun]
             );
@@ -194,7 +194,8 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 .replaceAll('{{nik}}', approval.user_nik)
                 .replaceAll('{{periode}}', moment().locale('id').format('MMMM YYYY'))
                 .replaceAll('{{rows_absensi}}', rows.join(''))
-                .replaceAll('{{ttd_atasan}}', `<img src="data:image/png;base64,${ttdBase64}" width="80"/>`)
+                .replaceAll('{{ttd_atasan}}', `<img src="data:image/png;base64,${ttdAtasanBase64}" width="80"/>`)
+                .replaceAll('{{ttd_user}}', ttdUserBase64 ? `<img src="data:image/png;base64,${ttdUserBase64}" width="80"/>` : '')
                 .replaceAll('{{nama_atasan}}', atasan.nama_lengkap)
                 .replaceAll('{{nik_atasan}}', atasan.nik || '');
 
@@ -217,9 +218,13 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             );
 
             await chat.client.sendMessage(userWA, MessageMedia.fromFilePath(outputPath));
-            await chat.client.sendMessage(userWA,`*Laporan Absensi Berhasil Di-Approve*\n\n` + `Halo *${approval.user_nama}*,\n` + `Laporan absensi kamu telah *DISETUJUI* oleh *${atasan.nama_lengkap}*.\n\n` + `Terima kasih.`);
-            return sendTyping(
-                chat,
+            await chat.client.sendMessage(userWA,
+                `*Laporan Absensi Berhasil Di-Approve*\n\n` +
+                `Halo *${approval.user_nama}*,\n` +
+                `Laporan absensi kamu telah *DISETUJUI* oleh *${atasan.nama_lengkap}*.\n\n` +
+                `Terima kasih.`
+            );
+            return sendTyping(chat,
                 `Approval berhasil dikirim ke *${approval.user_nama}*.`
             );
         }
