@@ -9,7 +9,7 @@ const approveUser = require('./approve/approveUser');
 const approveAtasan = require('./approve/approveAtasan');
 const { sendTyping } = require('../utils/sendTyping');
 
-const ttdFolder = path.join(__dirname, '../../assets/ttd/');
+const ttdFolder = path.join(__dirname, '../assets/ttd/');
 
 // Buat folder jika belum ada
 if (!fs.existsSync(ttdFolder)) {
@@ -56,24 +56,18 @@ module.exports = {
             }
 
             // CEK JIKA USER MENGIRIM MEDIA
-            if (chat.hasMedia) {
-                const media = await chat.downloadMedia();
-                if (media && media.mimetype.includes('image/png')) {
-                    const ttdPath = path.join(ttdFolder, `${wa_number}.png`);
-                    fs.writeFileSync(ttdPath, media.data, 'base64');
-
-                    await chat.sendMessage('TTD berhasil tersimpan.');
-
-                    // jika user sedang menunggu approval
-                    if (waitingTTD[wa_number]) {
-                        await approveUser(chat, waitingTTD[wa_number].user, db);
-                        delete waitingTTD[wa_number];
-                    }
-
-                    return; // penting, hentikan eksekusi lain
+            if (message.hasMedia) {
+                const media = await message.downloadMedia();
+                if (media.mimetype === 'image/png') {
+                    const filename = `ttd-${user.id}.png`;
+                    const filePath = path.join(ttdFolder, filename);
+                    fs.writeFileSync(filePath, media.data, { encoding: 'base64' });
+                    await chat.sendMessage(`TTD berhasil diterima dan disimpan!`);
                 } else {
-                    return chat.sendMessage('File harus berupa gambar PNG. Silakan kirim ulang TTD.');
+                    await chat.sendMessage('Format TTD harus PNG.');
                 }
+            } else {
+                await chat.sendMessage('Kamu belum mengunggah TTD. Silakan kirim gambar TTD dalam format PNG.');
             }
 
             // =========================

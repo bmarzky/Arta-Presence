@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 
 // folder TTD
-const ttdFolder = path.join(__dirname, '../assets/ttd/');
+const ttdFolder = path.join(__dirname, '../../assets/ttd/');
 if (!fs.existsSync(ttdFolder)) fs.mkdirSync(ttdFolder, { recursive: true });
 
 module.exports = async function approveUser(chat, user, db) {
