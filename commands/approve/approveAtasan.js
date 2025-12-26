@@ -107,7 +107,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             /* =====================================================
                FIX LOGO (INI BAGIAN YANG DIPERBAIKI)
             ===================================================== */
-            const templateKey = (approval.template_export || 'LMD').toUpperCase();
+            const templateKey = (approval.template_export || 'lmd').toLowerCase();
 
             const logoPath = path.join(
                 __dirname,
