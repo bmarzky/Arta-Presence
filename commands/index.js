@@ -64,18 +64,18 @@ module.exports = {
                 fs.writeFileSync(filePath, messageMedia.data, { encoding: 'base64' });
                 await chat.sendMessage('TTD berhasil diterima dan disimpan!');
 
-                // jika user menunggu TTD untuk approve (user biasa)
+                // Jika user menunggu TTD untuk approve (user biasa)
                 if (waitingTTD[wa_number]?.user) {
-                    const waitingUser = waitingTTD[wa_number].user;
+                    const [dbUser] = await query(`SELECT * FROM users WHERE wa_number=?`, [wa_number]);
                     delete waitingTTD[wa_number];
-                    return await approveUser(chat, waitingUser, db);
+                    return await approveUser(chat, dbUser, db); // pakai user terbaru
                 }
 
-                // jika atasan menunggu TTD untuk approve laporan
+                // Jika atasan menunggu TTD untuk approve laporan
                 if (waitingTTD[wa_number]?.atasan) {
-                    const waitingAtasan = waitingTTD[wa_number].atasan;
+                    const [dbAtasan] = await query(`SELECT * FROM users WHERE wa_number=?`, [wa_number]);
                     delete waitingTTD[wa_number];
-                    return await approveAtasan(chat, waitingAtasan, pesan, db);
+                    return await approveAtasan(chat, dbAtasan, pesan, db);
                 }
 
                 return; // selesai
@@ -150,8 +150,9 @@ module.exports = {
                     return;
                 }
 
-                // jika TTD sudah ada, langsung approve
-                return await approveUser(chat, user, db);
+                // jika TTD sudah ada, refresh data user dari DB dan langsung approve
+                const [dbUser] = await query(`SELECT * FROM users WHERE wa_number=?`, [wa_number]);
+                return await approveUser(chat, dbUser, db);
             }
 
             // =========================
