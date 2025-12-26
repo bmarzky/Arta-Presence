@@ -39,16 +39,9 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
 
         /* =============================
            COMMAND /EXPORT
+           ❗ TIDAK ADA BLOKIR PENDING
         ============================= */
         if (text === '/export') {
-
-            const [pending] = await query(
-                `SELECT id FROM approvals WHERE user_id=? AND status='pending' ORDER BY created_at DESC LIMIT 1`,
-                [user.id]
-            );
-            if (pending) {
-                return sendTyping(chat, '⏳ Laporan masih *menunggu approval*.');
-            }
 
             if (!user.nama_lengkap) {
                 await query(`UPDATE users SET step_input='confirm_name' WHERE id=?`, [user.id]);
@@ -202,60 +195,54 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         }
 
         /* =============================
-           LOGO → BASE64
+           LOGO → BASE64 (FINAL FIX)
         ============================= */
-        const logoPath = path.join(
+        const logoFile = path.join(
             __dirname,
             `../assets/${user.template_export.toLowerCase()}.png`
         );
 
         let logoBase64 = '';
-        if (fs.existsSync(logoPath)) {
-            const img = fs.readFileSync(logoPath);
-            logoBase64 = `data:image/png;base64,${img.toString('base64')}`;
+        if (fs.existsSync(logoFile)) {
+            logoBase64 =
+                'data:image/png;base64,' +
+                fs.readFileSync(logoFile).toString('base64');
         }
 
-        const templatePath = path.join(__dirname, `../templates/absensi/${user.template_export}.html`);
-        if (!fs.existsSync(templatePath)) {
-            return sendTyping(chat, 'Template laporan tidak ditemukan.');
-        }
+        const templatePath = path.join(
+            __dirname,
+            `../templates/absensi/${user.template_export}.html`
+        );
 
         const template = fs.readFileSync(templatePath, 'utf8');
 
         const html = template
-            .replaceAll('{{logo-path}}', logoBase64)
-            .replaceAll('{{nama}}', user.nama_lengkap)
-            .replaceAll('{{jabatan}}', user.jabatan)
-            .replaceAll('{{nik}}', user.nik)
-            .replaceAll('{{periode}}', periode)
-            .replaceAll('{{rows_absensi}}', rows.join(''));
+            .replace(/{{logo}}/g, logoBase64)
+            .replace(/{{nama}}/g, user.nama_lengkap)
+            .replace(/{{jabatan}}/g, user.jabatan)
+            .replace(/{{nik}}/g, user.nik)
+            .replace(/{{periode}}/g, periode)
+            .replace(/{{rows_absensi}}/g, rows.join(''));
 
         const exportsDir = path.join(__dirname, '../exports');
         if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
 
-        const fileName = `${user.nama_lengkap}-${Date.now()}.pdf`;
-        const output = path.join(exportsDir, fileName);
-
+        const output = path.join(exportsDir, `${user.nama_lengkap}-${Date.now()}.pdf`);
         await generatePDF(html, output);
-
-        if (!fs.existsSync(output)) {
-            return sendTyping(chat, 'Gagal membuat PDF.');
-        }
 
         const [approver] = await query(
             `SELECT wa_number, nama_lengkap, nik FROM users WHERE jabatan='spv' LIMIT 1`
         );
-        if (!approver) return sendTyping(chat, 'Approver belum terdaftar.');
 
         await query(
             `INSERT INTO approvals 
             (user_id, approver_wa, file_path, status, ttd_user_at, nama_atasan, nik_atasan)
             VALUES (?, ?, ?, 'pending', NOW(), ?, ?)`,
-            [user.id, approver.wa_number, output, approver.nama_lengkap, approver.nik]
+            [user.id, approver?.wa_number || null, output, approver?.nama_lengkap || null, approver?.nik || null]
         );
 
         await chat.sendMessage(MessageMedia.fromFilePath(output));
-        await sendTyping(chat, `✅ Laporan berhasil dibuat.\nKetik */approve* untuk mengirim ke atasan.`);
+        await sendTyping(chat, '✅ Laporan berhasil dibuat.');
 
     } catch (err) {
         console.error('PDF ERROR:', err);
