@@ -225,10 +225,12 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         /* =============================
            TTD USER → BASE64
         ============================= */
-        let ttdBase64 = '';
         const ttdPath = path.join(ttdFolder, `${user.wa_number}.png`);
+        let ttdBase64 = '';
         if (fs.existsSync(ttdPath)) {
             ttdBase64 = 'data:image/png;base64,' + fs.readFileSync(ttdPath).toString('base64');
+        } else {
+            console.warn(`TTD tidak ditemukan: ${ttdPath}`); // <-- tambahkan ini untuk debug
         }
 
         const templatePath = path.join(
