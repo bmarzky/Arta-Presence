@@ -42,7 +42,6 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
            ❗ TIDAK ADA BLOKIR PENDING
         ============================= */
         if (text === '/export') {
-            
         const [pending] = await query(
             `SELECT id FROM approvals WHERE user_id=? AND status='pending' LIMIT 1`,
             [user.id]
