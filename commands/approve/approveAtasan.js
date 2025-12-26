@@ -106,7 +106,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         }
 
         /* =========================
-           APPROVE
+        APPROVE
         ========================= */
         if (text === 'approve') {
 
@@ -135,8 +135,15 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             const ttdJpg = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.jpg`);
             if (fs.existsSync(ttdPng)) ttdAtasanBase64 = fs.readFileSync(ttdPng, 'base64');
             else if (fs.existsSync(ttdJpg)) ttdAtasanBase64 = fs.readFileSync(ttdJpg, 'base64');
-            if (!ttdAtasanBase64)
-                return sendTyping(chat, 'TTD atasan tidak ditemukan.');
+
+            // Jika TTD atasan belum ada, minta kirim gambar
+            if (!ttdAtasanBase64) {
+                await sendTyping(chat, 'Silakan kirim foto TTD kamu untuk approve laporan ini.');
+
+                // Tandai approval agar listener tahu ini menunggu TTD atasan
+                await query(`UPDATE approvals SET step_input='ttd_atasan' WHERE id=?`, [approval.id]);
+                return;
+            }
 
             /* ===== TTD USER ===== */
             let ttdUserBase64 = '';

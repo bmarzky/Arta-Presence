@@ -16,7 +16,7 @@ if (!fs.existsSync(ttdFolder)) {
     fs.mkdirSync(ttdFolder, { recursive: true });
 }
 
-// state untuk menunggu TTD per user
+// state untuk menunggu TTD per user/atasan
 const waitingTTD = {};
 
 const typeAndDelay = async (chat, ms = 800, random = 400) => {
@@ -64,12 +64,20 @@ module.exports = {
                 fs.writeFileSync(filePath, messageMedia.data, { encoding: 'base64' });
                 await chat.sendMessage('TTD berhasil diterima dan disimpan!');
 
-                // jika user menunggu TTD untuk approve
-                if (waitingTTD[wa_number]) {
+                // jika user menunggu TTD untuk approve (user biasa)
+                if (waitingTTD[wa_number]?.user) {
                     const waitingUser = waitingTTD[wa_number].user;
                     delete waitingTTD[wa_number];
                     return await approveUser(chat, waitingUser, db);
                 }
+
+                // jika atasan menunggu TTD untuk approve laporan
+                if (waitingTTD[wa_number]?.atasan) {
+                    const waitingAtasan = waitingTTD[wa_number].atasan;
+                    delete waitingTTD[wa_number];
+                    return await approveAtasan(chat, waitingAtasan, pesan, db);
+                }
+
                 return; // selesai
             }
 
@@ -145,6 +153,7 @@ module.exports = {
                 // jika TTD sudah ada, langsung approve
                 return await approveUser(chat, user, db);
             }
+
             // =========================
             // APPROVE / REVISI ATASAN (KEYWORD)
             // =========================
