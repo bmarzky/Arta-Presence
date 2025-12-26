@@ -6,9 +6,10 @@ const generatePDF = require('../../utils/pdfGenerator');
 const moment = require('moment');
 
 module.exports = async function approveAtasan(chat, user, pesan, db) {
+
     const query = (sql, params = []) =>
-        new Promise((res, rej) =>
-            db.query(sql, params, (e, r) => (e ? rej(e) : res(r)))
+        new Promise((resolve, reject) =>
+            db.query(sql, params, (err, res) => err ? reject(err) : resolve(res))
         );
 
     const rawText = pesan || '';
@@ -46,13 +47,10 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         );
 
         if (!approval)
-            return sendTyping(
-                chat,
-                'Tidak ada laporan yang menunggu approval.'
-            );
+            return sendTyping(chat, 'Tidak ada laporan yang menunggu approval.');
 
         /* =========================
-           NORMALISASI TEMPLATE (FIX UTAMA)
+           NORMALISASI TEMPLATE
         ========================= */
         const templateRaw = approval.template_export || 'LMD';
         const templateHTML = templateRaw.toUpperCase(); // KSPS.html
@@ -66,6 +64,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
            INPUT ALASAN REVISI
         ========================= */
         if (approval.step_input === 'alasan_revisi') {
+
             if (rawText.trim().length < 3)
                 return sendTyping(chat, 'Silakan ketik *alasan revisi* yang jelas.');
 
@@ -79,10 +78,35 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
             await chat.client.sendMessage(
                 userWA,
-                `📌 *LAPORAN PERLU REVISI*\n\n📝 ${rawText.trim()}`
+                `*LAPORAN PERLU REVISI*\n\n` +
+                `Atasan: *${atasan.nama_lengkap}*\n\n` +
+                `*Catatan revisi:*\n${rawText.trim()}\n\n` +
+                `Silakan perbaiki dan lakukan */export* ulang.`
             );
 
             return sendTyping(chat, 'Alasan revisi berhasil dikirim.');
+        }
+
+        /* =========================
+           REVISI
+        ========================= */
+        if (text === 'revisi') {
+
+            if (approval.status !== 'pending')
+                return sendTyping(chat, 'Laporan ini tidak bisa direvisi.');
+
+            await query(
+                `UPDATE approvals
+                 SET status='revised',
+                     step_input='alasan_revisi'
+                 WHERE id=?`,
+                [approval.id]
+            );
+
+            return sendTyping(
+                chat,
+                'Silakan ketik *alasan revisi* secara jelas.'
+            );
         }
 
         /* =========================
@@ -90,7 +114,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         ========================= */
         if (text === 'approve') {
 
-            /* ===== LOGO (LOWERCASE) ===== */
+            /* ===== LOGO ===== */
             let logoBase64 = '';
             let logoPath = path.join(
                 __dirname,
@@ -100,11 +124,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
             if (!fs.existsSync(logoPath)) {
                 console.warn(`Logo ${templateLogo}.png tidak ditemukan, pakai default.`);
-                logoPath = path.join(
-                    __dirname,
-                    '../../assets/logo',
-                    'default.png'
-                );
+                logoPath = path.join(__dirname, '../../assets/logo/default.png');
             }
 
             if (fs.existsSync(logoPath)) {
@@ -122,7 +142,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             if (!ttdBase64)
                 return sendTyping(chat, 'TTD atasan tidak ditemukan.');
 
-            /* ===== TEMPLATE (UPPERCASE) ===== */
+            /* ===== TEMPLATE ===== */
             const templatePath = path.join(
                 __dirname,
                 '../../templates/absensi',
@@ -134,7 +154,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
             const template = fs.readFileSync(templatePath, 'utf8');
 
-            /* ===== ABSENSI ===== */
+            /* ===== DATA ABSENSI ===== */
             const now = new Date();
             const bulan = now.getMonth();
             const tahun = now.getFullYear();
@@ -188,14 +208,28 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
             await generatePDF(html, outputPath);
 
+            await query(
+                `UPDATE approvals
+                 SET status='approved',
+                     file_path=?
+                 WHERE id=?`,
+                [outputPath, approval.id]
+            );
+
             await chat.client.sendMessage(userWA, MessageMedia.fromFilePath(outputPath));
             return sendTyping(chat, 'Approval berhasil.');
         }
 
-        return sendTyping(chat, 'Ketik *approve* atau *revisi*.');
+        /* =========================
+           FALLBACK
+        ========================= */
+        return sendTyping(
+            chat,
+            'Perintah tidak dikenali.\nKetik *approve* atau *revisi*.'
+        );
 
     } catch (err) {
         console.error(err);
-        return sendTyping(chat, 'Terjadi error.');
+        return sendTyping(chat, 'Terjadi error pada sistem approval.');
     }
 };

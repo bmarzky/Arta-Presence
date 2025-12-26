@@ -36,7 +36,7 @@ module.exports = async function approveUser(chat, user, db) {
         if (!approval) {
             return sendTyping(
                 chat,
-                '❌ Kamu belum melakukan *export laporan*.\nSilakan ketik */export* terlebih dahulu.'
+                'Kamu belum melakukan *export laporan*.\nSilakan ketik */export* terlebih dahulu.'
             );
         }
 
@@ -47,7 +47,7 @@ module.exports = async function approveUser(chat, user, db) {
         if (approval.status === 'revised') {
             return sendTyping(
                 chat,
-                '❌ Laporan kamu *perlu revisi*.\nSilakan perbaiki lalu */export* ulang.'
+                'Laporan kamu *perlu revisi*.\nSilakan perbaiki lalu */export* ulang.'
             );
         }
 
@@ -57,7 +57,7 @@ module.exports = async function approveUser(chat, user, db) {
         if (approval.status === 'approved') {
             return sendTyping(
                 chat,
-                '❌ Laporan kamu sudah *DISETUJUI*.\nTidak bisa diajukan kembali.'
+                'Laporan kamu sudah *DISETUJUI*.\nTidak bisa diajukan kembali.'
             );
         }
 
@@ -67,7 +67,7 @@ module.exports = async function approveUser(chat, user, db) {
         if (approval.status !== 'pending') {
             return sendTyping(
                 chat,
-                '❌ Laporan tidak dalam status pending approval.'
+                'Laporan tidak dalam status pending approval.'
             );
         }
 
@@ -77,7 +77,7 @@ module.exports = async function approveUser(chat, user, db) {
         if (!approval.file_path) {
             return sendTyping(
                 chat,
-                '❌ Laporan belum di-export.\nSilakan ketik */export* terlebih dahulu.'
+                'Laporan belum di-export.\nSilakan ketik */export* terlebih dahulu.'
             );
         }
 
@@ -85,7 +85,7 @@ module.exports = async function approveUser(chat, user, db) {
         if (!fs.existsSync(filePath)) {
             return sendTyping(
                 chat,
-                '❌ File laporan tidak ditemukan.\nSilakan export ulang.'
+                'File laporan tidak ditemukan.\nSilakan export ulang.'
             );
         }
 
@@ -105,7 +105,7 @@ module.exports = async function approveUser(chat, user, db) {
 
         await chat.client.sendMessage(
             approverWA,
-            `📌 *Permintaan Approval Laporan Absensi*\n\n` +
+            `*Permintaan Approval Laporan Absensi*\n\n` +
             `${greeting} *${nama_atasan}*\n\n` +
             `*${nama_user}* meminta permohonan approval untuk laporan absensi.\n` +
             `Mohon untuk diperiksa.`
@@ -121,7 +121,7 @@ module.exports = async function approveUser(chat, user, db) {
         );
         return sendTyping(
             chat,
-            `✅ *${nama_user}*, laporan berhasil dikirim ke *${nama_atasan}* untuk approval.`
+            `*${nama_user}*, laporan berhasil dikirim ke *${nama_atasan}* untuk approval.`
         );
 
     } catch (err) {
