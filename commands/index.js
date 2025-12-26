@@ -54,18 +54,27 @@ module.exports = {
             // =========================
             // CEK JIKA USER SEDANG MENUNGGU TTD
             // =========================
-            if (waitingTTD[wa_number] && chat.hasMedia) {
-                const media = await chat.downloadMedia();
-                if (media && media.mimetype.includes('image/png')) {
-                    const ttdPath = path.join(ttdFolder, `${wa_number}.png`);
-                    fs.writeFileSync(ttdPath, media.data, 'base64');
-                    await chat.sendMessage('TTD berhasil tersimpan. Laporan akan langsung diajukan.');
+            if (waitingTTD[wa_number]) {
+                // user sedang menunggu kirim TTD
+                if (chat.hasMedia) {
+                    const media = await chat.downloadMedia();
+                    if (media && media.mimetype.includes('image/png')) {
+                        const ttdPath = path.join(ttdFolder, `${wa_number}.png`);
+                        fs.writeFileSync(ttdPath, media.data, 'base64');
 
-                    const waitingData = waitingTTD[wa_number];
-                    delete waitingTTD[wa_number]; // reset state
+                        await chat.sendMessage('TTD berhasil tersimpan. Laporan bisa diajukan sekarang.');
 
-                    // lanjut langsung approve
-                    return approveUser(chat, waitingData.user, db);
+                        // langsung approveUser
+                        await approveUser(chat, waitingTTD[wa_number].user, db);
+
+                        delete waitingTTD[wa_number]; // hapus state
+                        return; // hentikan alur
+                    } else {
+                        return chat.sendMessage('File harus berupa gambar PNG.');
+                    }
+                } else {
+                    // kalau bukan media, jangan lanjut ke default handler
+                    return chat.sendMessage('Silakan kirim TTD dalam format PNG untuk melanjutkan approval.');
                 }
             }
 
@@ -129,18 +138,15 @@ module.exports = {
             if (lowerMsg === '/approve') {
                 const ttdPath = path.join(ttdFolder, `${wa_number}.png`);
 
-                // CEK TTD
                 if (!fs.existsSync(ttdPath)) {
                     await chat.sendMessage(
                         'Kamu belum mengunggah TTD. Silakan kirim gambar TTD dalam format PNG.'
                     );
 
-                    // simpan state user menunggu TTD
-                    waitingTTD[wa_number] = { user };
-                    return; // hentikan alur supaya tidak lanjut
+                    waitingTTD[wa_number] = { user }; // simpan state
+                    return;
                 }
 
-                // Kalau TTD sudah ada, langsung panggil approveUser dan tunggu hasilnya
                 return await approveUser(chat, user, db);
             }
             // =========================
