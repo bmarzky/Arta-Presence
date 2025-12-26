@@ -169,6 +169,16 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 [approval.user_id, bulan + 1, tahun]
             );
 
+            // Tentukan periode untuk KSPS
+            let periodeStr = '';
+            if (templateHTML === 'KSPS') {
+                const firstDay = moment(`${tahun}-${bulan + 1}-01`);
+                const lastDay = moment(`${tahun}-${bulan + 1}-${totalHari}`);
+                periodeStr = `${firstDay.format('DD')}-${lastDay.format('DD MMMM YYYY')}`;
+            } else {
+                periodeStr = moment().locale('id').format('MMMM YYYY');
+            }
+
             const rows = [];
             for (let i = 1; i <= totalHari; i++) {
                 const d = moment(`${tahun}-${bulan + 1}-${i}`, 'YYYY-M-D');
@@ -183,7 +193,6 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 }
 
                 if (templateHTML === 'KSPS') {
-                    // KSPS: kolom hari tidak ada
                     const deskripsiHTML = (dayOfWeek === 0 || dayOfWeek === 6)
                         ? '<b>LIBUR</b>'
                         : r?.deskripsi || '-';
@@ -198,7 +207,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                         </tr>
                     `);
                 } else {
-                    // LMD: kolom hari tetap ada
+                    // LMD: hapus kolom disetujui
                     const hari = d.locale('id').format('dddd');
                     const deskripsiHTML = (dayOfWeek === 0 || dayOfWeek === 6)
                         ? `<b>${(r?.deskripsi || '').toUpperCase()}</b>`
@@ -211,7 +220,6 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                             <td>${r?.jam_masuk || '-'}</td>
                             <td>${r?.jam_pulang || '-'}</td>
                             <td>${deskripsiHTML}</td>
-                            <td>${r?.disetujui || '-'}</td>
                         </tr>
                     `);
                 }
