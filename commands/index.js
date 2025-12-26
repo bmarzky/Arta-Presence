@@ -128,15 +128,21 @@ module.exports = {
             // =========================
             if (lowerMsg === '/approve') {
                 const ttdPath = path.join(ttdFolder, `${wa_number}.png`);
-                if (!fs.existsSync(ttdPath)) {
-                    await chat.sendMessage('Kamu belum mengunggah TTD. Silakan kirim gambar TTD dalam format PNG.');
-                    waitingTTD[wa_number] = { user }; // simpan state untuk menunggu
-                    return;
-                }
-                // kalau TTD sudah ada, langsung approve
-                return approveUser(chat, user, db);
-            }
 
+                // CEK TTD
+                if (!fs.existsSync(ttdPath)) {
+                    await chat.sendMessage(
+                        'Kamu belum mengunggah TTD. Silakan kirim gambar TTD dalam format PNG.'
+                    );
+
+                    // simpan state user menunggu TTD
+                    waitingTTD[wa_number] = { user };
+                    return; // hentikan alur supaya tidak lanjut
+                }
+
+                // Kalau TTD sudah ada, langsung panggil approveUser dan tunggu hasilnya
+                return await approveUser(chat, user, db);
+            }
             // =========================
             // APPROVE / REVISI ATASAN (KEYWORD)
             // =========================
