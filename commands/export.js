@@ -135,7 +135,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
                 [template, user.id]
             );
 
-            await sendTyping(chat, 'Sedang membuat laporan PDF...', 800);
+            await sendTyping(chat, 'Sedang menyiapkan templete laporan...', 800);
             return generatePDFandSend(chat, { ...user, template_export: template }, db, paramBulan);
         }
 

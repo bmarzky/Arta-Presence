@@ -160,7 +160,7 @@ module.exports = {
                 const ttdExists = fs.existsSync(ttdPng) || fs.existsSync(ttdJpg);
 
                 if (!ttdExists) {
-                    await sendTyping(chat, 'Kamu belum mengunggah TTD. Silakan kirim gambar TTD dalam format PNG/JPG.');
+                    await sendTyping(chat, 'Silakan kirim tanda tangan untuk approve terlebih dahulu laporan ini..');
                     waitingTTD[wa_number] = { user }; // simpan state untuk menunggu TTD
                     return;
                 }
@@ -189,7 +189,7 @@ module.exports = {
 
                 if (lowerMsg === 'revisi') {
                     if (approval.status !== 'pending') {
-                        return sendTyping(chat, 'Laporan sudah direvisi atau tidak bisa direvisi lagi.');
+                        return sendTyping(chat, 'Laporan mungkin sedang direvisi, silahkan tunggu dikirim kembali.');
                     }
                     // jalankan revisi
                     return approveAtasan(chat, user, pesan, db);
@@ -197,7 +197,7 @@ module.exports = {
 
                 if (lowerMsg === 'approve') {
                     if (approval.status === 'revised') {
-                        return sendTyping(chat, 'Laporan ini sudah direvisi, silakan cek ulang sebelum approve.');
+                        return sendTyping(chat, 'Laporan ini sudah direvisi.');
                     }
                     // cek TTD dan jalankan approve
                     const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
@@ -205,7 +205,7 @@ module.exports = {
                     const ttdExists = fs.existsSync(ttdPng) || fs.existsSync(ttdJpg);
 
                     if (!ttdExists && approval.step_input !== 'ttd_atasan') {
-                        await sendTyping(chat, 'Silakan kirim foto TTD kamu untuk approve laporan ini.');
+                        await sendTyping(chat, 'Silakan kirim tanda tangan untuk approve laporan ini.');
                         await query(`UPDATE approvals SET step_input='ttd_atasan' WHERE id=?`, [approval.id]);
                         return;
                     }
