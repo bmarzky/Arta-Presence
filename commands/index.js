@@ -188,12 +188,18 @@ module.exports = {
                 }
 
                 if (lowerMsg === 'revisi') {
-                    // langsung ke proses revisi, tidak perlu TTD
+                    if (approval.status !== 'pending') {
+                        return sendTyping(chat, 'Laporan sudah direvisi atau tidak bisa direvisi lagi.');
+                    }
+                    // jalankan revisi
                     return approveAtasan(chat, user, pesan, db);
                 }
 
                 if (lowerMsg === 'approve') {
-                    // baru di sini cek TTD dan lanjut approve
+                    if (approval.status === 'revised') {
+                        return sendTyping(chat, 'Laporan ini sudah direvisi, silakan cek ulang sebelum approve.');
+                    }
+                    // cek TTD dan jalankan approve
                     const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
                     const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
                     const ttdExists = fs.existsSync(ttdPng) || fs.existsSync(ttdJpg);
@@ -204,10 +210,10 @@ module.exports = {
                         return;
                     }
 
-                    // jika TTD sudah ada atau step_input='ttd_atasan', langsung lanjut approve
                     return approveAtasan(chat, user, pesan, db);
                 }
             }
+
             // =========================
             // GREETING
             // =========================
