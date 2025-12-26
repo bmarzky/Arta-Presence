@@ -42,7 +42,6 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
         ============================= */
         if (text === '/export') {
 
-            // ❌ Cegah export ulang jika masih pending
             const [pending] = await query(
                 `SELECT id FROM approvals WHERE user_id=? AND status='pending' ORDER BY created_at DESC LIMIT 1`,
                 [user.id]
@@ -51,7 +50,6 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
                 return sendTyping(chat, '⏳ Laporan masih *menunggu approval*.');
             }
 
-            /* === VALIDASI PROFIL === */
             if (!user.nama_lengkap) {
                 await query(`UPDATE users SET step_input='confirm_name' WHERE id=?`, [user.id]);
                 await sendTyping(chat, `Maaf *${nama_wa}*, kami belum memiliki *nama lengkap* kamu.`);
@@ -78,7 +76,7 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
         }
 
         /* =============================
-           CONFIRM NAME
+           FLOW INPUT USER
         ============================= */
         if (step === 'confirm_name') {
             if (text === 'iya') {
@@ -97,9 +95,6 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
             return sendTyping(chat, 'Balas *iya* atau *tidak* ya.');
         }
 
-        /* =============================
-           INPUT NAMA LENGKAP
-        ============================= */
         if (step === 'nama_lengkap') {
             await query(
                 `UPDATE users SET nama_lengkap=?, step_input='jabatan' WHERE id=?`,
@@ -108,9 +103,6 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
             return sendTyping(chat, 'Silakan isi *Jabatan* kamu:');
         }
 
-        /* =============================
-           INPUT JABATAN
-        ============================= */
         if (step === 'jabatan') {
             await query(
                 `UPDATE users SET jabatan=?, step_input='nik' WHERE id=?`,
@@ -119,9 +111,6 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
             return sendTyping(chat, 'Silakan isi *NIK* kamu:');
         }
 
-        /* =============================
-           INPUT NIK
-        ============================= */
         if (step === 'nik') {
             await query(
                 `UPDATE users SET nik=?, step_input='choose_template' WHERE id=?`,
@@ -130,9 +119,6 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
             return sendTyping(chat, `Mau pakai template apa?\n\n1. KSPS\n2. LMD\n\nBalas *ksps* atau *lmd*`);
         }
 
-        /* =============================
-           PILIH TEMPLATE
-        ============================= */
         if (step === 'choose_template') {
             if (!['ksps', 'lmd'].includes(text)) {
                 return sendTyping(chat, 'Balas *ksps* atau *lmd* ya.');
@@ -155,10 +141,9 @@ module.exports = async function handleExport(chat, user, pesan, db, paramBulan =
 };
 
 /* ======================================================
-   GENERATE PDF (AMAN & TERKONTROL)
+   GENERATE PDF
 ====================================================== */
 async function generatePDFandSend(chat, user, db, paramBulan) {
-    const nama_wa = user.pushname || user.nama_wa || 'Kak';
 
     const query = (sql, params = []) =>
         new Promise((res, rej) =>
@@ -216,6 +201,20 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
             );
         }
 
+        /* =============================
+           LOGO → BASE64
+        ============================= */
+        const logoPath = path.join(
+            __dirname,
+            `../assets/${user.template_export.toLowerCase()}.png`
+        );
+
+        let logoBase64 = '';
+        if (fs.existsSync(logoPath)) {
+            const img = fs.readFileSync(logoPath);
+            logoBase64 = `data:image/png;base64,${img.toString('base64')}`;
+        }
+
         const templatePath = path.join(__dirname, `../templates/absensi/${user.template_export}.html`);
         if (!fs.existsSync(templatePath)) {
             return sendTyping(chat, 'Template laporan tidak ditemukan.');
@@ -224,6 +223,7 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         const template = fs.readFileSync(templatePath, 'utf8');
 
         const html = template
+            .replaceAll('{{logo}}', logoBase64)
             .replaceAll('{{nama}}', user.nama_lengkap)
             .replaceAll('{{jabatan}}', user.jabatan)
             .replaceAll('{{nik}}', user.nik)
