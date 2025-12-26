@@ -246,7 +246,7 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
             .replace(/{{nik}}/g, user.nik)
             .replace(/{{periode}}/g, periode)
             .replace(/{{rows_absensi}}/g, rows.join(''))
-            .replace(/{{ttd_user}}/g, ttdBase64); // <--- tambahkan placeholder TTD
+            .replace(/{{ttd_user}}/g, ttdBase64 ? `<img src="data:image/png;base64,${ttdBase64}" style="max-width:150px; max-height:80px;" />` : '');
 
         const exportsDir = path.join(__dirname, '../exports');
         if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
