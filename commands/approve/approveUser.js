@@ -105,17 +105,20 @@ module.exports = async function approveUser(chat, user, db) {
 
         await chat.client.sendMessage(
             approverWA,
-            `${greeting}\n\n` +
-            `📌 *Permintaan Approval Laporan*\n\n` +
-            `Dari: *${nama_user}*\n` +
-            `Mohon diperiksa oleh *${nama_atasan}*.\n\n` +
-            `Balas dengan:\n` +
-            `• approve\n` +
-            `• revisi`
+            `📌 *Permintaan Approval Laporan Absensi*\n\n` +
+            `${greeting} *${nama_atasan}*\n\n` +
+            `*${nama_user}* meminta permohonan approval untuk laporan absensi.\n` +
+            `Mohon untuk diperiksa.`
         );
 
         await chat.client.sendMessage(approverWA, media);
 
+        await chat.client.sendMessage(
+            approverWA,
+            `Silakan ketik:\n` +
+            `• *approve*\n` +
+            `• *revisi*`
+        );
         return sendTyping(
             chat,
             `✅ *${nama_user}*, laporan berhasil dikirim ke *${nama_atasan}* untuk approval.`
