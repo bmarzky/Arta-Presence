@@ -55,7 +55,6 @@ module.exports = {
             // CEK JIKA USER SEDANG MENUNGGU TTD
             // =========================
             if (waitingTTD[wa_number]) {
-                // user sedang menunggu kirim TTD
                 if (chat.hasMedia) {
                     const media = await chat.downloadMedia();
                     if (media && media.mimetype.includes('image/png')) {
@@ -68,15 +67,16 @@ module.exports = {
                         await approveUser(chat, waitingTTD[wa_number].user, db);
 
                         delete waitingTTD[wa_number]; // hapus state
-                        return; // hentikan alur
+                        return;
                     } else {
-                        return chat.sendMessage('File harus berupa gambar PNG.');
+                        return chat.sendMessage('File harus berupa gambar PNG. Silakan kirim ulang TTD.');
                     }
                 } else {
-                    // kalau bukan media, jangan lanjut ke default handler
+                    // pesan bukan media, tetap tunggu
                     return chat.sendMessage('Silakan kirim TTD dalam format PNG untuk melanjutkan approval.');
                 }
             }
+
 
             // =========================
             // INTRO
