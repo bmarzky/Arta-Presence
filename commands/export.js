@@ -4,8 +4,7 @@ const moment = require('moment');
 const generatePDF = require('../utils/pdfGenerator');
 const { MessageMedia } = require('whatsapp-web.js');
 const { sendTyping } = require('../utils/sendTyping');
-
-const ttdFolder = path.resolve('../assets/ttd/'); // tambahkan folder TTD
+const ttdFolder = path.join(__dirname, '../assets/ttd/');
 
 /* =========================
    HELPER
