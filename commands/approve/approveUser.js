@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 
 // folder TTD
-const ttdFolder = path.resolve('./ttd/');
+const ttdFolder = path.resolve('../../assets/ttd/');
 if (!fs.existsSync(ttdFolder)) fs.mkdirSync(ttdFolder, { recursive: true });
 
 module.exports = async function approveUser(chat, user, db) {
@@ -15,7 +15,7 @@ module.exports = async function approveUser(chat, user, db) {
             db.query(sql, params, (e, r) => (e ? rej(e) : res(r)))
         );
 
-    const nama_user = user.pushname || user.nama_wa || 'User';
+    const nama_user = user.pushname || user.nama_wa || 'Arta';
     const user_id = user.id;
     const wa_number = user.wa_number; // pastikan sesuai kolom db
 
