@@ -141,14 +141,26 @@ module.exports = {
             // APPROVE USER (SUBMIT LAPORAN)
             // =========================
             if (lowerMsg === '/approve') {
+                // cek apakah user punya laporan pending
+                const [approval] = await query(
+                    `SELECT *
+                    FROM approvals
+                    WHERE user_id=? AND status='pending'
+                    ORDER BY created_at DESC
+                    LIMIT 1`,
+                    [user.id]
+                );
+
+                if (!approval) {
+                    return sendTyping(chat, 'Kamu belum menyiapkan laporan. Silakan ketik /export terlebih dahulu.');
+                }
+
                 const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
                 const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
                 const ttdExists = fs.existsSync(ttdPng) || fs.existsSync(ttdJpg);
 
                 if (!ttdExists) {
-                    await chat.sendMessage(
-                        'Kamu belum mengunggah TTD. Silakan kirim gambar TTD dalam format PNG/JPG.'
-                    );
+                    await sendTyping(chat, 'Kamu belum mengunggah TTD. Silakan kirim gambar TTD dalam format PNG/JPG.');
                     waitingTTD[wa_number] = { user }; // simpan state untuk menunggu TTD
                     return;
                 }
