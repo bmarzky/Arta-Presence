@@ -187,20 +187,26 @@ module.exports = {
                     return sendTyping(chat, 'Tidak ada laporan yang menunggu approval.');
                 }
 
-                // cek TTD
-                const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
-                const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
-                const ttdExists = fs.existsSync(ttdPng) || fs.existsSync(ttdJpg);
-
-                if (!ttdExists) {
-                    // simpan state menunggu TTD tapi langsung gunakan 'approve' sebagai parameter
-                    waitingTTD[wa_number] = { atasan: true };
-                    await sendTyping(chat, 'Silakan kirim foto TTD kamu untuk approve laporan ini.');
-                    return;
+                if (lowerMsg === 'revisi') {
+                    // langsung ke proses revisi, tidak perlu TTD
+                    return approveAtasan(chat, user, pesan, db);
                 }
 
-                // TTD sudah ada, langsung approve tanpa harus ketik ulang
-                return approveAtasan(chat, user, lowerMsg, db);
+                if (lowerMsg === 'approve') {
+                    // baru di sini cek TTD dan lanjut approve
+                    const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
+                    const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
+                    const ttdExists = fs.existsSync(ttdPng) || fs.existsSync(ttdJpg);
+
+                    if (!ttdExists && approval.step_input !== 'ttd_atasan') {
+                        await sendTyping(chat, 'Silakan kirim foto TTD kamu untuk approve laporan ini.');
+                        await query(`UPDATE approvals SET step_input='ttd_atasan' WHERE id=?`, [approval.id]);
+                        return;
+                    }
+
+                    // jika TTD sudah ada atau step_input='ttd_atasan', langsung lanjut approve
+                    return approveAtasan(chat, user, pesan, db);
+                }
             }
             // =========================
             // GREETING
