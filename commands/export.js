@@ -199,7 +199,7 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         ============================= */
         const logoFile = path.join(
             __dirname,
-            `../assets/${user.template_export.toLowerCase()}.png`
+            `../assets/logo/${user.template_export.toLowerCase()}.png`
         );
 
         let logoBase64 = '';
@@ -242,7 +242,7 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         );
 
         await chat.sendMessage(MessageMedia.fromFilePath(output));
-        await sendTyping(chat, '✅ Laporan berhasil dibuat.');
+        await sendTyping(chat, 'Laporan berhasil dibuat.');
 
     } catch (err) {
         console.error('PDF ERROR:', err);
