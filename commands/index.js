@@ -9,8 +9,12 @@ const approveUser = require('./approve/approveUser');
 const approveAtasan = require('./approve/approveAtasan');
 const { sendTyping } = require('../utils/sendTyping');
 
-const ttdFolder = path.resolve('../assets/ttd/');
-if (!fs.existsSync(ttdFolder)) fs.mkdirSync(ttdFolder, { recursive: true });
+const ttdFolder = path.join(__dirname, '../../assets/ttd/');
+
+// Buat folder jika belum ada
+if (!fs.existsSync(ttdFolder)) {
+    fs.mkdirSync(ttdFolder, { recursive: true });
+}
 
 // state untuk menunggu TTD per user
 const waitingTTD = {};
