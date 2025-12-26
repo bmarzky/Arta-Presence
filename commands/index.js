@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const handleAbsen = require('./absen');
 const handleExport = require('./export');
 const greetings = require('../data/greetings');
@@ -6,6 +8,12 @@ const sendingIntro = {};
 const approveUser = require('./approve/approveUser');
 const approveAtasan = require('./approve/approveAtasan');
 const { sendTyping } = require('../utils/sendTyping');
+
+const ttdFolder = path.resolve('../assets/ttd/');
+if (!fs.existsSync(ttdFolder)) fs.mkdirSync(ttdFolder, { recursive: true });
+
+// state untuk menunggu TTD per user
+const waitingTTD = {};
 
 const typeAndDelay = async (chat, ms = 800, random = 400) => {
     await chat.sendStateTyping();
@@ -44,6 +52,24 @@ module.exports = {
             }
 
             // =========================
+            // CEK JIKA USER SEDANG MENUNGGU TTD
+            // =========================
+            if (waitingTTD[wa_number] && chat.hasMedia) {
+                const media = await chat.downloadMedia();
+                if (media && media.mimetype.includes('image/png')) {
+                    const ttdPath = path.join(ttdFolder, `${wa_number}.png`);
+                    fs.writeFileSync(ttdPath, media.data, 'base64');
+                    await chat.sendMessage('TTD berhasil tersimpan. Laporan akan langsung diajukan.');
+
+                    const waitingData = waitingTTD[wa_number];
+                    delete waitingTTD[wa_number]; // reset state
+
+                    // lanjut langsung approve
+                    return approveUser(chat, waitingData.user, db);
+                }
+            }
+
+            // =========================
             // INTRO
             // =========================
             if (user.intro === 0 && !sendingIntro[wa_number]) {
@@ -66,20 +92,17 @@ module.exports = {
             }
 
             // =====================================================
-            // 🔴 FIX UTAMA: APPROVE ATASAN (STATEFUL)
+            // APPROVE ATASAN (STATEFUL)
             // =====================================================
             const [approvalStep] = await query(
                 `SELECT id, step_input
                  FROM approvals
-                 WHERE approver_wa=?
-                   AND step_input IS NOT NULL
+                 WHERE approver_wa=? AND step_input IS NOT NULL
                  ORDER BY created_at DESC
                  LIMIT 1`,
                 [wa_number]
             );
 
-            // 👉 kalau sedang input alasan revisi / step apa pun
-            // APAPUN pesannya arahkan ke approveAtasan
             if (approvalStep) {
                 return approveAtasan(chat, user, pesan, db);
             }
@@ -104,6 +127,13 @@ module.exports = {
             // APPROVE USER (SUBMIT LAPORAN)
             // =========================
             if (lowerMsg === '/approve') {
+                const ttdPath = path.join(ttdFolder, `${wa_number}.png`);
+                if (!fs.existsSync(ttdPath)) {
+                    await chat.sendMessage('Kamu belum mengunggah TTD. Silakan kirim gambar TTD dalam format PNG.');
+                    waitingTTD[wa_number] = { user }; // simpan state untuk menunggu
+                    return;
+                }
+                // kalau TTD sudah ada, langsung approve
                 return approveUser(chat, user, db);
             }
 

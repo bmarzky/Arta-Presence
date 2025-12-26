@@ -5,6 +5,8 @@ const generatePDF = require('../utils/pdfGenerator');
 const { MessageMedia } = require('whatsapp-web.js');
 const { sendTyping } = require('../utils/sendTyping');
 
+const ttdFolder = path.resolve('./ttd/'); // tambahkan folder TTD
+
 /* =========================
    HELPER
 ========================= */
@@ -220,6 +222,15 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
                 fs.readFileSync(logoFile).toString('base64');
         }
 
+        /* =============================
+           TTD USER → BASE64
+        ============================= */
+        let ttdBase64 = '';
+        const ttdPath = path.join(ttdFolder, `${user.wa_number}.png`);
+        if (fs.existsSync(ttdPath)) {
+            ttdBase64 = 'data:image/png;base64,' + fs.readFileSync(ttdPath).toString('base64');
+        }
+
         const templatePath = path.join(
             __dirname,
             `../templates/absensi/${user.template_export}.html`
@@ -233,12 +244,12 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
             .replace(/{{jabatan}}/g, user.jabatan)
             .replace(/{{nik}}/g, user.nik)
             .replace(/{{periode}}/g, periode)
-            .replace(/{{rows_absensi}}/g, rows.join(''));
+            .replace(/{{rows_absensi}}/g, rows.join(''))
+            .replace(/{{ttd_user}}/g, ttdBase64); // <--- tambahkan placeholder TTD
 
         const exportsDir = path.join(__dirname, '../exports');
         if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
 
-        // ambil dari user / approval / default
         const templateRaw = user.template_export || 'LMD';
         const templateHTML = templateRaw.toUpperCase();
 

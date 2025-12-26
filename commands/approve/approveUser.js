@@ -5,7 +5,9 @@ const getGreeting = require('../../data/greetingTime');
 const fs = require('fs');
 const path = require('path');
 
+// folder TTD
 const ttdFolder = path.resolve('./ttd/');
+if (!fs.existsSync(ttdFolder)) fs.mkdirSync(ttdFolder, { recursive: true });
 
 module.exports = async function approveUser(chat, user, db) {
     const query = (sql, params = []) =>
@@ -15,7 +17,7 @@ module.exports = async function approveUser(chat, user, db) {
 
     const nama_user = user.pushname || user.nama_wa || 'User';
     const user_id = user.id;
-    const wa_number = user.number; // pastikan ini nomor WA user yang valid
+    const wa_number = user.wa_number; // pastikan sesuai kolom db
 
     if (!user_id)
         return sendTyping(chat, 'ID user tidak tersedia.');
@@ -26,8 +28,11 @@ module.exports = async function approveUser(chat, user, db) {
         ===================================================== */
         const ttdPath = path.join(ttdFolder, `${wa_number}.png`);
         if (!fs.existsSync(ttdPath)) {
-            await sendTyping(chat, `Kamu belum mengunggah TTD. Silakan kirim gambar TTD dalam format PNG.`);
-            // Bisa juga listen message baru dan simpan otomatis
+            await sendTyping(
+                chat,
+                `Kamu belum mengunggah TTD. Silakan kirim gambar TTD dalam format PNG.\n` +
+                `Setelah dikirim, laporan akan otomatis diajukan.`
+            );
             return; // berhenti dulu sampai user kirim TTD
         }
 
@@ -131,6 +136,7 @@ module.exports = async function approveUser(chat, user, db) {
             `• *approve*\n` +
             `• *revisi*`
         );
+
         return sendTyping(
             chat,
             `*${nama_user}*, laporan berhasil dikirim ke *${nama_atasan}* untuk proses approval.`
