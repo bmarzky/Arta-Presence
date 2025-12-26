@@ -56,19 +56,23 @@ module.exports = {
             }
 
             // CEK JIKA USER MENGIRIM MEDIA
-            if (message.hasMedia) {
-                const media = await message.downloadMedia();
-                if (media.mimetype === 'image/png') {
-                    const filename = `ttd-${user.id}.png`;
-                    const filePath = path.join(ttdFolder, filename);
-                    fs.writeFileSync(filePath, media.data, { encoding: 'base64' });
-                    await chat.sendMessage(`TTD berhasil diterima dan disimpan!`);
+            client.on('message', async (msg) => {
+                const chat = await msg.getChat();
+
+                if (msg.hasMedia) {
+                    const media = await msg.downloadMedia();
+                    if (media.mimetype === 'image/png') {
+                        const filename = `ttd-${msg.from}.png`;
+                        const filePath = path.join(ttdFolder, filename);
+                        fs.writeFileSync(filePath, media.data, { encoding: 'base64' });
+                        await chat.sendMessage('TTD berhasil diterima dan disimpan!');
+                    } else {
+                        await chat.sendMessage('Format TTD harus PNG.');
+                    }
                 } else {
-                    await chat.sendMessage('Format TTD harus PNG.');
+                    await chat.sendMessage('Kamu belum mengunggah TTD. Silakan kirim gambar TTD dalam format PNG.');
                 }
-            } else {
-                await chat.sendMessage('Kamu belum mengunggah TTD. Silakan kirim gambar TTD dalam format PNG.');
-            }
+            });
 
             // =========================
             // INTRO
