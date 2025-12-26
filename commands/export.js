@@ -224,13 +224,22 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         /* =============================
            TTD USER → BASE64
         ============================= */
-        const ttdPath = path.join(ttdFolder, `${user.wa_number}.png`);
-        let ttdBase64 = '';
-        if (fs.existsSync(ttdPath)) {
-            ttdBase64 = 'data:image/png;base64,' + fs.readFileSync(ttdPath).toString('base64');
+        const ttdPng = path.join(ttdFolder, `${user.wa_number}.png`);
+        const ttdJpg = path.join(ttdFolder, `${user.wa_number}.jpg`);
+
+        let ttdUserBase64 = '';
+        if (fs.existsSync(ttdPng)) {
+            ttdUserBase64 = fs.readFileSync(ttdPng).toString('base64');
+        } else if (fs.existsSync(ttdJpg)) {
+            ttdUserBase64 = fs.readFileSync(ttdJpg).toString('base64');
         } else {
-            console.warn(`TTD tidak ditemukan: ${ttdPath}`); // <-- tambahkan ini untuk debug
+            console.warn(`TTD user tidak ditemukan: ${ttdPng} / ${ttdJpg}`);
         }
+
+        // Masukkan langsung tag <img> di replace
+        const ttdUserHTML = ttdUserBase64
+            ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:80px;" />`
+            : '';
 
         const templatePath = path.join(
             __dirname,
@@ -246,7 +255,7 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
             .replace(/{{nik}}/g, user.nik)
             .replace(/{{periode}}/g, periode)
             .replace(/{{rows_absensi}}/g, rows.join(''))
-            .replace(/{{ttd_user}}/g, ttdBase64 ? `<img src="data:image/png;base64,${ttdBase64}" style="max-width:150px; max-height:80px;" />` : '');
+            .replace(/{{ttd_user}}/g, ttdUserHTML);
 
         const exportsDir = path.join(__dirname, '../exports');
         if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
