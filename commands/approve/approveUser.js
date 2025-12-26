@@ -41,9 +41,10 @@ module.exports = async function approveUser(chat, user, db) {
         }
 
         /* =====================================================
-           JIKA REVISI → WAJIB EXPORT ULANG
+           JIKA REVISED → WAJIB EXPORT ULANG
+           (ENUM DATABASE: revised)
         ===================================================== */
-        if (approval.status === 'revisi') {
+        if (approval.status === 'revised') {
             return sendTyping(
                 chat,
                 '❌ Laporan kamu *perlu revisi*.\nSilakan perbaiki lalu */export* ulang.'

@@ -11,7 +11,8 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             db.query(sql, params, (e, r) => (e ? rej(e) : res(r)))
         );
 
-    const text = (pesan || '').trim().toLowerCase();
+    const rawText = pesan || '';
+    const text = rawText.trim().toLowerCase();
 
     try {
         /* =========================
@@ -21,12 +22,13 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             `SELECT * FROM users WHERE wa_number=? LIMIT 1`,
             [user.wa_number]
         );
+
         if (!atasan)
             return sendTyping(chat, 'Data atasan tidak ditemukan.');
 
         /* =====================================================
-           APPROVAL TERAKHIR (PENDING / REVISI)
-           ❗ PENTING: JANGAN FILTER PENDING SAJA
+           APPROVAL TERAKHIR (PENDING / REVISED)
+           ⚠️ WAJIB INI — JANGAN pending SAJA
         ===================================================== */
         const [approval] = await query(
             `SELECT a.*,
@@ -38,7 +40,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
              FROM approvals a
              JOIN users u ON u.id = a.user_id
              WHERE a.approver_wa=?
-               AND a.status IN ('pending','revisi')
+               AND a.status IN ('pending','revised')
              ORDER BY a.created_at DESC
              LIMIT 1`,
             [user.wa_number]
@@ -58,7 +60,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
            STEP INPUT — ALASAN REVISI (HARUS PALING ATAS)
         ===================================================== */
         if (approval.step_input === 'alasan_revisi') {
-            if (!pesan || pesan.trim().length < 3) {
+            if (rawText.trim().length < 3) {
                 return sendTyping(
                     chat,
                     'Silakan ketik *alasan revisi* yang jelas.'
@@ -70,14 +72,14 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                  SET revisi_catatan=?,
                      step_input=NULL
                  WHERE id=?`,
-                [pesan.trim(), approval.id]
+                [rawText.trim(), approval.id]
             );
 
             await chat.client.sendMessage(
                 userWA,
                 `📌 *LAPORAN PERLU REVISI*\n` +
                 `Atasan: *${atasan.nama_lengkap}*\n\n` +
-                `📝 *Alasan revisi:*\n${pesan.trim()}\n\n` +
+                `📝 *Alasan revisi:*\n${rawText.trim()}\n\n` +
                 `Silakan perbaiki dan lakukan */export* ulang.`
             );
 
@@ -94,13 +96,13 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             if (approval.status !== 'pending') {
                 return sendTyping(
                     chat,
-                    '❌ Laporan ini sudah direvisi.\nMenunggu export ulang user.'
+                    '❌ Laporan ini sudah direvisi.\nMenunggu *export ulang* dari user.'
                 );
             }
 
             await query(
                 `UPDATE approvals
-                 SET status='revisi',
+                 SET status='revised',
                      step_input='alasan_revisi'
                  WHERE id=?`,
                 [approval.id]
@@ -113,17 +115,17 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         }
 
         /* =========================
-           BLOKIR APPROVE JIKA BUKAN PENDING
+           BLOKIR APPROVE JIKA SUDAH REVISED
         ========================= */
         if (text === 'approve' && approval.status !== 'pending') {
             return sendTyping(
                 chat,
-                '❌ Laporan ini tidak bisa di-approve.\nMenunggu *export ulang* dari user.'
+                '❌ Laporan ini sudah direvisi.\nMenunggu user melakukan *export ulang*.'
             );
         }
 
         /* =========================
-           APPROVE
+           APPROVE (HANYA SAAT PENDING)
         ========================= */
         if (text === 'approve') {
             let ttdBase64 = '';
@@ -194,7 +196,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 .replaceAll('{{nama}}', approval.user_nama)
                 .replaceAll('{{jabatan}}', approval.user_jabatan || '')
                 .replaceAll('{{nik}}', approval.user_nik)
-                .replaceAll('{{periode}}', `${bulanNama} - ${tahun}`)
+                .replaceAll('{{periode}}', `${bulanNama} ${tahun}`)
                 .replaceAll('{{rows_absensi}}', rows.join(''))
                 .replaceAll(
                     '{{ttd_atasan}}',
@@ -224,7 +226,10 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 ]
             );
 
-            await chat.client.sendMessage(userWA, MessageMedia.fromFilePath(outputPath));
+            await chat.client.sendMessage(
+                userWA,
+                MessageMedia.fromFilePath(outputPath)
+            );
             await chat.client.sendMessage(
                 userWA,
                 `✅ Laporan kamu telah *DISETUJUI* oleh *${atasan.nama_lengkap}*.`
