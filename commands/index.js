@@ -76,8 +76,8 @@ module.exports = {
                 if (waitingTTD[wa_number]?.atasan) {
                     const [dbAtasan] = await query(`SELECT * FROM users WHERE wa_number=?`, [wa_number]);
                     delete waitingTTD[wa_number];
-                    // langsung jalankan approveAtasan tanpa menunggu input lagi
-                    return await approveAtasan(chat, dbAtasan, pesan, db);
+                    // langsung jalankan approveAtasan, jangan minta ketik approve lagi
+                    return await approveAtasan(chat, dbAtasan, 'approve', db);
                 }
 
                 return; // selesai
@@ -175,22 +175,21 @@ module.exports = {
                     return sendTyping(chat, 'Tidak ada laporan yang menunggu approval.');
                 }
 
-                // tandai state menunggu TTD jika belum ada
+                // cek TTD
                 const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
                 const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
                 const ttdExists = fs.existsSync(ttdPng) || fs.existsSync(ttdJpg);
 
                 if (!ttdExists) {
-                    // simpan state menunggu TTD tapi langsung jalankan approveAtasan nanti setelah TTD dikirim
+                    // simpan state menunggu TTD tapi langsung gunakan 'approve' sebagai parameter
                     waitingTTD[wa_number] = { atasan: true };
                     await sendTyping(chat, 'Silakan kirim foto TTD kamu untuk approve laporan ini.');
                     return;
                 }
 
-                // TTD sudah ada, langsung approve
-                return approveAtasan(chat, user, pesan, db);
+                // TTD sudah ada, langsung approve tanpa harus ketik ulang
+                return approveAtasan(chat, user, lowerMsg, db);
             }
-
             // =========================
             // GREETING
             // =========================
