@@ -4,6 +4,7 @@ const { sendTyping } = require('../../utils/sendTyping');
 const getGreeting = require('../../data/greetingTime');
 const fs = require('fs');
 const path = require('path');
+const generatePDF = require('../../utils/pdfGenerator');
 
 // folder TTD
 const ttdFolder = path.join(__dirname, '../../assets/ttd/');
@@ -24,24 +25,6 @@ module.exports = async function approveUser(chat, user, db) {
 
     try {
         /* =====================================================
-           CEK TTD USER (PNG / JPG)
-        ===================================================== */
-        const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
-        const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
-        let ttdExists = false;
-        if (fs.existsSync(ttdPng)) ttdExists = true;
-        else if (fs.existsSync(ttdJpg)) ttdExists = true;
-
-        if (!ttdExists) {
-            await sendTyping(
-                chat,
-                `Kamu belum mengunggah TTD. Silakan kirim gambar TTD dalam format PNG atau JPG.\n` +
-                `Setelah dikirim, laporan akan otomatis diajukan.`
-            );
-            return; // berhenti dulu sampai user kirim TTD
-        }
-
-        /* =====================================================
            AMBIL APPROVAL TERAKHIR USER
         ===================================================== */
         const [approval] = await query(
@@ -54,15 +37,26 @@ module.exports = async function approveUser(chat, user, db) {
         );
 
         /* =====================================================
-           CEK STATUS APPROVAL
+           BELUM PERNAH EXPORT
         ===================================================== */
-        if (!approval) {
+        if (!approval || !approval.file_path) {
             return sendTyping(
                 chat,
-                'Kamu belum menyiapkan laporan.\nSilakan ketik */export* terlebih dahulu.'
+                'Kamu belum menyiapkan laporan atau belum di-export.\nSilakan ketik */export* terlebih dahulu.'
             );
         }
 
+        const filePath = path.resolve(approval.file_path);
+        if (!fs.existsSync(filePath)) {
+            return sendTyping(
+                chat,
+                'File laporan tidak ditemukan.\nSilakan export ulang.'
+            );
+        }
+
+        /* =====================================================
+           CEK STATUS APPROVAL
+        ===================================================== */
         if (approval.status === 'revised') {
             return sendTyping(
                 chat,
@@ -85,24 +79,38 @@ module.exports = async function approveUser(chat, user, db) {
         }
 
         /* =====================================================
-           CEK FILE EXPORT
+           CEK TTD SEBELUM KIRIM
         ===================================================== */
-        const filePath = path.resolve(approval.file_path);
-        if (!fs.existsSync(filePath)) {
+        const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
+        const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
+        let ttdFile = '';
+        if (fs.existsSync(ttdPng)) ttdFile = ttdPng;
+        else if (fs.existsSync(ttdJpg)) ttdFile = ttdJpg;
+
+        if (!ttdFile) {
             return sendTyping(
                 chat,
-                'File laporan tidak ditemukan.\nSilakan export ulang.'
+                `Kamu belum mengunggah TTD. Silakan kirim gambar TTD dalam format PNG/JPG.\n` +
+                `Setelah dikirim, ketik */approve* lagi untuk mengajukan laporan.`
             );
         }
+
+        /* =====================================================
+           GENERATE ULANG FILE DENGAN TTD
+        ===================================================== */
+        const updatedFilePath = await generatePDFwithTTD(user, filePath, ttdFile);
 
         /* =====================================================
            KIRIM KE ATASAN
         ===================================================== */
         let approverWA = approval.approver_wa;
-        if (!approverWA) return sendTyping(chat, 'Nomor approver belum disetel.');
-        if (!approverWA.includes('@')) approverWA += '@c.us';
+        if (!approverWA)
+            return sendTyping(chat, 'Nomor approver belum disetel.');
 
-        const media = MessageMedia.fromFilePath(filePath);
+        if (!approverWA.includes('@'))
+            approverWA += '@c.us';
+
+        const media = MessageMedia.fromFilePath(updatedFilePath);
         const greeting = getGreeting() || '';
         const nama_atasan = approval.nama_atasan || 'Atasan';
 
@@ -136,3 +144,35 @@ module.exports = async function approveUser(chat, user, db) {
         );
     }
 };
+
+/* =====================================================
+   GENERATE PDF DENGAN TTD
+===================================================== */
+async function generatePDFwithTTD(user, oldFilePath, ttdFile) {
+    const fs = require('fs');
+    const path = require('path');
+    const generatePDF = require('../../utils/pdfGenerator');
+
+    // ambil nama file lama
+    const dir = path.dirname(oldFilePath);
+    const ext = path.extname(oldFilePath);
+    const baseName = path.basename(oldFilePath, ext);
+    const newFilePath = path.join(dir, `${baseName}-TTD.pdf`);
+
+    // baca file lama sebagai template HTML jika ada
+    // asumsi generatePDF bisa menerima file HTML atau content lama
+    // di sini kita pakai content lama untuk generate ulang dengan TTD
+
+    let html = fs.readFileSync(oldFilePath.replace('.pdf', '.html'), 'utf8').toString();
+
+    // baca TTD user
+    const ttdBase64 = fs.readFileSync(ttdFile).toString('base64');
+    const ttdHTML = `<img src="data:image/png;base64,${ttdBase64}" style="max-width:150px; max-height:80px;" />`;
+
+    // replace placeholder TTD
+    html = html.replace(/{{ttd_user}}/g, ttdHTML);
+
+    await generatePDF(html, newFilePath);
+
+    return newFilePath;
+}

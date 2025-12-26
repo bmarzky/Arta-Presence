@@ -65,14 +65,14 @@ module.exports = {
                 fs.writeFileSync(filePath, messageMedia.data, { encoding: 'base64' });
                 await chat.sendMessage('TTD berhasil diterima dan disimpan!');
 
-                // Jika user menunggu TTD untuk approve (user biasa)
+                // Jika user menunggu TTD untuk approve
                 if (waitingTTD[wa_number]?.user) {
                     const [dbUser] = await query(`SELECT * FROM users WHERE wa_number=?`, [wa_number]);
                     delete waitingTTD[wa_number];
-                    return await approveUser(chat, dbUser, db); // pakai user terbaru
+                    return await approveUser(chat, dbUser, db);
                 }
 
-                // Jika atasan menunggu TTD untuk approve laporan
+                // Jika atasan menunggu TTD
                 if (waitingTTD[wa_number]?.atasan) {
                     const [dbAtasan] = await query(`SELECT * FROM users WHERE wa_number=?`, [wa_number]);
                     delete waitingTTD[wa_number];
@@ -104,9 +104,9 @@ module.exports = {
                 return require('./help')(chat, user.nama_wa);
             }
 
-            // =====================================================
+            // =========================
             // APPROVE ATASAN (STATEFUL)
-            // =====================================================
+            // =========================
             const [approvalStep] = await query(
                 `SELECT id, step_input
                  FROM approvals
@@ -148,12 +148,11 @@ module.exports = {
                     await chat.sendMessage(
                         'Kamu belum mengunggah TTD. Silakan kirim gambar TTD dalam format PNG/JPG.'
                     );
-
                     waitingTTD[wa_number] = { user }; // simpan state untuk menunggu TTD
                     return;
                 }
 
-                // jika TTD sudah ada, refresh data user dari DB dan langsung approve
+                // jika TTD sudah ada, refresh data user dari DB dan approve
                 const [dbUser] = await query(`SELECT * FROM users WHERE wa_number=?`, [wa_number]);
                 return await approveUser(chat, dbUser, db);
             }
@@ -162,7 +161,7 @@ module.exports = {
             // APPROVE / REVISI ATASAN (KEYWORD)
             // =========================
             if (['approve', 'revisi'].includes(lowerMsg)) {
-                return approveAtasan(chat, user, pesan, db);
+                // kosong karena sudah ditangani di approveAtasan
             }
 
             // =========================
