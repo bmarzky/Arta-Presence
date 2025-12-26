@@ -25,7 +25,7 @@ const typeAndDelay = async (chat, ms = 800, random = 400) => {
 };
 
 module.exports = {
-    message: async (chat, wa_number, nama_wa, db, pesan) => {
+    message: async (chat, wa_number, nama_wa, db, pesan, messageMedia) => {
         const lowerMsg = pesan.toLowerCase().trim();
 
         const query = (sql, params) =>
@@ -55,13 +55,16 @@ module.exports = {
                 );
             }
 
-            // CEK JIKA USER MENGIRIM MEDIA
+            // =========================
+            // CEK MEDIA (TTD)
+            // =========================
             if (messageMedia && messageMedia.mimetype === 'image/png') {
                 const filename = `${wa_number}.png`;
                 const filePath = path.join(ttdFolder, filename);
                 fs.writeFileSync(filePath, messageMedia.data, { encoding: 'base64' });
                 await chat.sendMessage('TTD berhasil diterima dan disimpan!');
-                // jika user menunggu TTD untuk approve, langsung jalankan approve
+
+                // jika user menunggu TTD untuk approve
                 if (waitingTTD[wa_number]) {
                     const waitingUser = waitingTTD[wa_number].user;
                     delete waitingTTD[wa_number];

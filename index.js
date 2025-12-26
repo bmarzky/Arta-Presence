@@ -84,6 +84,5 @@ function startWhatsAppBot() {
       }
   });
 
-
   client.initialize();
 }
