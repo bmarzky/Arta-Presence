@@ -49,13 +49,6 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         if (!approval)
             return sendTyping(chat, 'Tidak ada laporan yang menunggu approval.');
 
-        /* =========================
-           NORMALISASI TEMPLATE
-        ========================= */
-        const templateRaw = approval.template_export || 'LMD';
-        const templateHTML = templateRaw.toUpperCase(); // KSPS.html
-        const templateLogo = templateRaw.toLowerCase(); // ksps.png
-
         const userWA = approval.user_wa.includes('@')
             ? approval.user_wa
             : approval.user_wa + '@c.us';
@@ -64,6 +57,9 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
            INPUT ALASAN REVISI
         ========================= */
         if (approval.step_input === 'alasan_revisi') {
+
+            if (approval.status !== 'revised')
+                return sendTyping(chat, 'Status laporan tidak valid untuk revisi.');
 
             if (rawText.trim().length < 3)
                 return sendTyping(chat, 'Silakan ketik *alasan revisi* yang jelas.');
@@ -93,7 +89,10 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         if (text === 'revisi') {
 
             if (approval.status !== 'pending')
-                return sendTyping(chat, 'Laporan ini tidak bisa direvisi.');
+                return sendTyping(
+                    chat,
+                    'Laporan sudah direvisi atau tidak bisa direvisi lagi.'
+                );
 
             await query(
                 `UPDATE approvals
@@ -103,10 +102,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 [approval.id]
             );
 
-            return sendTyping(
-                chat,
-                'Silakan ketik *alasan revisi* secara jelas.'
-            );
+            return sendTyping(chat, 'Silakan ketik *alasan revisi*.');
         }
 
         /* =========================
@@ -114,22 +110,26 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         ========================= */
         if (text === 'approve') {
 
+            if (approval.status !== 'pending')
+                return sendTyping(
+                    chat,
+                    'Laporan ini tidak bisa di-approve karena sudah direvisi.'
+                );
+
+            /* ===== NORMALISASI TEMPLATE ===== */
+            const templateRaw = approval.template_export || 'LMD';
+            const templateHTML = templateRaw.toUpperCase();
+            const templateLogo = templateRaw.toLowerCase();
+
             /* ===== LOGO ===== */
             let logoBase64 = '';
-            let logoPath = path.join(
-                __dirname,
-                '../../assets/logo',
-                `${templateLogo}.png`
-            );
+            let logoPath = path.join(__dirname, '../../assets/logo', `${templateLogo}.png`);
 
-            if (!fs.existsSync(logoPath)) {
-                console.warn(`Logo ${templateLogo}.png tidak ditemukan, pakai default.`);
+            if (!fs.existsSync(logoPath))
                 logoPath = path.join(__dirname, '../../assets/logo/default.png');
-            }
 
-            if (fs.existsSync(logoPath)) {
+            if (fs.existsSync(logoPath))
                 logoBase64 = fs.readFileSync(logoPath, 'base64');
-            }
 
             /* ===== TTD ===== */
             let ttdBase64 = '';
@@ -220,13 +220,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             return sendTyping(chat, 'Approval berhasil.');
         }
 
-        /* =========================
-           FALLBACK
-        ========================= */
-        return sendTyping(
-            chat,
-            'Perintah tidak dikenali.\nKetik *approve* atau *revisi*.'
-        );
+        return sendTyping(chat, 'Ketik *approve* atau *revisi*.');
 
     } catch (err) {
         console.error(err);
