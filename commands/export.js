@@ -227,7 +227,7 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         const exportsDir = path.join(__dirname, '../exports');
         if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
 
-        const output = path.join(exportsDir, `${user.nama_lengkap}-${Date.now()}.pdf`);
+        const output = path.join(exportsDir, `ABSENSI-${user.nama_lengkap}-${templateHTML}.pdf`);
         await generatePDF(html, output);
 
         const [approver] = await query(

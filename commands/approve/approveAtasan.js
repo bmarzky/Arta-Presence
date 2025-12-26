@@ -203,7 +203,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
             const outputPath = path.join(
                 exportsDir,
-                `${approval.user_nama}-${templateHTML}-${Date.now()}.pdf`
+                `ABSENSI-${approval.user_nama}-${templateHTML}-Approve.pdf`
             );
 
             await generatePDF(html, outputPath);
