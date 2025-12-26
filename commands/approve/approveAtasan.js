@@ -224,7 +224,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 .replaceAll('{{nama}}', approval.user_nama)
                 .replaceAll('{{jabatan}}', approval.user_jabatan || '')
                 .replaceAll('{{nik}}', approval.user_nik)
-                .replaceAll('{{periode}}', moment().locale('id').format('MMMM YYYY'))
+                .replaceAll('{{periode}}', periodeStr)
                 .replaceAll('{{rows_absensi}}', rows.join(''))
                 .replaceAll('{{ttd_atasan}}', `<img src="data:image/png;base64,${ttdAtasanBase64}" width="80"/>`)
                 .replaceAll('{{ttd_user}}', ttdUserBase64 ? `<img src="data:image/png;base64,${ttdUserBase64}" width="80"/>` : '')
