@@ -7,7 +7,6 @@ const approveUser = require('./approve/approveUser');
 const approveAtasan = require('./approve/approveAtasan');
 const { sendTyping } = require('../utils/sendTyping');
 
-
 const typeAndDelay = async (chat, ms = 800, random = 400) => {
     await chat.sendStateTyping();
     await new Promise(r => setTimeout(r, ms + Math.random() * random));
@@ -66,8 +65,27 @@ module.exports = {
                 return require('./help')(chat, user.nama_wa);
             }
 
+            // =====================================================
+            // 🔴 FIX UTAMA: APPROVE ATASAN (STATEFUL)
+            // =====================================================
+            const [approvalStep] = await query(
+                `SELECT id, step_input
+                 FROM approvals
+                 WHERE approver_wa=?
+                   AND step_input IS NOT NULL
+                 ORDER BY created_at DESC
+                 LIMIT 1`,
+                [wa_number]
+            );
+
+            // 👉 kalau sedang input alasan revisi / step apa pun
+            // APAPUN pesannya arahkan ke approveAtasan
+            if (approvalStep) {
+                return approveAtasan(chat, user, pesan, db);
+            }
+
             // =========================
-            // ABSEN (COMMAND & STEP)
+            // EXPORT (COMMAND & STEP)
             // =========================
             if (lowerMsg.startsWith('/export') || user.step_input) {
                 const parts = pesan.split(' ').slice(1);
@@ -75,21 +93,29 @@ module.exports = {
                 return handleExport(chat, user, pesan, db, paramBulan);
             }
 
+            // =========================
+            // ABSEN
+            // =========================
             if (lowerMsg === '/absen' || user.step_absen) {
                 return handleAbsen(chat, user, lowerMsg, pesan, query);
             }
 
+            // =========================
+            // APPROVE USER (SUBMIT LAPORAN)
+            // =========================
             if (lowerMsg === '/approve') {
                 return approveUser(chat, user, db);
             }
 
-            // Respond to approve/revisi commands from approver
+            // =========================
+            // APPROVE / REVISI ATASAN (KEYWORD)
+            // =========================
             if (['approve', 'revisi'].includes(lowerMsg)) {
-                return approveAtasan(chat, user, lowerMsg, db);
+                return approveAtasan(chat, user, pesan, db);
             }
 
             // =========================
-            // GREETING (PALING BAWAH)
+            // GREETING
             // =========================
             const replyGreeting = greetings[lowerMsg];
             if (replyGreeting) {
