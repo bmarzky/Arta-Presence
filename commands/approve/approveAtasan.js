@@ -268,7 +268,9 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             );
         }
 
-        return sendTyping(chat, 'Ketik *approve* atau *revisi*.');
+        if (text !== 'approve' && text !== 'revisi') {
+            return sendTyping(chat, 'Ketik *approve* atau *revisi*.');
+        }
 
     } catch (err) {
         console.error(err);

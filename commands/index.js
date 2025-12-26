@@ -161,7 +161,20 @@ module.exports = {
             // APPROVE / REVISI ATASAN (KEYWORD)
             // =========================
             if (['approve', 'revisi'].includes(lowerMsg)) {
-                // kosong karena sudah ditangani di approveAtasan
+                const [approval] = await query(
+                    `SELECT *
+                     FROM approvals
+                     WHERE approver_wa=? AND status IN ('pending','revised')
+                     ORDER BY created_at DESC
+                     LIMIT 1`,
+                    [wa_number]
+                );
+
+                if (!approval) {
+                    return sendTyping(chat, 'Tidak ada laporan yang menunggu approval.');
+                }
+
+                return approveAtasan(chat, user, pesan, db);
             }
 
             // =========================
