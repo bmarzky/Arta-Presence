@@ -218,7 +218,10 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
             await chat.client.sendMessage(userWA, MessageMedia.fromFilePath(outputPath));
             await chat.client.sendMessage(userWA,`*Laporan Absensi Berhasil Di-Approve*\n\n` + `Halo *${approval.user_nama}*,\n` + `Laporan absensi kamu telah *DISETUJUI* oleh *${atasan.nama_lengkap}*.\n\n` + `Terima kasih.`);
-            return sendTyping(chat, 'Approval berhasil dikirim ke *${approval.user_nama}*.');
+            return sendTyping(
+                chat,
+                `Approval berhasil dikirim ke *${approval.user_nama}*.`
+            );
         }
 
         return sendTyping(chat, 'Ketik *approve* atau *revisi*.');
