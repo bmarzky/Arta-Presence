@@ -176,27 +176,43 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                     moment(a.tanggal).format('YYYY-MM-DD') === d.format('YYYY-MM-DD')
                 );
 
-                // Tentukan warna baris untuk weekend
+                // Cek hari Sabtu/Minggu dari tanggal
+                const dayOfWeek = d.day(); // 0 = Minggu, 6 = Sabtu
                 let rowColor = '';
-                const hari = d.locale('id').format('dddd').toLowerCase();
-                if (hari === 'sabtu' || hari === 'minggu') {
+                if (dayOfWeek === 0 || dayOfWeek === 6) { // weekend
                     if (templateHTML === 'KSPS') rowColor = 'background-color:#f0f0f0;';
                     else if (templateHTML === 'LMD') rowColor = 'background-color:#f15a5a;';
                 }
 
-                // Bold untuk deskripsi libur jika perlu
+                // Bold untuk deskripsi libur jika weekend
                 const deskripsi = r?.deskripsi?.toUpperCase() || '-';
-                const deskripsiHTML = (hari === 'sabtu' || hari === 'minggu') ? `<b>${deskripsi}</b>` : deskripsi;
+                const deskripsiHTML = (dayOfWeek === 0 || dayOfWeek === 6) ? `<b>${deskripsi}</b>` : deskripsi;
 
-                rows.push(`
-                    <tr style="${rowColor}">
-                        <td>${d.format('DD/MM/YYYY')}</td>
-                        <td>${hari}</td>
-                        <td>${r?.jam_masuk || '-'}</td>
-                        <td>${r?.jam_pulang || '-'}</td>
-                        <td>${deskripsiHTML}</td>
-                    </tr>
-                `);
+                if (templateHTML === 'KSPS') {
+                    // KSPS: kolom hari tidak ada
+                    rows.push(`
+                        <tr style="${rowColor}">
+                            <td>${d.format('DD/MM/YYYY')}</td>
+                            <td>${r?.jam_masuk || '-'}</td>
+                            <td>${r?.jam_pulang || '-'}</td>
+                            <td>${deskripsiHTML}</td>
+                            <td>${r?.disetujui || '-'}</td>
+                        </tr>
+                    `);
+                } else {
+                    // LMD: kolom hari tetap ada
+                    const hari = d.locale('id').format('dddd');
+                    rows.push(`
+                        <tr style="${rowColor}">
+                            <td>${d.format('DD/MM/YYYY')}</td>
+                            <td>${hari}</td>
+                            <td>${r?.jam_masuk || '-'}</td>
+                            <td>${r?.jam_pulang || '-'}</td>
+                            <td>${deskripsiHTML}</td>
+                            <td>${r?.disetujui || '-'}</td>
+                        </tr>
+                    `);
+                }
             }
 
             const html = template
