@@ -7,69 +7,52 @@ const moment = require('moment');
 
 module.exports = async function approveAtasan(chat, user, pesan, db) {
     const query = (sql, params) =>
-        new Promise((res, rej) =>
-            db.query(sql, params, (e, r) => (e ? rej(e) : res(r)))
-        );
+        new Promise((res, rej) => db.query(sql, params, (e, r) => e ? rej(e) : res(r)));
 
     const text = (pesan || '').trim();
 
     try {
-        /* =====================================================
-           DATA ATASAN
-        ===================================================== */
+        // ==========================
+        // DATA ATASAN
+        // ==========================
         const [atasan] = await query(
             `SELECT * FROM users WHERE wa_number=? LIMIT 1`,
             [user.wa_number]
         );
         if (!atasan) return sendTyping(chat, 'Data atasan tidak ditemukan.');
 
-        /* =====================================================
-           APPROVAL TERAKHIR
-        ===================================================== */
+        // ==========================
+        // APPROVAL TERAKHIR
+        // ==========================
         const [approval] = await query(
-            `SELECT a.*,
-                    u.wa_number AS user_wa,
-                    u.nama_lengkap AS user_nama,
-                    u.nik AS user_nik,
+            `SELECT a.*, 
+                    u.wa_number AS user_wa, 
+                    u.nama_lengkap AS user_nama, 
+                    u.nik AS user_nik, 
                     u.jabatan AS user_jabatan,
                     u.template_export
              FROM approvals a
              JOIN users u ON u.id = a.user_id
-             WHERE a.approver_wa=?
+             WHERE a.approver_wa=? 
                AND a.status IN ('pending','revised')
              ORDER BY a.created_at DESC
              LIMIT 1`,
             [user.wa_number]
         );
-
-        if (!approval)
-            return sendTyping(chat, 'Tidak ada approval pending untukmu.');
+        if (!approval) return sendTyping(chat, 'Tidak ada approval pending untukmu.');
 
         const userWA = approval.user_wa.includes('@')
             ? approval.user_wa
             : approval.user_wa + '@c.us';
 
-        /* =====================================================
-           STEP INPUT — MENUNGGU ALASAN REVISI (PALING ATAS)
-        ===================================================== */
+        // =====================================================
+        // STEP 1 — MENUNGGU ALASAN REVISI (PALING ATAS)
+        // =====================================================
         if (approval.step_input === 'alasan_revisi') {
-            // ❌ atasan salah ketik "revisi" lagi
-            if (text.toLowerCase() === 'revisi') {
-                return sendTyping(
-                    chat,
-                    'Silakan ketik *alasan revisi*, bukan kata "revisi".'
-                );
+            if (!text) {
+                return sendTyping(chat, 'Silakan ketik *alasan revisi*.');
             }
 
-            // ❌ alasan kosong / terlalu pendek
-            if (!text || text.length < 3) {
-                return sendTyping(
-                    chat,
-                    'Alasan revisi terlalu singkat. Silakan jelaskan.'
-                );
-            }
-
-            // ✅ simpan alasan & reset state
             await query(
                 `UPDATE approvals
                  SET revisi_catatan=?, step_input=NULL
@@ -77,7 +60,6 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 [text, approval.id]
             );
 
-            // ✅ kirim ke user (BARU DI SINI)
             await chat.client.sendMessage(
                 userWA,
                 `📌 *LAPORAN PERLU REVISI*\n` +
@@ -92,34 +74,25 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             );
         }
 
-        /* =====================================================
-           PATH TTD ATASAN
-        ===================================================== */
+        // ==========================
+        // PATH TTD ATASAN
+        // ==========================
         let ttdBase64 = '';
-        const ttdPng = path.join(
-            __dirname,
-            '../../assets/ttd',
-            `${atasan.wa_number}.png`
-        );
-        const ttdJpg = path.join(
-            __dirname,
-            '../../assets/ttd',
-            `${atasan.wa_number}.jpg`
-        );
+        const ttdPng = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.png`);
+        const ttdJpg = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.jpg`);
         if (fs.existsSync(ttdPng)) ttdBase64 = fs.readFileSync(ttdPng, 'base64');
-        else if (fs.existsSync(ttdJpg))
-            ttdBase64 = fs.readFileSync(ttdJpg, 'base64');
+        else if (fs.existsSync(ttdJpg)) ttdBase64 = fs.readFileSync(ttdJpg, 'base64');
 
-        /* =====================================================
-           APPROVE
-        ===================================================== */
+        // ==========================
+        // APPROVE
+        // ==========================
         if (text.toLowerCase() === 'approve') {
-            if (!ttdBase64)
+            if (!ttdBase64) {
                 return sendTyping(chat, 'TTD atasan tidak ditemukan.');
+            }
 
             const exportsDir = path.join(__dirname, '../../exports');
-            if (!fs.existsSync(exportsDir))
-                fs.mkdirSync(exportsDir, { recursive: true });
+            if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
 
             const timestamp = Date.now();
             const templateName = (approval.template_export || 'LMD').toUpperCase();
@@ -131,11 +104,15 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 '../../templates/absensi',
                 `${templateName}.html`
             );
-            if (!fs.existsSync(templatePath))
+            if (!fs.existsSync(templatePath)) {
                 return sendTyping(chat, 'Template laporan tidak ditemukan.');
+            }
 
             const template = fs.readFileSync(templatePath, 'utf8');
 
+            // ==========================
+            // DATA ABSENSI
+            // ==========================
             const now = new Date();
             const bulan = now.getMonth();
             const tahun = now.getFullYear();
@@ -169,11 +146,8 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 `);
             }
 
-            const bulanNama = moment()
-                .month(bulan)
-                .locale('id')
-                .format('MMMM');
-
+            const bulanNama = moment().month(bulan).locale('id').format('MMMM');
+            const periode = `${bulanNama} - ${tahun}`;
             const logoPath = path.join(
                 __dirname,
                 `../../assets/${templateName.toLowerCase()}.png`
@@ -187,12 +161,9 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 .replaceAll('{{nama}}', approval.user_nama)
                 .replaceAll('{{jabatan}}', approval.user_jabatan || '')
                 .replaceAll('{{nik}}', approval.user_nik)
-                .replaceAll('{{periode}}', `${bulanNama} - ${tahun}`)
+                .replaceAll('{{periode}}', periode)
                 .replaceAll('{{rows_absensi}}', rows.join(''))
-                .replaceAll(
-                    '{{ttd_atasan}}',
-                    `<img src="data:image/png;base64,${ttdBase64}" width="80"/>`
-                )
+                .replaceAll('{{ttd_atasan}}', `<img src="data:image/png;base64,${ttdBase64}" width="80"/>`)
                 .replaceAll('{{nama_atasan}}', atasan.nama_lengkap || '')
                 .replaceAll('{{nik_atasan}}', atasan.nik || '');
 
@@ -201,7 +172,6 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             await query(
                 `UPDATE approvals
                  SET status='approved',
-                     step_input=NULL,
                      ttd_atasan_at=NOW(),
                      ttd_atasan=?,
                      nama_atasan=?,
@@ -232,9 +202,9 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             );
         }
 
-        /* =====================================================
-           REVISI — TRIGGER AWAL (TIDAK KIRIM KE USER)
-        ===================================================== */
+        // ==========================
+        // REVISI (TRIGGER AWAL)
+        // ==========================
         if (text.toLowerCase() === 'revisi') {
             await query(
                 `UPDATE approvals
@@ -250,9 +220,9 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             );
         }
 
-        /* =====================================================
-           FALLBACK
-        ===================================================== */
+        // ==========================
+        // FALLBACK
+        // ==========================
         return sendTyping(
             chat,
             'Perintah tidak dikenali.\nKetik *approve* atau *revisi*.'
