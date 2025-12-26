@@ -205,7 +205,7 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
                         <td>${r?.jam_masuk || ''}</td>
                         <td>${r?.jam_pulang || ''}</td>
                         <td>${
-                            [0,6].includes(dateObj.day()) ? 'LIBUR' : (r?.deskripsi || '')
+                            [0,6].includes(dateObj.day()) ? '<b>LIBUR</b>' : (r?.deskripsi || '')
                         }</td>
                         <td></td>
                     </tr>`
