@@ -176,13 +176,25 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                     moment(a.tanggal).format('YYYY-MM-DD') === d.format('YYYY-MM-DD')
                 );
 
+                // Tentukan warna baris untuk weekend
+                let rowColor = '';
+                const hari = d.locale('id').format('dddd').toLowerCase();
+                if (hari === 'sabtu' || hari === 'minggu') {
+                    if (templateHTML === 'KSPS') rowColor = 'background-color:#f0f0f0;';
+                    else if (templateHTML === 'LMD') rowColor = 'background-color:#f15a5a;';
+                }
+
+                // Bold untuk deskripsi libur jika perlu
+                const deskripsi = r?.deskripsi?.toUpperCase() || '-';
+                const deskripsiHTML = (hari === 'sabtu' || hari === 'minggu') ? `<b>${deskripsi}</b>` : deskripsi;
+
                 rows.push(`
-                    <tr>
+                    <tr style="${rowColor}">
                         <td>${d.format('DD/MM/YYYY')}</td>
-                        <td>${d.locale('id').format('dddd')}</td>
+                        <td>${hari}</td>
                         <td>${r?.jam_masuk || '-'}</td>
                         <td>${r?.jam_pulang || '-'}</td>
-                        <td>${r?.deskripsi || '-'}</td>
+                        <td>${deskripsiHTML}</td>
                     </tr>
                 `);
             }
