@@ -23,9 +23,9 @@ async function handleApprove(chat, user, db){
         // Cek draft terakhir
         const [draft] = await query(
             `SELECT * FROM approvals 
-             WHERE user_id=? AND status='draft' AND source='export'
-             ORDER BY created_at DESC
-             LIMIT 1`,
+            WHERE user_id=? AND status='draft'
+            ORDER BY created_at DESC
+            LIMIT 1`,
             [user.id]
         );
 
