@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Form Absensi LEMBUR Non Shift</title>
+
+  <style>
+    @page { size: A4; margin: 15mm; }
+
+    body {
+      font-family: "Times New Roman", Times, serif;
+      font-size: 10px;
+      margin: 0;
+    }
+
+    .bold { font-weight: bold; }
+    .center { text-align: center; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 5px;
+      page-break-inside: avoid;
+    }
+
+    th, td {
+      border: 1px solid #000;
+      padding: 2px 4px;
+      vertical-align: top;
+      text-align: center;
+      font-size: 10px;
+    }
+
+    th { vertical-align: middle; background-color: #f0f0f0; }
+
+    .no-border td {
+      border: none;
+      padding: 2px 4px;
+      text-align: left;
+      font-size: 10px;
+    }
+
+    .signature {
+      margin-top: 20px;
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .signature td {
+      border: none;
+      text-align: center;
+      font-size: 10px;
+      padding: 4px 2px;
+      line-height: 1.1;
+    }
+
+    /* HEADER */
+    .header {
+      display: grid;
+      grid-template-columns: 60px auto;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+
+    .header img { height: 80px; }
+
+    .header-text { text-align: center; }
+    .company { font-weight: bold; font-size: 12px; }
+    .title { font-weight: bold; font-size: 11px; }
+
+    /* TABEL ABSENSI */
+    .absensi th:first-child, .absensi td:first-child { width: 9%; }
+    .absensi th:nth-child(2), .absensi td:nth-child(2) { width: 9%; }
+    .absensi th:nth-child(3), .absensi td:nth-child(3) { width: 10%; }
+    .absensi th:nth-child(4), .absensi td:nth-child(4) { width: 10%; }
+    .absensi th:nth-child(5), .absensi td:nth-child(5) { width: 42%; text-align: left; padding: 2px 5px; }
+    .absensi th:nth-child(6), .absensi td:nth-child(6) { width: 10%; }
+
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <img src="{{logo}}" alt="Logo Perusahaan">
+    <div class="header-text">
+      <div class="company">KARYA SOLUSI PRIMA SEJAHTERA</div>
+      <div class="title">FORM ABSEN (NON SHIFT)</div>
+    </div>
+  </div>
+
+  <!-- DATA DIRI -->
+  <table class="no-border">
+    <tr><td width="25%" class="bold">Nama</td><td>: {{nama}}</td></tr>
+    <tr><td class="bold">Jabatan</td><td>: {{jabatan}}</td></tr>
+    <tr><td class="bold">Divisi</td><td>: Regional Operation</td></tr>
+    <tr><td class="bold">Lokasi</td><td>: Aplikanusa Lintasarta Bandung</td></tr>
+    <tr><td class="bold">Kel. Pekerjaan</td><td>: Central Regional Operation</td></tr>
+    <tr><td class="bold">Periode</td><td>: {{periode}}</td></tr>
+  </table>
+
+  <!-- TABEL ABSENSI LEMBUR -->
+  <table class="absensi">
+    <thead>
+      <tr>
+        <th>TGL</th>
+        <th>MULAI</th>
+        <th>AKHIR</th>
+        <th>TOTAL JAM LEMBUR</th>
+        <th>DESKRIPSI LEMBUR</th>
+        <th>DISETUJUI</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{rows_lembur}}
+    </tbody>
+  </table>
+
+  <!-- TANDA TANGAN -->
+  <table class="signature">
+    <tr>
+      <td>Menyetujui,</td>
+      <td>Dibuat oleh,</td>
+    </tr>
+    <tr>
+      <td class="space">{{ttd_atasan}}</td>
+      <td class="space">{{ttd_user}}</td>
+    </tr>
+    <tr>
+      <td class="bold"><u>{{nama_atasan}}</u></td>
+      <td class="bold"><u>{{nama}}</u></td>
+    </tr>
+    <tr>
+      <td>NIK : {{nik_atasan}}</td>
+      <td>NIK : {{nik}}</td>
+    </tr>
+  </table>
+
+</body>
+</html>
