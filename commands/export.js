@@ -297,36 +297,35 @@ async function generatePDFLembur(chat, user, db){
             ? `${bulanNama[firstTanggal.getMonth()]} ${firstTanggal.getFullYear()}`
             : `1 - ${new Date(firstTanggal.getFullYear(), firstTanggal.getMonth()+1, 0).getDate()} ${bulanNama[firstTanggal.getMonth()]} ${firstTanggal.getFullYear()}`;
 
-        const rows = [];
+        // Hitung totalLemburDecimal dan ubah total_lembur per baris ke format "X.X Jam"
+        let totalLemburDecimal = 0;
+        for (const l of lemburData) {
+            if (!l.total_lembur) continue;
 
-        if(templateName === 'LMD'){
-            for(const l of lemburData){
-                rows.push(`<tr>
-                    <td>${moment(l.tanggal).format('DD/MM/YYYY')}</td>
-                    <td>${moment(l.tanggal).locale('id').format('dddd')}</td>
-                    <td>${l.jam_mulai || '-'}</td>
-                    <td>${l.jam_selesai || '-'}</td>
-                    <td>${l.total_lembur || '-'}</td>
-                    <td>${l.deskripsi || '-'}</td>
-                </tr>`);
+            let jamDecimal = 0;
+            if (l.total_lembur.includes(':')) {
+                const [h, m] = l.total_lembur.split(':').map(Number);
+                jamDecimal = h + m/60;
+            } else {
+                jamDecimal = parseFloat(l.total_lembur);
             }
-        } else {
-            const totalHari = new Date(firstTanggal.getFullYear(), firstTanggal.getMonth()+1, 0).getDate();
 
-            for(let i=1;i<=totalHari;i++){
-                const dateObj = moment(`${firstTanggal.getFullYear()}-${firstTanggal.getMonth()+1}-${i}`,'YYYY-M-D');
-                const r = lemburData.find(l => moment(l.tanggal).format('YYYY-MM-DD') === dateObj.format('YYYY-MM-DD'));
-
-                rows.push(`<tr>
-                    <td>${i}</td>
-                    <td>${r?.jam_mulai || ''}</td>
-                    <td>${r?.jam_selesai || ''}</td>
-                    <td>${r?.total_lembur || ''}</td>
-                    <td>${r?.deskripsi || ''}</td>
-                    <td></td>
-                </tr>`);
-            }
+            totalLemburDecimal += jamDecimal;
+            l.total_lembur = `${jamDecimal.toFixed(1)} Jam`;
         }
+
+        // Buat rows sekali saja
+        const rows = lemburData.map(l => `
+<tr>
+    <td>${moment(l.tanggal).format('DD/MM/YYYY')}</td>
+    <td>${moment(l.tanggal).locale('id').format('dddd')}</td>
+    <td>${l.jam_mulai || '-'}</td>
+    <td>${l.jam_selesai || '-'}</td>
+    <td>${l.total_lembur}</td>
+    <td>${l.deskripsi || '-'}</td>
+</tr>`).join('');
+
+        const totalLemburKeseluruhan = `${totalLemburDecimal.toFixed(1)} Jam`;
 
         const logoFile = path.join(__dirname, `../assets/logo/${templateName.toLowerCase()}.png`);
         const logoBase64 = fs.existsSync(logoFile)
@@ -344,40 +343,12 @@ async function generatePDFLembur(chat, user, db){
             ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:150px;" />`
             : '';
 
-        // Hitung total keseluruhan jam lembur (format desimal)
-        let totalLemburDecimal = 0;
-
-        for (const l of lemburData) {
-            if (!l.total_lembur) continue;
-
-            let jamDecimal = 0;
-
-            if (l.total_lembur.includes(':')) {
-                // Format HH:MM → konversi ke desimal
-                const [h, m] = l.total_lembur.split(':').map(Number);
-                jamDecimal = h + m/60;
-            } else {
-                // Format desimal langsung
-                jamDecimal = parseFloat(l.total_lembur);
-            }
-
-            totalLemburDecimal += jamDecimal;
-
-            // Ubah total_lembur per baris menjadi contoh "3.5 Jam"
-            l.total_lembur = `${jamDecimal.toFixed(1)} Jam`;
-        }
-
-        // Total keseluruhan
-        const totalLemburKeseluruhan = `${totalLemburDecimal.toFixed(1)} Jam`;
-
-
-
         const templatePath = path.join(__dirname, `../templates/lembur/${templateName}.html`);
         let html = fs.readFileSync(templatePath,'utf8');
 
         html = html
             .replace(/{{logo}}/g, logoBase64)
-            .replace(/{{rows_lembur}}/g, rows.join(''))
+            .replace(/{{rows_lembur}}/g, rows)
             .replace(/{{nama}}/g, user.nama_lengkap || '-')
             .replace(/{{jabatan}}/g, user.jabatan || '-')
             .replace(/{{nik}}/g, user.nik || '-')
@@ -418,6 +389,7 @@ async function generatePDFLembur(chat, user, db){
         return sendTyping(chat,'Terjadi kesalahan saat membuat PDF lembur.');
     }
 }
+
 
 module.exports = {
     handleExport,
