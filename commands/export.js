@@ -73,10 +73,10 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
                 `SELECT file_path 
                 FROM approvals 
                 WHERE user_id=? 
-                AND source='export' 
+                AND source='export'
                 AND status='pending'
                 AND user_approved=1
-                AND file_path LIKE ?
+                AND file_path LIKE ? 
                 ORDER BY created_at DESC 
                 LIMIT 1`,
                 [user.id, (text==='lembur' ? 'LEMBUR-%' : 'ABSENSI-%')]
