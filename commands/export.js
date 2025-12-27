@@ -81,11 +81,10 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
                 [user.id, text === 'lembur' ? 'LEMBUR-%' : 'ABSENSI-%']
             );
 
-            // blok hanya jika user sudah approve
-            if (pendingApproval && pendingApproval.user_approved === 1) {
+            if (pendingApproval) {  // cukup cek ada pending approval
                 return sendTyping(
                     chat,
-                    `*Laporan ${text} kamu masih menunggu approval atasan.*\nSilakan tunggu hingga selesai.`
+                    `*Laporan ${text} kamu sedang dalam proses approval.*\nSilakan tunggu hingga selesai.`
                 );
             }
 
