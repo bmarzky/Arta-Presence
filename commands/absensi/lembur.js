@@ -157,11 +157,12 @@ module.exports = function handleLembur(chat, user, pesan, query) {
                 if (err) console.error(err);
                 const totalJamHHMM = calculateTotalJam(session.data.jam_mulai, session.data.jam_selesai);
                 chat.sendMessage(
-                    `Apakah data berikut sudah benar?\n` +
+                    `Apakah data berikut sudah benar?\n\n` +
                     `Tanggal: ${session.data.tanggal}\n` +
+                    `Deskripsi: ${session.data.deskripsi}\n\n`+
                     `Jam: ${session.data.jam_mulai} – ${session.data.jam_selesai}\n` +
-                    `Total lembur: ${formatTotalJamHuman(totalJamHHMM)}\n` +
-                    `Deskripsi: ${session.data.deskripsi}\n(Ketik Ya/Tidak)`
+
+                    `Total lembur: ${formatTotalJamHuman(totalJamHHMM)}\n\n (Ketik Ya/Tidak)`
                 );
             });
             break;
