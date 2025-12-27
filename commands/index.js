@@ -8,7 +8,7 @@ const sendingIntro = {};
 const approveUser = require('./approve/approveUser');
 const approveAtasan = require('./approve/approveAtasan');
 const { sendTyping } = require('../utils/sendTyping');
-const lembur = require('./absensi/lembur')
+const handleLembur = require('./absensi/lembur'); // gunakan nama handleLembur
 
 const ttdFolder = path.join(__dirname, '../assets/ttd/');
 
