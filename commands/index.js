@@ -125,10 +125,34 @@ module.exports = {
             // EXPORT (COMMAND & STEP)
             // =========================
             if (lowerMsg.startsWith('/export') || user.step_input) {
+
+                // 🔒 CEK LAPORAN MASIH PENDING APPROVAL
+                const [pendingApproval] = await query(
+                    `SELECT file_path
+                    FROM approvals
+                    WHERE user_id=?
+                    AND status='pending'
+                    ORDER BY created_at DESC
+                    LIMIT 1`,
+                    [user.id]
+                );
+
+                if (pendingApproval && lowerMsg.startsWith('/export')) {
+                    const isLembur  = pendingApproval.file_path.startsWith('LEMBUR-');
+                    const isAbsensi = pendingApproval.file_path.startsWith('ABSENSI-');
+
+                    return sendTyping(
+                        chat,
+                        `❗ Kamu masih punya laporan *${isLembur ? 'lembur' : 'absensi'}* yang menunggu approval.\n` +
+                        `Silakan tunggu sampai proses approval selesai.`
+                    );
+                }
+
                 const parts = pesan.split(' ').slice(1);
                 const paramBulan = parts.length ? parts[0] : null;
                 return handleExport(chat, user, pesan, db, paramBulan);
             }
+
 
             // =========================
             // ABSEN
