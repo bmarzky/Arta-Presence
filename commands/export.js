@@ -81,7 +81,7 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
                 [user.id, text === 'lembur' ? 'LEMBUR-%' : 'ABSENSI-%']
             );
 
-            if (pendingApproval) {  // cukup cek ada pending approval
+            if (pendingApproval) {
                 return sendTyping(
                     chat,
                     `*Laporan ${text} kamu sedang dalam proses approval.*\nSilakan tunggu hingga selesai.`
@@ -239,7 +239,7 @@ async function generatePDFandSend(chat, user, db, paramBulan){
             `INSERT INTO approvals 
             (user_id, approver_wa, file_path, template_export, status, source,
             created_at, ttd_user_at, nama_atasan, nik_atasan, user_approved)
-            VALUES (?, ?, ?, ?, 'pending', 'export', NOW(), NOW(), ?, ?, 0)`,
+            VALUES (?, ?, ?, ?, 'draft', 'export', NOW(), NOW(), ?, ?, 0)`,
             [
                 user.id,
                 approverWA,
@@ -371,7 +371,7 @@ async function generatePDFLembur(chat, user, db){
             `INSERT INTO approvals 
             (user_id, approver_wa, file_path, template_export, status, source,
             created_at, ttd_user_at, nama_atasan, nik_atasan, user_approved)
-            VALUES (?, ?, ?, ?, 'pending', 'export', NOW(), NOW(), ?, ?, 0)`,
+            VALUES (?, ?, ?, ?, 'draft', 'export', NOW(), NOW(), ?, ?, 0)`,
             [
                 user.id,
                 approverWA,
