@@ -159,16 +159,18 @@ module.exports = function handleLembur(chat, user, pesan, query) {
                 const tanggalHuman = moment(session.data.tanggal).format('DD MMMM YYYY');
                 const totalJamHHMM = calculateTotalJam(session.data.jam_mulai, session.data.jam_selesai);
 
-                const pad = (label) => label.padEnd(13, ' ');
+                const padLabel = (label) => label.padEnd(13, ' ');
 
                 chat.sendMessage(
-                    `===== Konfirmasi Lembur =====\n` +
-                    `${pad('Tanggal')} : ${tanggalHuman}\n` +
-                    `${pad('Jam')} : ${session.data.jam_mulai} – ${session.data.jam_selesai}\n` +
-                    `${pad('Deskripsi')} : ${session.data.deskripsi}\n` +
-                    `${pad('Total lembur')} : ${formatTotalJamHuman(totalJamHHMM)}\n` +
-                    `============================\n` +
-                    `(Ketik Ya/Tidak)`
+                    '```' + // mulai monospace
+                    '===== Konfirmasi Lembur =====\n' +
+                    `${padLabel('Tanggal')} : ${tanggalHuman}\n` +
+                    `${padLabel('Jam')} : ${session.data.jam_mulai} – ${session.data.jam_selesai}\n` +
+                    `${padLabel('Deskripsi')} : ${session.data.deskripsi}\n` +
+                    `${padLabel('Total lembur')} : ${formatTotalJamHuman(totalJamHHMM)}\n` +
+                    '============================\n' +
+                    '(Ketik Ya/Tidak)' +
+                    '```' // tutup monospace
                 );
 
             });
