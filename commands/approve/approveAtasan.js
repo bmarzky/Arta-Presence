@@ -202,6 +202,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
    Fungsi generate PDF untuk atasan
    - absensi
 ========================= */
+// approveAtasan.js
 async function generatePDFForAtasan(approval, ttdAtasanBase64, ttdUserBase64, db) {
     const fs = require('fs');
     const path = require('path');
@@ -215,28 +216,28 @@ async function generatePDFForAtasan(approval, ttdAtasanBase64, ttdUserBase64, db
 
     // ambil data absensi dari DB
     const now = new Date();
-    const bulan = now.getMonth();
+    const bulan = now.getMonth() + 1;
     const tahun = now.getFullYear();
-    const totalHari = new Date(tahun, bulan + 1, 0).getDate();
+    const totalHari = new Date(tahun, bulan, 0).getDate();
 
-    const absensi = await new Promise((resolve, reject) =>
-        db.query( // ganti approval.db -> db
-            `SELECT * FROM absensi WHERE user_id=? AND MONTH(tanggal)=? AND YEAR(tanggal)=? ORDER BY tanggal`,
-            [approval.user_id, bulan + 1, tahun],
-            (err, res) => err ? reject(err) : resolve(res)
-        )
+    // pakai db.execute (promise) dari mysql2/promise
+    const [absensi] = await db.execute(
+        `SELECT * FROM absensi WHERE user_id=? AND MONTH(tanggal)=? AND YEAR(tanggal)=? ORDER BY tanggal`,
+        [approval.user_id, bulan, tahun]
     );
 
     const rows = [];
     for (let i = 1; i <= totalHari; i++) {
-        const d = moment(`${tahun}-${bulan + 1}-${i}`, 'YYYY-M-D');
+        const d = moment(`${tahun}-${bulan}-${i}`, 'YYYY-M-D');
         const r = absensi.find(a => moment(a.tanggal).format('YYYY-MM-DD') === d.format('YYYY-MM-DD'));
         const dayOfWeek = d.day();
         let rowColor = '';
         if (dayOfWeek === 0 || dayOfWeek === 6) rowColor = 'background-color:#f15a5a;';
 
         const hari = d.locale('id').format('dddd');
-        const deskripsiHTML = (dayOfWeek === 0 || dayOfWeek === 6) ? `<b>${(r?.deskripsi || '').toUpperCase()}</b>` : r?.deskripsi || '-';
+        const deskripsiHTML = (dayOfWeek === 0 || dayOfWeek === 6) 
+            ? `<b>${(r?.deskripsi || '').toUpperCase()}</b>` 
+            : r?.deskripsi || '-';
         rows.push(`
             <tr style="${rowColor}">
                 <td>${d.format('DD/MM/YYYY')}</td>
@@ -251,7 +252,7 @@ async function generatePDFForAtasan(approval, ttdAtasanBase64, ttdUserBase64, db
     template = template
         .replaceAll('{{nama}}', approval.user_nama)
         .replaceAll('{{jabatan}}', approval.user_jabatan || '')
-        .replaceAll('{{nik}}', approval.user_nik)
+        .replaceAll('{{nik}}', approval.user_nik || '')
         .replaceAll('{{periode}}', moment().locale('id').format('MMMM YYYY'))
         .replaceAll('{{rows_absensi}}', rows.join(''))
         .replaceAll('{{ttd_atasan}}', `<img src="data:image/png;base64,${ttdAtasanBase64}" width="80"/>`)
