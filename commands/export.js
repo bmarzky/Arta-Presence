@@ -68,29 +68,27 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
             if (!['absensi', 'lembur'].includes(text))
                 return sendTyping(chat, 'Balas *absensi* atau *lembur* ya.');
 
-            /* BLOCK BERDASARKAN APPROVAL PENDING */
+            // CEK PENDING PER JENIS
             const [pendingApproval] = await query(
-                `SELECT file_path
-                 FROM approvals
-                 WHERE user_id=?
-                   AND source='approve'
-                   AND status='pending'
-                 ORDER BY created_at DESC
-                 LIMIT 1`,
+                `SELECT file_path, status
+                FROM approvals
+                WHERE user_id=? AND source='export' 
+                AND status='pending'
+                AND (file_path LIKE 'ABSENSI-%' OR file_path LIKE 'LEMBUR-%')
+                ORDER BY created_at DESC
+                LIMIT 1`,
                 [user.id]
             );
 
             if (pendingApproval) {
-                const isLemburPending  = pendingApproval.file_path.startsWith('LEMBUR-');
-                const isAbsensiPending = pendingApproval.file_path.startsWith('ABSENSI-');
+                const isLemburPending  = pendingApproval.file_path.startsWith('LEMBUR-') && pendingApproval.status === 'pending';
+                const isAbsensiPending = pendingApproval.file_path.startsWith('ABSENSI-') && pendingApproval.status === 'pending';
 
-                if (
-                    (text === 'lembur' && isLemburPending) ||
-                    (text === 'absensi' && isAbsensiPending)
-                ) {
+                // blok hanya untuk jenis yang sama
+                if ((text === 'lembur' && isLemburPending) || (text === 'absensi' && isAbsensiPending)) {
                     return sendTyping(
                         chat,
-                        ` *Laporan ${text} kamu masih dalam proses approval atasan.*\nSilakan tunggu hingga selesai.`
+                        `*Laporan ${text} kamu masih menunggu approval atasan.*\nSilakan tunggu hingga selesai.`
                     );
                 }
             }
@@ -98,8 +96,8 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
             // SIMPAN PILIHAN & LANJUT
             await query(
                 `UPDATE users 
-                 SET export_type=?, step_input='choose_template' 
-                 WHERE id=?`,
+                SET export_type=?, step_input='choose_template' 
+                WHERE id=?`,
                 [text, user.id]
             );
 
@@ -108,6 +106,7 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
                 `Pilih template:\n1. KSPS\n2. LMD\nBalas *ksps* atau *lmd*`
             );
         }
+
 
         /* =========================
            STEP: CHOOSE TEMPLATE
