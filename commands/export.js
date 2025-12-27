@@ -278,7 +278,7 @@ async function generatePDFandSend(chat, user, db, paramBulan) {
         await generatePDF(html, pdfFile);
 
         const [approver] = await query(
-            `SELECT wa_number, nama_lengkap, nik FROM users WHERE jabatan='spv' LIMIT 1`
+            `SELECT wa_number, nama_lengkap, nik FROM users WHERE jabatan='Head' LIMIT 1`
         );
 
         await query(
