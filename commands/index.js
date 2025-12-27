@@ -10,11 +10,7 @@ const approveAtasan = require('./approve/approveAtasan');
 const { sendTyping } = require('../utils/sendTyping');
 
 const ttdFolder = path.join(__dirname, '../assets/ttd/');
-
-// Buat folder jika belum ada
-if (!fs.existsSync(ttdFolder)) {
-    fs.mkdirSync(ttdFolder, { recursive: true });
-}
+if (!fs.existsSync(ttdFolder)) fs.mkdirSync(ttdFolder, { recursive: true });
 
 // state untuk menunggu TTD per user/atasan
 const waitingTTD = {};
@@ -27,32 +23,19 @@ const typeAndDelay = async (chat, ms = 800, random = 400) => {
 module.exports = {
     message: async (chat, wa_number, nama_wa, db, pesan, messageMedia) => {
         const lowerMsg = pesan.toLowerCase().trim();
-
         const query = (sql, params) =>
             new Promise((res, rej) =>
-                db.query(sql, params, (err, result) =>
-                    err ? rej(err) : res(result)
-                )
+                db.query(sql, params, (err, result) => (err ? rej(err) : res(result)))
             );
 
         try {
             // =========================
-            // USER
+            // Ambil atau buat user
             // =========================
-            let [user] = await query(
-                "SELECT * FROM users WHERE wa_number=?",
-                [wa_number]
-            );
-
+            let [user] = await query("SELECT * FROM users WHERE wa_number=?", [wa_number]);
             if (!user) {
-                await query(
-                    "INSERT INTO users (wa_number, nama_wa, intro) VALUES (?, ?, 0)",
-                    [wa_number, nama_wa]
-                );
-                [user] = await query(
-                    "SELECT * FROM users WHERE wa_number=?",
-                    [wa_number]
-                );
+                await query("INSERT INTO users (wa_number, nama_wa, intro) VALUES (?, ?, 0)", [wa_number, nama_wa]);
+                [user] = await query("SELECT * FROM users WHERE wa_number=?", [wa_number]);
             }
 
             // =========================
@@ -63,7 +46,7 @@ module.exports = {
                 const filename = `${wa_number}.${ext}`;
                 const filePath = path.join(ttdFolder, filename);
                 fs.writeFileSync(filePath, messageMedia.data, { encoding: 'base64' });
-                await chat.sendMessage('Laporan Approved');
+                await chat.sendMessage('Tanda tangan berhasil diterima.');
 
                 // Jika user menunggu TTD untuk approve
                 if (waitingTTD[wa_number]?.user) {
@@ -76,7 +59,6 @@ module.exports = {
                 if (waitingTTD[wa_number]?.atasan) {
                     const [dbAtasan] = await query(`SELECT * FROM users WHERE wa_number=?`, [wa_number]);
                     delete waitingTTD[wa_number];
-                    // langsung jalankan approveAtasan tanpa harus ketik approve lagi
                     return await approveAtasan(chat, dbAtasan, 'approve', db);
                 }
 
@@ -90,8 +72,8 @@ module.exports = {
                 sendingIntro[wa_number] = true;
                 await typeAndDelay(chat);
                 await chat.sendMessage(
-                    `Halo *${nama_wa}* Saya *Arta Presence*, bot absensi otomatis *Lintasarta*.\n\n` +
-                    `silakan gunakan perintah */help* untuk melihat daftar perintah yang tersedia.`
+                    `Halo *${nama_wa}*, saya *Arta Presence*, bot absensi otomatis *Lintasarta*.\n\n` +
+                    `Gunakan perintah */help* untuk melihat daftar perintah yang tersedia.`
                 );
                 await query("UPDATE users SET intro=1 WHERE id=?", [user.id]);
                 sendingIntro[wa_number] = false;
@@ -116,46 +98,13 @@ module.exports = {
                  LIMIT 1`,
                 [wa_number]
             );
-
-            if (approvalStep) {
-                return approveAtasan(chat, user, pesan, db);
-            }
+            if (approvalStep) return approveAtasan(chat, user, pesan, db);
 
             // =========================
             // EXPORT (COMMAND & STEP)
             // =========================
             if (lowerMsg.startsWith('/export') || user.step_input) {
-
-                // CEK LAPORAN MASIH PENDING APPROVAL
-                const [pendingApproval] = await query(
-                    `SELECT file_path
-                    FROM approvals
-                    WHERE user_id=? AND status='pending'
-                    ORDER BY created_at DESC
-                    LIMIT 1`,
-                    [user.id]
-                );
-
-                if (pendingApproval && lowerMsg.startsWith('/export')) {
-                    const isLembur  = pendingApproval.file_path.startsWith('LEMBUR-');
-                    const isAbsensi = pendingApproval.file_path.startsWith('ABSENSI-');
-
-                    return sendTyping(
-                        chat,
-                        `Kamu masih punya laporan *${isLembur ? 'LEMBUR' : 'ABSENSI'}* yang menunggu approval.\n` +
-                        `Silakan tunggu sampai proses approval selesai.`
-                    );
-                }
-
-                // HAPUS DRAFT LAMA SEBELUM GENERATE
-                await query(
-                    `DELETE FROM approvals WHERE user_id=? AND status='draft'`,
-                    [user.id]
-                );
-
-                const parts = pesan.split(' ').slice(1);
-                const paramBulan = parts.length ? parts[0] : null;
-                return handleExport(chat, user, pesan, db, paramBulan);
+                return handleExport(chat, user, pesan, db, pesan.split(' ')[1] || null);
             }
 
             // =========================
@@ -166,16 +115,11 @@ module.exports = {
             }
 
             // =========================
-            // APPROVE USER (SUBMIT LAPORAN)
+            // APPROVE USER
             // =========================
             if (lowerMsg === '/approve') {
-                // cek apakah user punya laporan pending
                 const [approval] = await query(
-                    `SELECT *
-                    FROM approvals
-                    WHERE user_id=? AND status='pending'
-                    ORDER BY created_at DESC
-                    LIMIT 1`,
+                    `SELECT * FROM approvals WHERE user_id=? AND status='pending' ORDER BY created_at DESC LIMIT 1`,
                     [user.id]
                 );
 
@@ -183,80 +127,54 @@ module.exports = {
                     return sendTyping(chat, 'Kamu belum menyiapkan laporan. Silakan ketik /export terlebih dahulu.');
                 }
 
-                const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
-                const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
-                const ttdExists = fs.existsSync(ttdPng) || fs.existsSync(ttdJpg);
-
-                if (!ttdExists) {
-                    await sendTyping(chat, 'Silakan kirim tanda tangan untuk approve terlebih dahulu laporan ini..');
-                    waitingTTD[wa_number] = { user }; // simpan state untuk menunggu TTD
+                // cek TTD
+                const ttdFiles = fs.readdirSync(ttdFolder).filter(f =>
+                    f.startsWith(wa_number) && ['png','jpg','jpeg'].includes(f.split('.').pop())
+                );
+                if (!ttdFiles.length) {
+                    await sendTyping(chat, 'Silakan kirim tanda tangan untuk approve laporan ini..');
+                    waitingTTD[wa_number] = { user };
                     return;
                 }
 
-                // jika TTD sudah ada, refresh data user dari DB dan approve
+                // TTD sudah ada, jalankan approve
                 const [dbUser] = await query(`SELECT * FROM users WHERE wa_number=?`, [wa_number]);
                 return await approveUser(chat, dbUser, db);
             }
 
             // =========================
-            // APPROVE / REVISI ATASAN (KEYWORD)
+            // APPROVE / REVISI ATASAN
             // =========================
             if (['approve', 'revisi'].includes(lowerMsg)) {
                 const [approval] = await query(
-                    `SELECT *
-                    FROM approvals
-                    WHERE approver_wa=? AND status IN ('pending','revised')
-                    ORDER BY created_at DESC
-                    LIMIT 1`,
+                    `SELECT * FROM approvals WHERE approver_wa=? AND status IN ('pending','revised') ORDER BY created_at DESC LIMIT 1`,
                     [wa_number]
                 );
 
-                if (!approval) {
-                    return sendTyping(chat, 'Tidak ada laporan yang menunggu approval.');
+                if (!approval) return sendTyping(chat, 'Tidak ada laporan yang menunggu approval.');
+
+                if (lowerMsg === 'revisi') return approveAtasan(chat, user, pesan, db);
+
+                // approve atasan
+                const ttdFiles = fs.readdirSync(ttdFolder).filter(f =>
+                    f.startsWith(wa_number) && ['png','jpg','jpeg'].includes(f.split('.').pop())
+                );
+                if (!ttdFiles && approval.step_input !== 'ttd_atasan') {
+                    await sendTyping(chat, 'Silakan kirim tanda tangan untuk approve laporan ini.');
+                    await query(`UPDATE approvals SET step_input='ttd_atasan' WHERE id=?`, [approval.id]);
+                    waitingTTD[wa_number] = { atasan: true };
+                    return;
                 }
 
-                if (lowerMsg === 'revisi') {
-                    if (approval.status !== 'pending') {
-                        return sendTyping(chat, 'Laporan mungkin sedang direvisi, silahkan tunggu dikirim kembali.');
-                    }
-                    // jalankan revisi langsung tanpa TTD
-                    return approveAtasan(chat, user, pesan, db);
-                }
-
-                if (lowerMsg === 'approve') {
-                    if (approval.status === 'revised') {
-                        return sendTyping(chat, 'Laporan ini sudah direvisi.');
-                    }
-
-                    // cek TTD atasan
-                    const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
-                    const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
-                    const ttdExists = fs.existsSync(ttdPng) || fs.existsSync(ttdJpg);
-
-                    if (!ttdExists && approval.step_input !== 'ttd_atasan') {
-                        await sendTyping(chat, 'Silakan kirim tanda tangan untuk approve laporan ini.');
-                        await query(`UPDATE approvals SET step_input='ttd_atasan' WHERE id=?`, [approval.id]);
-                        waitingTTD[wa_number] = { atasan: true }; // simpan state menunggu TTD
-                        return;
-                    }
-
-                    // langsung approve jika TTD sudah ada
-                    return approveAtasan(chat, user, pesan, db);
-                }
+                return approveAtasan(chat, user, pesan, db);
             }
 
             // =========================
             // GREETING
             // =========================
-            const replyGreeting = greetings[lowerMsg];
-            if (replyGreeting) {
-                const randomReply =
-                    greetingReplies[Math.floor(Math.random() * greetingReplies.length)];
-                return sendTyping(
-                    chat,
-                    `${replyGreeting} *${nama_wa}*, ${randomReply}`,
-                    1000
-                );
+            if (greetings[lowerMsg]) {
+                const randomReply = greetingReplies[Math.floor(Math.random() * greetingReplies.length)];
+                return sendTyping(chat, `${greetings[lowerMsg]} *${nama_wa}*, ${randomReply}`, 1000);
             }
 
             // =========================
