@@ -161,10 +161,10 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             let outputPath;
             if (approval.export_type === 'lembur') {
                 // generate PDF lembur
-                outputPath = await generatePDFLemburForAtasan(approval, ttdAtasanBase64, ttdUserBase64);
+                outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64);
             } else {
                 // generate PDF absensi biasa
-                outputPath = await generatePDFForAtasan(approval, ttdAtasanBase64, ttdUserBase64);
+                outputPath = await generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64);
             }
 
             /* ===== UPDATE STATUS DAN KIRIM KE USER ===== */
@@ -272,15 +272,19 @@ async function generatePDFForAtasan(approval, ttdAtasanBase64, ttdUserBase64) {
    Fungsi generate PDF untuk atasan
    - lembur
 ========================= */
-async function generatePDFLemburForAtasan(approval, ttdAtasanBase64, ttdUserBase64) {
+async function generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64) {
     const fs = require('fs');
     const path = require('path');
     const generatePDF = require('../../utils/pdfGenerator');
     const moment = require('moment');
 
+    // ambil export type dari users
     const exportType = approval.export_type || 'absen'; // 'lembur' atau 'absen'
     const templateName = approval.template_export || 'LMD'; // tetap nama file dari DB (KSPS/LMD)
     const templatePath = path.join(__dirname, `../../templates/${exportType}/${templateName}.html`);
+
+    if (!fs.existsSync(templatePath)) throw new Error(`Template ${templateName}.html tidak ditemukan di folder ${exportType}`);
+
     let htmlTemplate = fs.readFileSync(templatePath, 'utf8');
 
     // ambil data lembur dari DB
@@ -290,7 +294,7 @@ async function generatePDFLemburForAtasan(approval, ttdAtasanBase64, ttdUserBase
     const totalHari = new Date(tahun, bulan + 1, 0).getDate();
 
     const lembur = await new Promise((resolve, reject) =>
-        approval.db.query(
+        db.query(
             `SELECT * FROM lembur WHERE user_id=? AND MONTH(tanggal)=? AND YEAR(tanggal)=? ORDER BY tanggal`,
             [approval.user_id, bulan + 1, tahun],
             (err, res) => err ? reject(err) : resolve(res)
