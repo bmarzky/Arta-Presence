@@ -252,14 +252,9 @@ async function generatePDFLembur(chat, user, db){
         );
 
     try {
-        /* =====================================================
-           PENGAMAN TEMPLATE
-        ===================================================== */
         const templateName = user.template_export || 'LMD';
 
-        /* =====================================================
-           AMBIL DATA ATASAN
-        ===================================================== */
+        /* ================= ATASAN ================= */
         const [approver] = await query(
             `SELECT * FROM users WHERE jabatan='Head' LIMIT 1`
         );
@@ -268,9 +263,7 @@ async function generatePDFLembur(chat, user, db){
         const approverNama = approver?.nama_lengkap || '-';
         const approverNik  = approver?.nik || '-';
 
-        /* =====================================================
-           AMBIL DATA LEMBUR
-        ===================================================== */
+        /* ================= DATA LEMBUR ================= */
         const lemburData = await query(
             `SELECT * FROM lembur WHERE user_id=? ORDER BY tanggal`,
             [user.id]
@@ -279,33 +272,71 @@ async function generatePDFLembur(chat, user, db){
         if(!lemburData.length)
             return sendTyping(chat,'Belum ada data lembur.');
 
-        const first = new Date(lemburData[0].tanggal);
-        const last  = new Date(lemburData.at(-1).tanggal);
+        const bulanNama = [
+            'Januari','Februari','Maret','April','Mei','Juni',
+            'Juli','Agustus','September','Oktober','November','Desember'
+        ];
 
-        const periode = templateName === 'LMD'
-            ? moment(first).locale('id').format('MMMM YYYY')
-            : `${formatTanggalLMD(first)} - ${formatTanggalLMD(last)}`;
+        const firstTanggal = new Date(lemburData[0].tanggal);
+        const lastTanggal  = new Date(lemburData.at(-1).tanggal);
 
-        /* =====================================================
-           ROWS LEMBUR
-        ===================================================== */
+        /* ================= PERIODE (SAMA PERSIS) ================= */
+        let periode = '';
+        if(templateName === 'LMD'){
+            periode = `${bulanNama[firstTanggal.getMonth()]} ${firstTanggal.getFullYear()}`;
+        } else {
+            const totalHari = new Date(
+                firstTanggal.getFullYear(),
+                firstTanggal.getMonth() + 1,
+                0
+            ).getDate();
+
+            periode = `1 - ${totalHari} ${bulanNama[firstTanggal.getMonth()]} ${firstTanggal.getFullYear()}`;
+        }
+
+        /* ================= ROWS LEMBUR (SAMA PERSIS) ================= */
         const rows = [];
-        for(const l of lemburData){
-            rows.push(`
-                <tr>
-                    <td>${formatTanggalLMD(l.tanggal)}</td>
-                    <td>${hariIndonesia(l.tanggal)}</td>
+
+        if(templateName === 'LMD'){
+            for(const l of lemburData){
+                rows.push(`<tr>
+                    <td>${moment(l.tanggal).format('DD/MM/YYYY')}</td>
+                    <td>${moment(l.tanggal).locale('id').format('dddd')}</td>
                     <td>${l.jam_mulai || '-'}</td>
                     <td>${l.jam_selesai || '-'}</td>
                     <td>${l.total_lembur || '-'}</td>
                     <td>${l.deskripsi || '-'}</td>
-                </tr>
-            `);
+                </tr>`);
+            }
+        } else {
+            const totalHari = new Date(
+                firstTanggal.getFullYear(),
+                firstTanggal.getMonth() + 1,
+                0
+            ).getDate();
+
+            for(let i=1;i<=totalHari;i++){
+                const dateObj = moment(
+                    `${firstTanggal.getFullYear()}-${firstTanggal.getMonth()+1}-${i}`,
+                    'YYYY-M-D'
+                );
+
+                const r = lemburData.find(l =>
+                    moment(l.tanggal).format('YYYY-MM-DD') === dateObj.format('YYYY-MM-DD')
+                );
+
+                rows.push(`<tr>
+                    <td>${i}</td>
+                    <td>${r?.jam_mulai || ''}</td>
+                    <td>${r?.jam_selesai || ''}</td>
+                    <td>${r?.total_lembur || ''}</td>
+                    <td>${r?.deskripsi || ''}</td>
+                    <td></td>
+                </tr>`);
+            }
         }
 
-        /* =====================================================
-           LOGO
-        ===================================================== */
+        /* ================= LOGO ================= */
         const logoFile = path.join(
             __dirname,
             `../assets/logo/${templateName.toLowerCase()}.png`
@@ -315,20 +346,19 @@ async function generatePDFLembur(chat, user, db){
             ? 'data:image/png;base64,' + fs.readFileSync(logoFile).toString('base64')
             : '';
 
-        /* ===== TTD USER ===== */
+        /* ================= TTD USER ================= */
         const ttdPng = path.join(ttdFolder,`${user.wa_number}.png`);
         const ttdJpg = path.join(ttdFolder,`${user.wa_number}.jpg`);
-        let ttdUserBase64='';
-        if(fs.existsSync(ttdPng)) ttdUserBase64=fs.readFileSync(ttdPng,'base64');
-        else if(fs.existsSync(ttdJpg)) ttdUserBase64=fs.readFileSync(ttdJpg,'base64');
+        let ttdUserBase64 = '';
+
+        if(fs.existsSync(ttdPng)) ttdUserBase64 = fs.readFileSync(ttdPng,'base64');
+        else if(fs.existsSync(ttdJpg)) ttdUserBase64 = fs.readFileSync(ttdJpg,'base64');
 
         const ttdUserHTML = ttdUserBase64
-            ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px;max-height:80px;">`
+            ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:80px;" />`
             : '';
 
-        /* =====================================================
-           TEMPLATE HTML
-        ===================================================== */
+        /* ================= TEMPLATE ================= */
         const templatePath = path.join(
             __dirname,
             `../templates/lembur/${templateName}.html`
@@ -342,17 +372,15 @@ async function generatePDFLembur(chat, user, db){
             .replace(/{{nama}}/g, user.nama_lengkap || '-')
             .replace(/{{jabatan}}/g, user.jabatan || '-')
             .replace(/{{nik}}/g, user.nik || '-')
-            .replace(/{{ttd_user}}/g,ttdUserHTML)
             .replace(/{{periode}}/g, periode)
+            .replace(/{{ttd_user}}/g, ttdUserHTML)
             .replace(/{{nama_atasan}}/g, approverNama)
-            .replace(/{{nik_atasan}}/g, approverNik);
+            .replace(/{{nik_atasan}}/g, approverNik)
+            .replace(/{{ttd_atasan}}/g, '');
 
-        /* =====================================================
-           EXPORT PDF
-        ===================================================== */
+        /* ================= EXPORT ================= */
         const exportsDir = path.join(__dirname,'../exports');
-        if(!fs.existsSync(exportsDir))
-            fs.mkdirSync(exportsDir,{recursive:true});
+        if(!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir,{recursive:true});
 
         const pdfFile = path.join(
             exportsDir,
@@ -362,9 +390,6 @@ async function generatePDFLembur(chat, user, db){
         await generatePDF(html, pdfFile);
         await chat.sendMessage(MessageMedia.fromFilePath(pdfFile));
 
-        /* =====================================================
-           SIMPAN KE APPROVALS
-        ===================================================== */
         await query(
             `INSERT INTO approvals 
              (user_id, approver_wa, file_path, template_export, status, created_at, ttd_user_at, nama_atasan, nik_atasan)
@@ -386,7 +411,6 @@ async function generatePDFLembur(chat, user, db){
         return sendTyping(chat,'Terjadi kesalahan saat membuat PDF lembur.');
     }
 }
-
 
 module.exports = {
     handleExport,
