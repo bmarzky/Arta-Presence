@@ -44,7 +44,6 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
             `, [user.id]);
 
             user.step_input = 'start_export';
-            return;
         }
 
         /* =========================

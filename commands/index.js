@@ -126,7 +126,7 @@ module.exports = {
             // =========================
             if (lowerMsg.startsWith('/export') || user.step_input) {
 
-                // 🔒 CEK LAPORAN MASIH PENDING APPROVAL
+                // CEK LAPORAN MASIH PENDING APPROVAL
                 const [pendingApproval] = await query(
                     `SELECT file_path
                     FROM approvals
@@ -143,7 +143,7 @@ module.exports = {
 
                     return sendTyping(
                         chat,
-                        `❗ Kamu masih punya laporan *${isLembur ? 'lembur' : 'absensi'}* yang menunggu approval.\n` +
+                        `Kamu masih punya laporan *${isLembur ? 'LEMBUR' : 'ABSENSI'}* yang menunggu approval.\n` +
                         `Silakan tunggu sampai proses approval selesai.`
                     );
                 }
