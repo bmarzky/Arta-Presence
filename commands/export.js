@@ -171,9 +171,9 @@ async function generatePDFandSend(chat, user, db, paramBulan){
 
         await query(
             `INSERT INTO approvals 
-                (user_id, approver_wa, file_path, template_export, status, created_at, ttd_user_at, user_nama, user_nik, user_jabatan)
-            VALUES (?, ?, ?, ?, 'pending', NOW(), NOW(), ?, ?, ?)`,
-            [user.id, approverWA, path.basename(pdfFile), user.template_export, user.nama_lengkap, user.nik, user.jabatan]
+                (user_id, approver_wa, file_path, template_export, status, created_at, ttd_user_at)
+            VALUES (?, ?, ?, ?, 'pending', NOW(), NOW())`,
+            [user.id, approverWA, path.basename(pdfFile), user.template_export]
         );
 
     } catch(err){
@@ -269,9 +269,9 @@ async function generatePDFLembur(chat, user, db){
 
         await query(
             `INSERT INTO approvals 
-                (user_id, approver_wa, file_path, template_export, status, created_at, ttd_user_at, user_nama, user_nik, user_jabatan)
-            VALUES (?, ?, ?, ?, 'pending', NOW(), NOW(), ?, ?, ?)`,
-            [user.id, approverWA, path.basename(pdfFile), user.template_export, user.nama_lengkap, user.nik, user.jabatan]
+                (user_id, approver_wa, file_path, template_export, status, created_at, ttd_user_at)
+            VALUES (?, ?, ?, ?, 'pending', NOW(), NOW())`,
+            [user.id, approverWA, path.basename(pdfFile), user.template_export]
         );
 
     } catch(err){
