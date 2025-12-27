@@ -20,24 +20,24 @@ async function handleApprove(chat, user, db){
         new Promise((res, rej) => db.query(sql, params, (err,r)=>err?rej(err):res(r)));
 
     try {
-        // Cek draft terakhir
+        // ambil draft terakhir
         const [draft] = await query(
             `SELECT * FROM approvals 
-            WHERE user_id=? AND status='draft'
-            ORDER BY created_at DESC
-            LIMIT 1`,
+             WHERE user_id=? AND status='draft'
+             ORDER BY created_at DESC
+             LIMIT 1`,
             [user.id]
         );
 
-        if(!draft) return sendTyping(chat,'Kamu belum menyiapkan laporan. Silakan ketik /export terlebih dahulu.');
+        if(!draft) 
+            return sendTyping(chat,'Kamu belum menyiapkan laporan. Silakan ketik /export terlebih dahulu.');
 
-        // Ubah status draft menjadi pending
-        await query(
-            `UPDATE approvals SET status='pending', created_at=NOW() WHERE id=?`,
-            [draft.id]
-        );
+        // ubah status menjadi pending
+        await query(`UPDATE approvals SET status='pending', updated_at=NOW() WHERE id=?`, [draft.id]);
 
-        return sendTyping(chat, `Laporan ${draft.file_path.startsWith('LEMBUR-') ? 'LEMBUR' : 'ABSENSI'} berhasil diajukan untuk approval.`);
+        // jalankan approveUser
+        return approveUser(chat, user, db);
+
     } catch(err){
         console.error('APPROVE ERROR:', err);
         return sendTyping(chat,'Terjadi kesalahan saat mengajukan approval.');
