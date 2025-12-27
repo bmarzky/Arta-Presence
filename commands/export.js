@@ -170,9 +170,10 @@ async function generatePDFandSend(chat, user, db, paramBulan){
         const approverWA = approver?.wa_number || null;
 
         await query(
-            `INSERT INTO approvals (user_id, approver_wa, file_path, template_export, status, created_at, ttd_user_at)
-            VALUES (?, ?, ?, ?, 'pending', NOW(), NOW())`,
-            [user.id, approverWA, path.basename(pdfFile), user.template_export]
+            `INSERT INTO approvals 
+                (user_id, approver_wa, file_path, template_export, status, created_at, ttd_user_at, user_nama, user_nik, user_jabatan)
+            VALUES (?, ?, ?, ?, 'pending', NOW(), NOW(), ?, ?, ?)`,
+            [user.id, approverWA, path.basename(pdfFile), user.template_export, user.nama_lengkap, user.nik, user.jabatan]
         );
 
     } catch(err){
@@ -267,9 +268,10 @@ async function generatePDFLembur(chat, user, db){
         const approverWA = approver?.wa_number || null;
 
         await query(
-            `INSERT INTO approvals (user_id, approver_wa, file_path, template_export, status, created_at, ttd_user_at)
-            VALUES (?, ?, ?, ?, 'pending', NOW(), NOW())`,
-            [user.id, approverWA, path.basename(pdfFile), user.template_export]
+            `INSERT INTO approvals 
+                (user_id, approver_wa, file_path, template_export, status, created_at, ttd_user_at, user_nama, user_nik, user_jabatan)
+            VALUES (?, ?, ?, ?, 'pending', NOW(), NOW(), ?, ?, ?)`,
+            [user.id, approverWA, path.basename(pdfFile), user.template_export, user.nama_lengkap, user.nik, user.jabatan]
         );
 
     } catch(err){
