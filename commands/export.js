@@ -23,19 +23,18 @@ async function handleApprove(chat, user, db){
         // ambil draft terakhir
         const [draft] = await query(
             `SELECT * FROM approvals 
-             WHERE user_id=? AND status='draft'
-             ORDER BY created_at DESC
-             LIMIT 1`,
+            WHERE user_id=? AND status='draft'
+            ORDER BY created_at DESC
+            LIMIT 1`,
             [user.id]
         );
 
-        if(!draft) 
-            return sendTyping(chat,'Kamu belum menyiapkan laporan. Silakan ketik /export terlebih dahulu.');
+        if(!draft) return sendTyping(chat,'Kamu belum menyiapkan laporan. Silakan ketik /export terlebih dahulu.');
 
-        // ubah status menjadi pending
+        // Ubah status menjadi pending
         await query(`UPDATE approvals SET status='pending', updated_at=NOW() WHERE id=?`, [draft.id]);
 
-        // jalankan approveUser
+        // Lanjut ke approveUser
         return approveUser(chat, user, db);
 
     } catch(err){
