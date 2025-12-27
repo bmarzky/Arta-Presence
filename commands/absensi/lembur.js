@@ -185,7 +185,7 @@ module.exports = function handleLembur(chat, user, pesan, query) {
                     `INSERT INTO lembur
                     (user_id, tanggal, jam_mulai, jam_selesai, total_lembur, deskripsi)
                     VALUES (?, ?, ?, ?, ?, ?)`,
-                    [userId, session.data.tanggal, session.data.jam_mulai, session.data.jam_selesai, totalJamHHMM, session.data.deskripsi],
+                    [userId, session.data.tanggal, session.data.jam_mulai + ':00', session.data.jam_selesai + ':00', totalJamHHMM, session.data.deskripsi],
                     (err2) => {
                         if (err2) return chat.sendMessage('Terjadi kesalahan saat menyimpan data lembur.');
                         session.step = null;
