@@ -25,7 +25,7 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
         if(!dbUser) return;
         user = { ...user, ...dbUser };
 
-        const nama_wa = user.pushname || user.nama_wa || 'Kak';
+        const nama_wa = user.pushname || user.nama_wa || 'Arta';
         const text = pesan.toLowerCase().trim();
 
         if(text === '/export') {
@@ -96,6 +96,12 @@ async function generatePDFandSend(chat, user, db, paramBulan){
         const approverNama = approver?.nama_lengkap || '-';
         const approverNik  = approver?.nik || '-';
 
+        /* =====================================================
+           PENGAMAN TEMPLATE (INI INTI PERBAIKANNYA)
+        ===================================================== */
+        const templateName = user.template_export || 'LMD';
+        const templateSafe = templateName.toLowerCase();
+
         /* ===== PERIODE ===== */
         const bulanNama = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
         const now = new Date();
@@ -108,7 +114,7 @@ async function generatePDFandSend(chat, user, db, paramBulan){
         }
 
         const totalHari = new Date(tahun, bulan+1, 0).getDate();
-        const periode = user.template_export === 'LMD'
+        const periode = templateName === 'LMD'
             ? `${bulanNama[bulan]} ${tahun}`
             : `1 - ${totalHari} ${bulanNama[bulan]} ${tahun}`;
 
@@ -124,7 +130,7 @@ async function generatePDFandSend(chat, user, db, paramBulan){
             const r = absensi.find(a=>moment(a.tanggal).format('YYYY-MM-DD')===d.format('YYYY-MM-DD'));
             const libur = [0,6].includes(d.day());
 
-            rows.push(user.template_export==='LMD'
+            rows.push(templateName === 'LMD'
                 ? `<tr style="background-color:${libur?'#f15a5a':'#FFF'}">
                      <td>${formatTanggalLMD(d)}</td>
                      <td>${hariIndonesia(d)}</td>
@@ -143,7 +149,10 @@ async function generatePDFandSend(chat, user, db, paramBulan){
         }
 
         /* ===== LOGO ===== */
-        const logoFile = path.join(__dirname,`../assets/logo/${user.template_export.toLowerCase()}.png`);
+        const logoFile = path.join(
+            __dirname,
+            `../assets/logo/${templateSafe}.png`
+        );
         const logoBase64 = fs.existsSync(logoFile)
             ? 'data:image/png;base64,'+fs.readFileSync(logoFile).toString('base64')
             : '';
@@ -159,8 +168,11 @@ async function generatePDFandSend(chat, user, db, paramBulan){
             ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px;max-height:80px;">`
             : '';
 
-        /* ===== TEMPLATE ===== */
-        const templatePath = path.join(__dirname,`../templates/absensi/${user.template_export}.html`);
+        /* ===== TEMPLATE HTML ===== */
+        const templatePath = path.join(
+            __dirname,
+            `../templates/absensi/${templateName}.html`
+        );
         let html = fs.readFileSync(templatePath,'utf8');
 
         html = html
@@ -174,20 +186,24 @@ async function generatePDFandSend(chat, user, db, paramBulan){
             .replace(/{{nama_atasan}}/g,approverNama)
             .replace(/{{nik_atasan}}/g,approverNik);
 
-        /* ===== EXPORT ===== */
+        /* ===== EXPORT PDF ===== */
         const exportsDir = path.join(__dirname,'../exports');
         if(!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir,{recursive:true});
 
-        const pdfFile = path.join(exportsDir,`ABSENSI-${user.nama_lengkap}-${user.template_export}.pdf`);
+        const pdfFile = path.join(
+            exportsDir,
+            `ABSENSI-${user.nama_lengkap}-${templateName}.pdf`
+        );
+
         await generatePDF(html,pdfFile);
         await chat.sendMessage(MessageMedia.fromFilePath(pdfFile));
 
-        /* ===== SIMPAN APPROVAL ===== */
+        /* ===== SIMPAN KE APPROVAL ===== */
         await query(
             `INSERT INTO approvals 
              (user_id, approver_wa, file_path, template_export, status, created_at, ttd_user_at, nama_atasan, nik_atasan)
              VALUES (?, ?, ?, ?, 'pending', NOW(), NOW(), ?, ?)`,
-            [user.id, approverWA, path.basename(pdfFile), user.template_export, approverNama, approverNik]
+            [user.id, approverWA, path.basename(pdfFile), templateName, approverNama, approverNik]
         );
 
         await sendTyping(chat,'Laporan absensi berhasil dibuat.');
