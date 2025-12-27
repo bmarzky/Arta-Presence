@@ -20,18 +20,19 @@ async function handleApprove(chat, user, db){
         new Promise((res, rej) => db.query(sql, params, (err,r)=>err?rej(err):res(r)));
 
     try {
-        // ambil draft terakhir
+        // Ambil draft terakhir
         const [draft] = await query(
             `SELECT * FROM approvals 
-            WHERE user_id=? AND status='draft'
-            ORDER BY created_at DESC
-            LIMIT 1`,
+             WHERE user_id=? AND status='draft'
+             ORDER BY created_at DESC
+             LIMIT 1`,
             [user.id]
         );
 
-        if(!draft) return sendTyping(chat,'Kamu belum menyiapkan laporan. Silakan ketik /export terlebih dahulu.');
+        if(!draft) 
+            return sendTyping(chat,'Kamu belum menyiapkan laporan. Silakan ketik /export terlebih dahulu.');
 
-        // Ubah status menjadi pending
+        // Ubah status draft menjadi pending
         await query(`UPDATE approvals SET status='pending', updated_at=NOW() WHERE id=?`, [draft.id]);
 
         // Lanjut ke approveUser
@@ -97,13 +98,11 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
             if (!['absensi', 'lembur'].includes(text))
                 return sendTyping(chat, 'Balas *absensi* atau *lembur* ya.');
 
-            /* BLOCK HANYA JIKA SUDAH PENDING (DIKIRIM KE ATASAN) */
+            // Cek pending
             const [pendingApproval] = await query(
                 `SELECT file_path
                  FROM approvals
-                 WHERE user_id=?
-                   AND status='pending'
-                   AND source='approve'
+                 WHERE user_id=? AND status='pending' AND source='approve'
                  ORDER BY created_at DESC
                  LIMIT 1`,
                 [user.id]
@@ -119,7 +118,7 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
                 ) {
                     return sendTyping(
                         chat,
-                        ` *Laporan ${text} kamu masih dalam proses approval atasan.*\nSilakan tunggu hingga selesai.`
+                        `*Laporan ${text} kamu masih dalam proses approval atasan.*\nSilakan tunggu hingga selesai.`
                     );
                 }
             }
@@ -177,23 +176,18 @@ async function generatePDFandSend(chat, user, db, paramBulan){
         new Promise((res, rej) => db.query(sql, params, (err,r)=>err?rej(err):res(r)));
 
     try {
-        /* 🔥 HAPUS DRAFT LAMA */
+        // Hapus draft lama
         await query(
             `DELETE FROM approvals 
              WHERE user_id=? AND status='draft' AND source='export'`,
             [user.id]
         );
 
-        const [approver] = await query(
-            `SELECT * FROM users WHERE jabatan='Head' LIMIT 1`
-        );
-
+        const [approver] = await query(`SELECT * FROM users WHERE jabatan='Head' LIMIT 1`);
         const approverWA   = approver?.wa_number || null;
         const approverNama = approver?.nama_lengkap || '-';
         const approverNik  = approver?.nik || '-';
-
         const templateName = user.template_export || 'LMD';
-        const templateSafe = templateName.toLowerCase();
 
         const bulanNama = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
         const now = new Date();
@@ -255,11 +249,10 @@ async function generatePDFandSend(chat, user, db, paramBulan){
         if(!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir,{recursive:true});
 
         const pdfFile = path.join(exportsDir, `ABSENSI-${user.nama_lengkap}-${templateName}.pdf`);
-
         await generatePDF(html,pdfFile);
         await chat.sendMessage(MessageMedia.fromFilePath(pdfFile));
 
-        /* ✅ INSERT DRAFT */
+        // Insert draft
         await query(
             `INSERT INTO approvals 
              (user_id, approver_wa, file_path, template_export, status, source,
@@ -293,7 +286,7 @@ async function generatePDFLembur(chat, user, db){
         );
 
     try {
-        /* 🔥 HAPUS DRAFT LAMA */
+        // Hapus draft lama
         await query(
             `DELETE FROM approvals 
              WHERE user_id=? AND status='draft' AND source='export'`,
@@ -301,11 +294,7 @@ async function generatePDFLembur(chat, user, db){
         );
 
         const templateName = user.template_export || 'LMD';
-
-        const [approver] = await query(
-            `SELECT * FROM users WHERE jabatan='Head' LIMIT 1`
-        );
-
+        const [approver] = await query(`SELECT * FROM users WHERE jabatan='Head' LIMIT 1`);
         const approverWA   = approver?.wa_number || null;
         const approverNama = approver?.nama_lengkap || '-';
         const approverNik  = approver?.nik || '-';
@@ -320,7 +309,6 @@ async function generatePDFLembur(chat, user, db){
 
         const firstTanggal = new Date(lemburData[0].tanggal);
         const bulanNama = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-
         const periode = templateName === 'LMD'
             ? `${bulanNama[firstTanggal.getMonth()]} ${firstTanggal.getFullYear()}`
             : `1 - ${new Date(firstTanggal.getFullYear(), firstTanggal.getMonth()+1, 0).getDate()} ${bulanNama[firstTanggal.getMonth()]} ${firstTanggal.getFullYear()}`;
@@ -350,11 +338,10 @@ async function generatePDFLembur(chat, user, db){
         if(!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir,{recursive:true});
 
         const pdfFile = path.join(exportsDir, `LEMBUR-${user.nama_lengkap}-${templateName}.pdf`);
-
         await generatePDF(html, pdfFile);
         await chat.sendMessage(MessageMedia.fromFilePath(pdfFile));
 
-        /* INSERT DRAFT */
+        // Insert draft
         await query(
             `INSERT INTO approvals 
              (user_id, approver_wa, file_path, template_export, status, source,
