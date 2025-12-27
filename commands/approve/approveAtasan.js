@@ -278,10 +278,10 @@ async function generatePDFLemburForAtasan(approval, ttdAtasanBase64, ttdUserBase
     const generatePDF = require('../../utils/pdfGenerator');
     const moment = require('moment');
 
-    const exportType = approval.export_type || 'absen'; // ambil dari users
-    const templateName = exportType === 'lembur' ? 'LEMBUR' : approval.template_export || 'LMD';
+    const exportType = approval.export_type || 'absen'; // 'lembur' atau 'absen'
+    const templateName = approval.template_export || 'LMD'; // tetap nama file dari DB (KSPS/LMD)
     const templatePath = path.join(__dirname, `../../templates/${exportType}/${templateName}.html`);
-    let htmlTemplate = fs.readFileSync(templatePath,'utf8');
+    let htmlTemplate = fs.readFileSync(templatePath, 'utf8');
 
     // ambil data lembur dari DB
     const now = new Date();
