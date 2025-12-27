@@ -311,7 +311,7 @@ async function generatePDFLembur(chat, user, db){
             }
 
             totalLemburDecimal += jamDecimal;
-            l.total_lembur = `${jamDecimal.toFixed(1)} Jam`;
+            l.total_lembur = `${Number.isInteger(jamDecimal) ? jamDecimal : jamDecimal.toFixed(1)} Jam`;
         }
 
         // Buat rows sekali saja
@@ -325,7 +325,7 @@ async function generatePDFLembur(chat, user, db){
     <td>${l.deskripsi || '-'}</td>
 </tr>`).join('');
 
-        const totalLemburKeseluruhan = `${totalLemburDecimal.toFixed(1)} Jam`;
+        const totalLemburKeseluruhan = `${Number.isInteger(totalLemburDecimal) ? totalLemburDecimal : totalLemburDecimal.toFixed(1)} Jam`;
 
         const logoFile = path.join(__dirname, `../assets/logo/${templateName.toLowerCase()}.png`);
         const logoBase64 = fs.existsSync(logoFile)
