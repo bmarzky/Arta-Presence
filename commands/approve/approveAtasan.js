@@ -202,70 +202,87 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
    Fungsi generate PDF untuk atasan
    - absensi
 ========================= */
-// approveAtasan.js
 async function generatePDFForAtasan(approval, ttdAtasanBase64, ttdUserBase64, db) {
     const fs = require('fs');
     const path = require('path');
     const generatePDF = require('../../utils/pdfGenerator');
     const moment = require('moment');
 
-    const templateHTML = approval.template_export.toUpperCase();
-    const templatePath = path.join(__dirname, '../../templates/absensi', `${templateHTML}.html`);
-    if (!fs.existsSync(templatePath)) throw new Error(`Template ${templateHTML}.html tidak ditemukan.`);
-    let template = fs.readFileSync(templatePath, 'utf8');
+    const templateName = approval.template_export;
+    const query = (sql, params = []) =>
+        new Promise((res, rej) => db.query(sql, params, (err, r) => err ? rej(err) : res(r)));
 
-    // ambil data absensi dari DB
+    // ambil absensi
     const now = new Date();
     const bulan = now.getMonth() + 1;
     const tahun = now.getFullYear();
     const totalHari = new Date(tahun, bulan, 0).getDate();
 
-    // pakai db.execute (promise) dari mysql2/promise
-    const [absensi] = await db.execute(
+    const absensi = await query(
         `SELECT * FROM absensi WHERE user_id=? AND MONTH(tanggal)=? AND YEAR(tanggal)=? ORDER BY tanggal`,
         [approval.user_id, bulan, tahun]
     );
 
+    // template HTML
+    const templatePath = path.join(__dirname, `../../templates/absensi/${templateName}.html`);
+    if (!fs.existsSync(templatePath)) throw new Error(`Template ${templateName}.html tidak ditemukan.`);
+    let html = fs.readFileSync(templatePath, 'utf8');
+
+    // rows absensi
     const rows = [];
     for (let i = 1; i <= totalHari; i++) {
-        const d = moment(`${tahun}-${bulan}-${i}`, 'YYYY-M-D');
-        const r = absensi.find(a => moment(a.tanggal).format('YYYY-MM-DD') === d.format('YYYY-MM-DD'));
-        const dayOfWeek = d.day();
-        let rowColor = '';
-        if (dayOfWeek === 0 || dayOfWeek === 6) rowColor = 'background-color:#f15a5a;';
-
-        const hari = d.locale('id').format('dddd');
-        const deskripsiHTML = (dayOfWeek === 0 || dayOfWeek === 6) 
-            ? `<b>${(r?.deskripsi || '').toUpperCase()}</b>` 
-            : r?.deskripsi || '-';
-        rows.push(`
-            <tr style="${rowColor}">
-                <td>${d.format('DD/MM/YYYY')}</td>
-                <td>${hari}</td>
-                <td>${r?.jam_masuk || '-'}</td>
-                <td>${r?.jam_pulang || '-'}</td>
-                <td>${deskripsiHTML}</td>
-            </tr>
-        `);
+        const dateObj = moment(`${tahun}-${bulan}-${i}`, 'YYYY-M-D');
+        const r = absensi.find(a => moment(a.tanggal).format('YYYY-MM-DD') === dateObj.format('YYYY-MM-DD'));
+        rows.push(
+            templateName === 'LMD'
+                ? `<tr style="background-color:${[0,6].includes(dateObj.day())?'#f15a5a':'#FFF'}">
+                     <td>${dateObj.format('DD/MM/YYYY')}</td>
+                     <td>${dateObj.format('dddd')}</td>
+                     <td>${r?.jam_masuk||'-'}</td>
+                     <td>${r?.jam_pulang||'-'}</td>
+                     <td>${r?.deskripsi||'-'}</td>
+                   </tr>`
+                : `<tr style="background-color:${[0,6].includes(dateObj.day())?'#f0f0f0':'#FFF'}">
+                     <td>${i}</td>
+                     <td>${r?.jam_masuk||''}</td>
+                     <td>${r?.jam_pulang||''}</td>
+                     <td>${[0,6].includes(dateObj.day())?'<b>LIBUR</b>':(r?.deskripsi||'')}</td>
+                     <td></td>
+                   </tr>`
+        );
     }
 
-    template = template
-        .replaceAll('{{nama}}', approval.user_nama)
-        .replaceAll('{{jabatan}}', approval.user_jabatan || '')
-        .replaceAll('{{nik}}', approval.user_nik || '')
-        .replaceAll('{{periode}}', moment().locale('id').format('MMMM YYYY'))
-        .replaceAll('{{rows_absensi}}', rows.join(''))
-        .replaceAll('{{ttd_atasan}}', `<img src="data:image/png;base64,${ttdAtasanBase64}" width="80"/>`)
-        .replaceAll('{{ttd_user}}', ttdUserBase64 ? `<img src="data:image/png;base64,${ttdUserBase64}" width="80"/>` : '')
-        .replaceAll('{{nama_atasan}}', approval.nama_atasan || '')
-        .replaceAll('{{nik_atasan}}', approval.nik_atasan || '');
+    // logo
+    const logoFile = path.join(__dirname, `../../assets/logo/${templateName.toLowerCase()}.png`);
+    const logoBase64 = fs.existsSync(logoFile)
+        ? 'data:image/png;base64,' + fs.readFileSync(logoFile).toString('base64')
+        : '';
 
+    // TTD user
+    const ttdUserHTML = ttdUserBase64
+        ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:80px;" />`
+        : '';
+
+    // TTD atasan
+    const ttdAtasanHTML = `<img src="data:image/png;base64,${ttdAtasanBase64}" style="max-width:150px; max-height:80px;" />`;
+
+    html = html.replace(/{{logo}}/g, logoBase64)
+               .replace(/{{nama}}/g, approval.user_nama)
+               .replace(/{{jabatan}}/g, approval.user_jabatan || '')
+               .replace(/{{nik}}/g, approval.user_nik || '')
+               .replace(/{{periode}}/g, `${1}-${totalHari} ${moment().format('MMMM YYYY')}`)
+               .replace(/{{rows_absensi}}/g, rows.join(''))
+               .replace(/{{ttd_user}}/g, ttdUserHTML)
+               .replace(/{{ttd_atasan}}/g, ttdAtasanHTML)
+               .replace(/{{nama_atasan}}/g, approval.nama_atasan || 'Atasan')
+               .replace(/{{nik_atasan}}/g, approval.nik_atasan || '');
+
+    // export PDF
     const exportsDir = path.join(__dirname, '../../exports');
     if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
+    const outputPath = path.join(exportsDir, `ABSENSI-${approval.user_nama}-${templateName}-Approve.pdf`);
 
-    const outputPath = path.join(exportsDir, `ABSENSI-${approval.user_nama}-${templateHTML}-Approve.pdf`);
-
-    await generatePDF(template, outputPath);
+    await generatePDF(html, outputPath);
     return outputPath;
 }
 
