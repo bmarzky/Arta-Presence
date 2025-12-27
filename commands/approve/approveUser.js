@@ -164,11 +164,13 @@ async function generatePDFwithTTD(user, db, ttdFile, templateName, namaAtasan='A
 }
 
 // ================= PDF Lembur =================
-async function generatePDFLemburwithTTD(user, db, ttdFile=null, namaAtasan='Atasan', nikAtasan='') {
+async function generatePDFLemburwithTTD(user, db, ttdFile=null, templateName='LMD', namaAtasan='Atasan', nikAtasan='') {
     const query = (sql, params=[]) =>
         new Promise((res, rej) => db.query(sql, params, (err,r)=>err?rej(err):res(r)));
 
     const templateName = user.template_export || 'LMD';
+    updatedFilePath = await generatePDFLemburwithTTD(user, db, ttdFile, templateName, nama_atasan, nik_atasan);
+
     const lemburData = await query(`SELECT * FROM lembur WHERE user_id=? ORDER BY tanggal`, [user.id]);
     if(!lemburData.length) throw new Error('Belum ada data lembur.');
 
