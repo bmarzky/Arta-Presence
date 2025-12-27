@@ -315,6 +315,17 @@ async function generatePDFLembur(chat, user, db){
             ? 'data:image/png;base64,' + fs.readFileSync(logoFile).toString('base64')
             : '';
 
+        /* ===== TTD USER ===== */
+        const ttdPng = path.join(ttdFolder,`${user.wa_number}.png`);
+        const ttdJpg = path.join(ttdFolder,`${user.wa_number}.jpg`);
+        let ttdUserBase64='';
+        if(fs.existsSync(ttdPng)) ttdUserBase64=fs.readFileSync(ttdPng,'base64');
+        else if(fs.existsSync(ttdJpg)) ttdUserBase64=fs.readFileSync(ttdJpg,'base64');
+
+        const ttdUserHTML = ttdUserBase64
+            ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px;max-height:80px;">`
+            : '';
+
         /* =====================================================
            TEMPLATE HTML
         ===================================================== */
@@ -331,6 +342,7 @@ async function generatePDFLembur(chat, user, db){
             .replace(/{{nama}}/g, user.nama_lengkap || '-')
             .replace(/{{jabatan}}/g, user.jabatan || '-')
             .replace(/{{nik}}/g, user.nik || '-')
+            .replace(/{{ttd_user}}/g,ttdUserHTML)
             .replace(/{{periode}}/g, periode)
             .replace(/{{nama_atasan}}/g, approverNama)
             .replace(/{{nik_atasan}}/g, approverNik);
