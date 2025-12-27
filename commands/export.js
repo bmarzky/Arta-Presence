@@ -4,7 +4,6 @@ const moment = require('moment');
 const { MessageMedia } = require('whatsapp-web.js');
 const { sendTyping } = require('../utils/sendTyping');
 const generatePDF = require('../utils/pdfGenerator');
-
 const ttdFolder = path.join(__dirname, '../assets/ttd/');
 
 const formatTanggalLMD = (date) => {
@@ -13,6 +12,37 @@ const formatTanggalLMD = (date) => {
 };
 
 const hariIndonesia = (date) => moment(date).locale('id').format('dddd');
+
+async function handleApprove(chat, user, db){
+    if(!db || !user?.id) return;
+
+    const query = (sql, params=[]) =>
+        new Promise((res, rej) => db.query(sql, params, (err,r)=>err?rej(err):res(r)));
+
+    try {
+        // Cek draft terakhir
+        const [draft] = await query(
+            `SELECT * FROM approvals 
+             WHERE user_id=? AND status='draft' AND source='export'
+             ORDER BY created_at DESC
+             LIMIT 1`,
+            [user.id]
+        );
+
+        if(!draft) return sendTyping(chat,'Kamu belum menyiapkan laporan. Silakan ketik /export terlebih dahulu.');
+
+        // Ubah status draft menjadi pending
+        await query(
+            `UPDATE approvals SET status='pending', created_at=NOW() WHERE id=?`,
+            [draft.id]
+        );
+
+        return sendTyping(chat, `Laporan ${draft.file_path.startsWith('LEMBUR-') ? 'LEMBUR' : 'ABSENSI'} berhasil diajukan untuk approval.`);
+    } catch(err){
+        console.error('APPROVE ERROR:', err);
+        return sendTyping(chat,'Terjadi kesalahan saat mengajukan approval.');
+    }
+}
 
 async function handleExport(chat, user, pesan, db, paramBulan=null) {
     if(!db || !user?.id) return;
@@ -352,5 +382,6 @@ async function generatePDFLembur(chat, user, db){
 module.exports = {
     handleExport,
     generatePDFandSend,
-    generatePDFLembur
+    generatePDFLembur,
+    handleApprove
 };
