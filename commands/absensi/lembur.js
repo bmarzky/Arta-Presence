@@ -140,25 +140,25 @@ module.exports = function handleLembur(chat, user, pesan, query) {
         case 'confirm': {
             const confirmText = rawText.toLowerCase();
             if (confirmText === 'ya') {
-                const [hMulaiH,hMulaiM] = session.data.jam_mulai.split(':').map(Number);
-                const [hSelesaiH,hSelesaiM] = session.data.jam_selesai.split(':').map(Number);
+                const [hMulaiH, hMulaiM] = session.data.jam_mulai.split(':').map(Number);
+                const [hSelesaiH, hSelesaiM] = session.data.jam_selesai.split(':').map(Number);
 
                 let mulai = hMulaiH + hMulaiM/60;
                 let selesai = hSelesaiH + hSelesaiM/60;
                 if (selesai < mulai) selesai += 24;
                 const totalJam = selesai - mulai;
 
-                // Cek duplikasi
+                // ✅ Cek duplikasi berdasarkan tanggal saja
                 query(
-                    `SELECT * FROM lembur WHERE user_id=? AND tanggal=? AND jam_mulai=? AND jam_selesai=?`,
-                    [userId, session.data.tanggal, session.data.jam_mulai, session.data.jam_selesai],
+                    `SELECT * FROM lembur WHERE user_id=? AND tanggal=?`,
+                    [userId, session.data.tanggal],
                     (err, results) => {
                         if (err) {
                             console.error(err);
                             return chat.sendMessage('Terjadi kesalahan saat memeriksa data lembur.');
                         }
                         if (results.length > 0) {
-                            return chat.sendMessage('Mohon maaf, jam lembur pada tanggal tersebut sudah tercatat sebelumnya.');
+                            return chat.sendMessage('Mohon maaf, Anda sudah mencatat lembur pada tanggal tersebut.');
                         }
 
                         query(
@@ -193,5 +193,6 @@ module.exports = function handleLembur(chat, user, pesan, query) {
             }
             break;
         }
+
     }
 };
