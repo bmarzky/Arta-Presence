@@ -20,7 +20,7 @@ function parseFlexibleTime(input) {
         let num = parseInt(matchPeriod[1]);
         const period = matchPeriod[2];
 
-        if (period === 'pagi') h = num % 12;       // 0-11
+        if (period === 'pagi') h = num % 12;        // 0-11
         if (period === 'siang') h = (num % 12) + 12; // 12-23
         if (period === 'sore') h = (num % 12) + 12;
         if (period === 'malam') h = (num % 12) + 12;
@@ -29,8 +29,7 @@ function parseFlexibleTime(input) {
         return { h, m };
     }
 
-    // jika gagal parsing
-    return null;
+    return null; // gagal parsing
 }
 
 module.exports = function handleLembur(chat, user, pesan, query) {
@@ -56,7 +55,6 @@ module.exports = function handleLembur(chat, user, pesan, query) {
 
     switch (session.step) {
         case 'input_tanggal': {
-            // Coba ubah input jadi format YYYY-MM-DD
             let date;
             try {
                 date = new Date(rawText);
@@ -123,22 +121,38 @@ module.exports = function handleLembur(chat, user, pesan, query) {
                 if (selesai < mulai) selesai += 24; // melewati tengah malam
                 const totalJam = selesai - mulai;
 
+                // ✅ Cek duplikasi jam lembur untuk user
                 query(
-                    `INSERT INTO lembur 
-                    (user_id, tanggal, jam_mulai, jam_selesai, total_lembur, deskripsi)
-                    VALUES (?, ?, ?, ?, ?, ?)`,
-                    [userId, session.data.tanggal, session.data.jam_mulai, session.data.jam_selesai, totalJam, session.data.deskripsi],
-                    (err) => {
+                    `SELECT * FROM lembur WHERE user_id=? AND tanggal=? AND jam_mulai=? AND jam_selesai=?`,
+                    [userId, session.data.tanggal, session.data.jam_mulai, session.data.jam_selesai],
+                    (err, results) => {
                         if (err) {
                             console.error(err);
-                            return chat.sendMessage('Terjadi kesalahan saat menyimpan data lembur.');
+                            return chat.sendMessage('Terjadi kesalahan saat memeriksa data lembur.');
                         }
-                        session.step = null;
-                        session.data = {};
-                        query("UPDATE users SET step_lembur=NULL WHERE id=?", [userId], (err2) => {
-                            if (err2) console.error(err2);
-                            chat.sendMessage('Data lembur berhasil disimpan.');
-                        });
+                        if (results.length > 0) {
+                            return chat.sendMessage('Maaf, lembur pada tanggal dan jam tersebut sudah tercatat sebelumnya.');
+                        }
+
+                        query(
+                            `INSERT INTO lembur 
+                            (user_id, tanggal, jam_mulai, jam_selesai, total_lembur, deskripsi)
+                            VALUES (?, ?, ?, ?, ?, ?)`,
+                            [userId, session.data.tanggal, session.data.jam_mulai, session.data.jam_selesai, totalJam, session.data.deskripsi],
+                            (err2) => {
+                                if (err2) {
+                                    console.error(err2);
+                                    return chat.sendMessage('Terjadi kesalahan saat menyimpan data lembur.');
+                                }
+
+                                session.step = null;
+                                session.data = {};
+                                query("UPDATE users SET step_lembur=NULL WHERE id=?", [userId], (err3) => {
+                                    if (err3) console.error(err3);
+                                    chat.sendMessage('Data lembur berhasil disimpan.');
+                                });
+                            }
+                        );
                     }
                 );
             } else if (confirmText === 'tidak') {
