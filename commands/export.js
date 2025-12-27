@@ -75,14 +75,14 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
                 WHERE user_id=? 
                 AND source='export'
                 AND status='pending'
-                AND user_approved=1
                 AND file_path LIKE ?
                 ORDER BY created_at DESC
                 LIMIT 1`,
                 [user.id, text === 'lembur' ? 'LEMBUR-%' : 'ABSENSI-%']
             );
 
-            if (pendingApproval) {
+            // blok hanya jika user sudah approve
+            if (pendingApproval && pendingApproval.user_approved === 1) {
                 return sendTyping(
                     chat,
                     `*Laporan ${text} kamu masih menunggu approval atasan.*\nSilakan tunggu hingga selesai.`
