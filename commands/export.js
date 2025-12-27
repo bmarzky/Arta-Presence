@@ -166,15 +166,20 @@ async function generatePDFandSend(chat, user, db, paramBulan){
         await chat.sendMessage(MessageMedia.fromFilePath(pdfFile));
         await sendTyping(chat, 'Laporan absensi berhasil dibuat.');
 
-        const [approver] = await query(`SELECT wa_number FROM users WHERE jabatan='Head' LIMIT 1`);
+        // Ambil info atasan
+        const [approver] = await query(`SELECT * FROM users WHERE jabatan='Head' LIMIT 1`);
         const approverWA = approver?.wa_number || null;
+        const approverNama = approver?.nama_lengkap || '';
+        const approverNik = approver?.nik || '';
 
+        // Insert ke approvals termasuk nama & nik atasan
         await query(
             `INSERT INTO approvals 
-                (user_id, approver_wa, file_path, template_export, status, created_at, ttd_user_at)
-            VALUES (?, ?, ?, ?, 'pending', NOW(), NOW())`,
-            [user.id, approverWA, path.basename(pdfFile), user.template_export]
+                (user_id, approver_wa, file_path, template_export, status, created_at, ttd_user_at, nama_atasan, nik_atasan)
+            VALUES (?, ?, ?, ?, 'pending', NOW(), NOW(), ?, ?)`,
+            [user.id, approverWA, path.basename(pdfFile), user.template_export, approverNama, approverNik]
         );
+
 
     } catch(err){
         console.error('PDF ABSENSI ERROR:', err);
@@ -264,14 +269,18 @@ async function generatePDFLembur(chat, user, db){
         await chat.sendMessage(MessageMedia.fromFilePath(pdfFile));
         await sendTyping(chat, 'PDF lembur berhasil dibuat');
 
-        const [approver] = await query(`SELECT wa_number FROM users WHERE jabatan='Head' LIMIT 1`);
+        // Ambil info atasan
+        const [approver] = await query(`SELECT * FROM users WHERE jabatan='Head' LIMIT 1`);
         const approverWA = approver?.wa_number || null;
+        const approverNama = approver?.nama_lengkap || '';
+        const approverNik = approver?.nik || '';
 
+        // Insert ke approvals termasuk nama & nik atasan
         await query(
             `INSERT INTO approvals 
-                (user_id, approver_wa, file_path, template_export, status, created_at, ttd_user_at)
-            VALUES (?, ?, ?, ?, 'pending', NOW(), NOW())`,
-            [user.id, approverWA, path.basename(pdfFile), user.template_export]
+                (user_id, approver_wa, file_path, template_export, status, created_at, ttd_user_at, nama_atasan, nik_atasan)
+            VALUES (?, ?, ?, ?, 'pending', NOW(), NOW(), ?, ?)`,
+            [user.id, approverWA, path.basename(pdfFile), user.template_export, approverNama, approverNik]
         );
 
     } catch(err){
