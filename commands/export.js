@@ -222,6 +222,11 @@ async function generatePDFLembur(chat, user, db){
         new Promise((res, rej) => db.query(sql, params, (err,r)=>err?rej(err):res(r)));
 
     try {
+        /* =====================================================
+           🔐 PENGAMAN TEMPLATE (INI INTINYA)
+        ===================================================== */
+        const templateName = user.template_export || 'LMD';
+
         /* ===== AMBIL ATASAN ===== */
         const [approver] = await query(
             `SELECT * FROM users WHERE jabatan='Head' LIMIT 1`
@@ -243,7 +248,7 @@ async function generatePDFLembur(chat, user, db){
         const first = new Date(lemburData[0].tanggal);
         const last  = new Date(lemburData.at(-1).tanggal);
 
-        const periode = user.template_export==='LMD'
+        const periode = templateName === 'LMD'
             ? moment(first).locale('id').format('MMMM YYYY')
             : `${formatTanggalLMD(first)} - ${formatTanggalLMD(last)}`;
 
@@ -259,7 +264,11 @@ async function generatePDFLembur(chat, user, db){
             </tr>`);
         }
 
-        const templatePath = path.join(__dirname,`../templates/lembur/${user.template_export}.html`);
+        /* ===== TEMPLATE ===== */
+        const templatePath = path.join(
+            __dirname,
+            `../templates/lembur/${templateName}.html`
+        );
         let html = fs.readFileSync(templatePath,'utf8');
 
         html = html
@@ -274,7 +283,11 @@ async function generatePDFLembur(chat, user, db){
         const exportsDir = path.join(__dirname,'../exports');
         if(!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir,{recursive:true});
 
-        const pdfFile = path.join(exportsDir,`LEMBUR-${user.nama_lengkap}-${user.template_export}.pdf`);
+        const pdfFile = path.join(
+            exportsDir,
+            `LEMBUR-${user.nama_lengkap}-${templateName}.pdf`
+        );
+
         await generatePDF(html,pdfFile);
         await chat.sendMessage(MessageMedia.fromFilePath(pdfFile));
 
@@ -282,7 +295,7 @@ async function generatePDFLembur(chat, user, db){
             `INSERT INTO approvals 
              (user_id, approver_wa, file_path, template_export, status, created_at, ttd_user_at, nama_atasan, nik_atasan)
              VALUES (?, ?, ?, ?, 'pending', NOW(), NOW(), ?, ?)`,
-            [user.id, approverWA, path.basename(pdfFile), user.template_export, approverNama, approverNik]
+            [user.id, approverWA, path.basename(pdfFile), templateName, approverNama, approverNik]
         );
 
         await sendTyping(chat,'PDF lembur berhasil dibuat.');
