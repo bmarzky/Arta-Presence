@@ -136,13 +136,13 @@ module.exports = {
                     [user.id]
                 );
 
-                if (pendingApproval && pendingApproval.user_approved === 1 && lowerMsg.startsWith('/export')) {
-                    const isLembur  = pendingApproval.file_path.startsWith('LEMBUR-');
-                    const isAbsensi = pendingApproval.file_path.startsWith('ABSENSI-');
+                if (pendingApproval && pendingApproval.status === 'pending' && lowerMsg.startsWith('/export')) {
+                    const isLembur  = pendingApproval.file_path?.startsWith('LEMBUR-');
+                    const isAbsensi = pendingApproval.file_path?.startsWith('ABSENSI-');
 
                     return sendTyping(
                         chat,
-                        `Kamu masih punya laporan *${isLembur ? 'LEMBUR' : 'ABSENSI'}* yang menunggu approval.\n` +
+                        `Laporan *${isLembur ? 'LEMBUR' : 'ABSENSI'}* kamu sedang dalam proses approval.\n` +
                         `Silakan tunggu sampai proses approval selesai.`
                     );
                 }
