@@ -41,7 +41,7 @@ module.exports = async function approveUser(chat, user, db) {
         if (approval.status !== 'pending')
             return sendTyping(chat, 'Laporan tidak dalam status pending approval.');
 
-        // cek TTD
+        // cek TTD user
         const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
         const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
         let ttdFile = '';
@@ -51,12 +51,16 @@ module.exports = async function approveUser(chat, user, db) {
         if (!ttdFile)
             return sendTyping(chat, `Kamu belum mengirim tanda tangan.`);
 
+        // Ambil data atasan untuk dimasukkan ke PDF
+        const nama_atasan = approval.nama_atasan || 'Atasan';
+        const nik_atasan = approval.nik_atasan || '';
+
         // generate ulang PDF dari DB + template
         let updatedFilePath;
         if (user.export_type === 'lembur') {
-            updatedFilePath = await generatePDFLemburwithTTD(user, db, ttdFile, approval.template_export);
+            updatedFilePath = await generatePDFLemburwithTTD(user, db, ttdFile, approval.template_export, nama_atasan, nik_atasan);
         } else {
-            updatedFilePath = await generatePDFwithTTD(user, db, ttdFile, approval.template_export);
+            updatedFilePath = await generatePDFwithTTD(user, db, ttdFile, approval.template_export, nama_atasan, nik_atasan);
         }
 
         // kirim ke atasan
@@ -66,7 +70,6 @@ module.exports = async function approveUser(chat, user, db) {
 
         const media = MessageMedia.fromFilePath(updatedFilePath);
         const greeting = getGreeting() || '';
-        const nama_atasan = approval.nama_atasan || 'Atasan';
         const jenis_laporan = approval.export_type === 'lembur' ? 'Lembur' : 'Absensi';
 
         await chat.client.sendMessage(
@@ -88,8 +91,8 @@ module.exports = async function approveUser(chat, user, db) {
     }
 };
 
-// Generate PDF Absensi dari DB + template + TTD
-async function generatePDFwithTTD(user, db, ttdFile, templateName) {
+// ================= PDF Absensi =================
+async function generatePDFwithTTD(user, db, ttdFile, templateName, namaAtasan='Atasan', nikAtasan='') {
     const query = (sql, params = []) =>
         new Promise((res, rej) => db.query(sql, params, (err, r) => err ? rej(err) : res(r)));
 
@@ -137,7 +140,7 @@ async function generatePDFwithTTD(user, db, ttdFile, templateName) {
         ? 'data:image/png;base64,' + fs.readFileSync(logoFile).toString('base64')
         : '';
 
-    // TTD
+    // TTD user
     const ttdBase64 = fs.readFileSync(ttdFile).toString('base64');
     const ttdHTML = `<img src="data:image/png;base64,${ttdBase64}" style="max-width:150px; max-height:80px;" />`;
 
@@ -147,7 +150,9 @@ async function generatePDFwithTTD(user, db, ttdFile, templateName) {
                .replace(/{{nik}}/g, user.nik)
                .replace(/{{periode}}/g, `${1}-${totalHari} ${moment().format('MMMM YYYY')}`)
                .replace(/{{rows_absensi}}/g, rows.join(''))
-               .replace(/{{ttd_user}}/g, ttdHTML);
+               .replace(/{{ttd_user}}/g, ttdHTML)
+               .replace(/{{nama_atasan}}/g, namaAtasan)
+               .replace(/{{nik_atasan}}/g, nikAtasan);
 
     // export PDF
     const exportsDir = path.join(__dirname, '../../exports');
@@ -158,8 +163,8 @@ async function generatePDFwithTTD(user, db, ttdFile, templateName) {
     return output;
 }
 
-// Generate PDF Lembur dari DB + template + TTD
-async function generatePDFLemburwithTTD(user, db, ttdFile, templateName) {
+// ================= PDF Lembur =================
+async function generatePDFLemburwithTTD(user, db, ttdFile, templateName, namaAtasan='Atasan', nikAtasan='') {
     const query = (sql, params = []) =>
         new Promise((res, rej) => db.query(sql, params, (err, r) => err ? rej(err) : res(r)));
 
@@ -216,7 +221,7 @@ async function generatePDFLemburwithTTD(user, db, ttdFile, templateName) {
         ? 'data:image/png;base64,' + fs.readFileSync(logoFile).toString('base64')
         : '';
 
-    // TTD
+    // TTD user
     const ttdBase64 = fs.readFileSync(ttdFile).toString('base64');
     const ttdHTML = `<img src="data:image/png;base64,${ttdBase64}" style="max-width:150px; max-height:80px;" />`;
 
@@ -232,9 +237,9 @@ async function generatePDFLemburwithTTD(user, db, ttdFile, templateName) {
         .replace(/{{periode}}/g, periode)
         .replace(/{{logo}}/g, logoBase64)
         .replace(/{{ttd_user}}/g, ttdHTML)
-        .replace(/{{ttd_atasan}}/g, '')
-        .replace(/{{nama_atasan}}/g, '')
-        .replace(/{{nik_atasan}}/g, '');
+        .replace(/{{nama_atasan}}/g, namaAtasan)
+        .replace(/{{nik_atasan}}/g, nikAtasan)
+        .replace(/{{ttd_atasan}}/g, ''); // tetap kosong, TTD atasan ditambahkan saat approve
 
     // export PDF
     const exportsDir = path.join(__dirname,'../../exports');
