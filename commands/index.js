@@ -128,7 +128,7 @@ module.exports = {
 
                 // CEK LAPORAN MASIH PENDING APPROVAL
                 const [pendingApproval] = await query(
-                    `SELECT file_path
+                    `SELECT file_path, user_approved
                     FROM approvals
                     WHERE user_id=? AND status='pending'
                     ORDER BY created_at DESC
@@ -136,7 +136,7 @@ module.exports = {
                     [user.id]
                 );
 
-                if (pendingApproval && lowerMsg.startsWith('/export')) {
+                if (pendingApproval && pendingApproval.user_approved === 1 && lowerMsg.startsWith('/export')) {
                     const isLembur  = pendingApproval.file_path.startsWith('LEMBUR-');
                     const isAbsensi = pendingApproval.file_path.startsWith('ABSENSI-');
 
