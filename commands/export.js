@@ -219,15 +219,19 @@ async function generatePDFandSend(chat, user, db, paramBulan){
 ============================== */
 async function generatePDFLembur(chat, user, db){
     const query = (sql, params=[]) =>
-        new Promise((res, rej) => db.query(sql, params, (err,r)=>err?rej(err):res(r)));
+        new Promise((res, rej) =>
+            db.query(sql, params, (err,r)=>err?rej(err):res(r))
+        );
 
     try {
         /* =====================================================
-           🔐 PENGAMAN TEMPLATE (INI INTINYA)
+           PENGAMAN TEMPLATE
         ===================================================== */
         const templateName = user.template_export || 'LMD';
 
-        /* ===== AMBIL ATASAN ===== */
+        /* =====================================================
+           AMBIL DATA ATASAN
+        ===================================================== */
         const [approver] = await query(
             `SELECT * FROM users WHERE jabatan='Head' LIMIT 1`
         );
@@ -236,7 +240,9 @@ async function generatePDFLembur(chat, user, db){
         const approverNama = approver?.nama_lengkap || '-';
         const approverNik  = approver?.nik || '-';
 
-        /* ===== DATA LEMBUR ===== */
+        /* =====================================================
+           AMBIL DATA LEMBUR
+        ===================================================== */
         const lemburData = await query(
             `SELECT * FROM lembur WHERE user_id=? ORDER BY tanggal`,
             [user.id]
@@ -252,59 +258,95 @@ async function generatePDFLembur(chat, user, db){
             ? moment(first).locale('id').format('MMMM YYYY')
             : `${formatTanggalLMD(first)} - ${formatTanggalLMD(last)}`;
 
-        const rows=[];
+        /* =====================================================
+           ROWS LEMBUR
+        ===================================================== */
+        const rows = [];
         for(const l of lemburData){
-            rows.push(`<tr>
-                <td>${formatTanggalLMD(l.tanggal)}</td>
-                <td>${hariIndonesia(l.tanggal)}</td>
-                <td>${l.jam_mulai||'-'}</td>
-                <td>${l.jam_selesai||'-'}</td>
-                <td>${l.total_lembur||'-'}</td>
-                <td>${l.deskripsi||'-'}</td>
-            </tr>`);
+            rows.push(`
+                <tr>
+                    <td>${formatTanggalLMD(l.tanggal)}</td>
+                    <td>${hariIndonesia(l.tanggal)}</td>
+                    <td>${l.jam_mulai || '-'}</td>
+                    <td>${l.jam_selesai || '-'}</td>
+                    <td>${l.total_lembur || '-'}</td>
+                    <td>${l.deskripsi || '-'}</td>
+                </tr>
+            `);
         }
 
-        /* ===== TEMPLATE ===== */
+        /* =====================================================
+           LOGO
+        ===================================================== */
+        const logoFile = path.join(
+            __dirname,
+            `../assets/logo/${templateName.toLowerCase()}.png`
+        );
+
+        const logoBase64 = fs.existsSync(logoFile)
+            ? 'data:image/png;base64,' + fs.readFileSync(logoFile).toString('base64')
+            : '';
+
+        /* =====================================================
+           TEMPLATE HTML
+        ===================================================== */
         const templatePath = path.join(
             __dirname,
             `../templates/lembur/${templateName}.html`
         );
+
         let html = fs.readFileSync(templatePath,'utf8');
 
         html = html
-            .replace(/{{rows_lembur}}/g,rows.join(''))
-            .replace(/{{nama}}/g,user.nama_lengkap||'-')
-            .replace(/{{jabatan}}/g,user.jabatan||'-')
-            .replace(/{{nik}}/g,user.nik||'-')
-            .replace(/{{periode}}/g,periode)
-            .replace(/{{nama_atasan}}/g,approverNama)
-            .replace(/{{nik_atasan}}/g,approverNik);
+            .replace(/{{logo}}/g, logoBase64)
+            .replace(/{{rows_lembur}}/g, rows.join(''))
+            .replace(/{{nama}}/g, user.nama_lengkap || '-')
+            .replace(/{{jabatan}}/g, user.jabatan || '-')
+            .replace(/{{nik}}/g, user.nik || '-')
+            .replace(/{{periode}}/g, periode)
+            .replace(/{{nama_atasan}}/g, approverNama)
+            .replace(/{{nik_atasan}}/g, approverNik);
 
+        /* =====================================================
+           EXPORT PDF
+        ===================================================== */
         const exportsDir = path.join(__dirname,'../exports');
-        if(!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir,{recursive:true});
+        if(!fs.existsSync(exportsDir))
+            fs.mkdirSync(exportsDir,{recursive:true});
 
         const pdfFile = path.join(
             exportsDir,
             `LEMBUR-${user.nama_lengkap}-${templateName}.pdf`
         );
 
-        await generatePDF(html,pdfFile);
+        await generatePDF(html, pdfFile);
         await chat.sendMessage(MessageMedia.fromFilePath(pdfFile));
 
+        /* =====================================================
+           SIMPAN KE APPROVALS
+        ===================================================== */
         await query(
             `INSERT INTO approvals 
              (user_id, approver_wa, file_path, template_export, status, created_at, ttd_user_at, nama_atasan, nik_atasan)
              VALUES (?, ?, ?, ?, 'pending', NOW(), NOW(), ?, ?)`,
-            [user.id, approverWA, path.basename(pdfFile), templateName, approverNama, approverNik]
+            [
+                user.id,
+                approverWA,
+                path.basename(pdfFile),
+                templateName,
+                approverNama,
+                approverNik
+            ]
         );
 
         await sendTyping(chat,'PDF lembur berhasil dibuat.');
 
     } catch(err){
-        console.error(err);
+        console.error('PDF LEMBUR ERROR:', err);
         return sendTyping(chat,'Terjadi kesalahan saat membuat PDF lembur.');
     }
 }
+
 
 module.exports = {
     handleExport,
