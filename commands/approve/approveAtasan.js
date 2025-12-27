@@ -278,9 +278,8 @@ async function generatePDFLemburForAtasan(approval, ttdAtasanBase64, ttdUserBase
     const generatePDF = require('../../utils/pdfGenerator');
     const moment = require('moment');
 
-    const templatePath = path.join(__dirname, '../../templates/lembur', `LEMBUR.html`);
-    if (!fs.existsSync(templatePath)) throw new Error(`Template LEMBUR.html tidak ditemukan.`);
-    let template = fs.readFileSync(templatePath, 'utf8');
+    const templatePath = path.join(__dirname, `../../templates/lembur/${templateName}.html`);
+    let htmlTemplate = fs.readFileSync(templatePath,'utf8');
 
     // ambil data lembur dari DB
     const now = new Date();
