@@ -202,7 +202,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
    Fungsi generate PDF untuk atasan
    - absensi
 ========================= */
-async function generatePDFForAtasan(approval, ttdAtasanBase64, ttdUserBase64) {
+async function generatePDFForAtasan(approval, ttdAtasanBase64, ttdUserBase64, db) {
     const fs = require('fs');
     const path = require('path');
     const generatePDF = require('../../utils/pdfGenerator');
