@@ -169,8 +169,8 @@ module.exports = {
             // APPROVE USER (SUBMIT LAPORAN)
             // =========================
             if (lowerMsg === '/approve') {
-                // cek apakah user punya laporan pending
-                const [approval] = await query(
+                // cek laporan pending
+                let [approval] = await query(
                     `SELECT *
                     FROM approvals
                     WHERE user_id=? AND status='pending'
@@ -180,9 +180,28 @@ module.exports = {
                 );
 
                 if (!approval) {
-                    return sendTyping(chat, 'Kamu belum menyiapkan laporan. Silakan ketik /export terlebih dahulu.');
+                    // jika tidak ada pending, cek draft
+                    [approval] = await query(
+                        `SELECT *
+                        FROM approvals
+                        WHERE user_id=? AND status='draft'
+                        ORDER BY created_at DESC
+                        LIMIT 1`,
+                        [user.id]
+                    );
+
+                    if (!approval) {
+                        return sendTyping(chat, 'Kamu belum menyiapkan laporan. Silakan ketik /export terlebih dahulu.');
+                    }
+
+                    // ubah draft jadi pending
+                    await query(
+                        `UPDATE approvals SET status='pending', created_at=NOW() WHERE id=?`,
+                        [approval.id]
+                    );
                 }
 
+                // cek TTD user
                 const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
                 const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
                 const ttdExists = fs.existsSync(ttdPng) || fs.existsSync(ttdJpg);
@@ -197,7 +216,6 @@ module.exports = {
                 const [dbUser] = await query(`SELECT * FROM users WHERE wa_number=?`, [wa_number]);
                 return await approveUser(chat, dbUser, db);
             }
-
             // =========================
             // APPROVE / REVISI ATASAN (KEYWORD)
             // =========================
