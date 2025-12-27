@@ -291,39 +291,67 @@ async function generatePDFLembur(chat, user, db){
             'Juli','Agustus','September','Oktober','November','Desember'
         ];
 
-        const firstTanggal = new Date(lemburData[0].tanggal);
-
+        const firstTanggal = lemburData.length ? new Date(lemburData[0].tanggal) : new Date();
         let periode = templateName === 'LMD'
             ? `${bulanNama[firstTanggal.getMonth()]} ${firstTanggal.getFullYear()}`
             : `1 - ${new Date(firstTanggal.getFullYear(), firstTanggal.getMonth()+1, 0).getDate()} ${bulanNama[firstTanggal.getMonth()]} ${firstTanggal.getFullYear()}`;
 
-        // Hitung totalLemburDecimal dan ubah total_lembur per baris ke format "X.X Jam"
+        let rows = '';
         let totalLemburDecimal = 0;
-        for (const l of lemburData) {
-            if (!l.total_lembur) continue;
 
-            let jamDecimal = 0;
-            if (l.total_lembur.includes(':')) {
-                const [h, m] = l.total_lembur.split(':').map(Number);
-                jamDecimal = h + m/60;
-            } else {
-                jamDecimal = parseFloat(l.total_lembur);
+        if(templateName === 'KSPS'){
+            // buat tabel dari tanggal 1 sampai akhir bulan
+            const totalHari = new Date(firstTanggal.getFullYear(), firstTanggal.getMonth()+1, 0).getDate();
+            for(let i=1;i<=totalHari;i++){
+                const dateObj = moment(`${firstTanggal.getFullYear()}-${firstTanggal.getMonth()+1}-${i}`, 'YYYY-M-D');
+                const l = lemburData.find(l => moment(l.tanggal).format('YYYY-MM-DD') === dateObj.format('YYYY-MM-DD'));
+
+                let totalJam = '';
+                if(l?.total_lembur){
+                    let jamDecimal = 0;
+                    if(l.total_lembur.includes(':')){
+                        const [h,m] = l.total_lembur.split(':').map(Number);
+                        jamDecimal = h + m/60;
+                    } else {
+                        jamDecimal = parseFloat(l.total_lembur);
+                    }
+                    totalLemburDecimal += jamDecimal;
+                    totalJam = `${Number.isInteger(jamDecimal) ? jamDecimal : jamDecimal.toFixed(1)} Jam`;
+                }
+
+                rows += `<tr>
+    <td>${i}</td>
+    <td>${l?.jam_mulai || ''}</td>
+    <td>${l?.jam_selesai || ''}</td>
+    <td>${totalJam}</td>
+    <td>${l?.deskripsi || ''}</td>
+    <td></td>
+</tr>`;
             }
+        } else { // LMD
+            for(const l of lemburData){
+                let jamDecimal = 0;
+                if(l.total_lembur){
+                    if(l.total_lembur.includes(':')){
+                        const [h,m] = l.total_lembur.split(':').map(Number);
+                        jamDecimal = h + m/60;
+                    } else {
+                        jamDecimal = parseFloat(l.total_lembur);
+                    }
+                    totalLemburDecimal += jamDecimal;
+                    l.total_lembur = `${Number.isInteger(jamDecimal) ? jamDecimal : jamDecimal.toFixed(1)} Jam`;
+                }
 
-            totalLemburDecimal += jamDecimal;
-            l.total_lembur = `${Number.isInteger(jamDecimal) ? jamDecimal : jamDecimal.toFixed(1)} Jam`;
-        }
-
-        // Buat rows sekali saja
-        const rows = lemburData.map(l => `
-<tr>
+                rows += `<tr>
     <td>${moment(l.tanggal).format('DD/MM/YYYY')}</td>
     <td>${moment(l.tanggal).locale('id').format('dddd')}</td>
     <td>${l.jam_mulai || '-'}</td>
     <td>${l.jam_selesai || '-'}</td>
-    <td>${l.total_lembur}</td>
+    <td>${l.total_lembur || '-'}</td>
     <td>${l.deskripsi || '-'}</td>
-</tr>`).join('');
+</tr>`;
+            }
+        }
 
         const totalLemburKeseluruhan = `${Number.isInteger(totalLemburDecimal) ? totalLemburDecimal : totalLemburDecimal.toFixed(1)} Jam`;
 
@@ -389,7 +417,6 @@ async function generatePDFLembur(chat, user, db){
         return sendTyping(chat,'Terjadi kesalahan saat membuat PDF lembur.');
     }
 }
-
 
 module.exports = {
     handleExport,
