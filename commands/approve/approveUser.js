@@ -164,7 +164,7 @@ async function generatePDFwithTTD(user, db, ttdFile, templateName, namaAtasan='A
 }
 
 // ================= PDF Lembur =================
-async function generatePDFLemburwithTTD(user, db, ttdFile=null) {
+async function generatePDFLemburwithTTD(user, db, ttdFile=null, templateName='LMD', namaAtasan='Atasan', nikAtasan='') {
     const query = (sql, params=[]) =>
         new Promise((res, rej) => db.query(sql, params, (err,r)=>err?rej(err):res(r)));
 
