@@ -183,18 +183,14 @@ async function generatePDFLemburwithTTD(userId, db, ttdUserFile=null) {
     const lemburData = await query(`SELECT * FROM lembur WHERE user_id=? ORDER BY tanggal`, [userId]);
     if(!lemburData.length) throw new Error('Belum ada data lembur.');
 
-    // Ambil data atasan dari tabel approval/relasi
-    const [atasan] = await query(
-        `SELECT u.nama AS nama_atasan, u.nik AS nik_atasan 
-         FROM approval a 
-         JOIN users u ON a.atasan_id=u.id 
-         WHERE a.user_id=? LIMIT 1`,
+    // Ambil data approval terakhir untuk user
+    const [approval] = await query(
+        `SELECT * FROM approvals WHERE user_id=? ORDER BY id DESC LIMIT 1`,
         [userId]
     );
 
     const bulanNama = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
     const firstTanggal = new Date(lemburData[0].tanggal);
-    const lastTanggal = new Date(lemburData[lemburData.length-1].tanggal);
 
     let periode = templateName === 'LMD'
         ? `${bulanNama[firstTanggal.getMonth()]} ${firstTanggal.getFullYear()}`
@@ -208,7 +204,6 @@ async function generatePDFLemburwithTTD(userId, db, ttdUserFile=null) {
         for(let i=1;i<=totalHari;i++){
             const dateObj = moment(`${firstTanggal.getFullYear()}-${firstTanggal.getMonth()+1}-${i}`, 'YYYY-M-D');
             const l = lemburData.find(l => moment(l.tanggal).format('YYYY-MM-DD') === dateObj.format('YYYY-MM-DD'));
-
             let totalJam = '';
             if(l?.total_lembur){
                 let jamDecimal = l.total_lembur.includes(':') 
@@ -217,7 +212,6 @@ async function generatePDFLemburwithTTD(userId, db, ttdUserFile=null) {
                 totalLemburDecimal += jamDecimal;
                 totalJam = `${Number.isInteger(jamDecimal)?jamDecimal:jamDecimal.toFixed(1)} Jam`;
             }
-
             rows += `<tr>
 <td>${i}</td>
 <td>${l?.jam_mulai||''}</td>
@@ -240,7 +234,6 @@ async function generatePDFLemburwithTTD(userId, db, ttdUserFile=null) {
                 totalLemburDecimal += jamDecimal;
                 l.total_lembur = `${Number.isInteger(jamDecimal)?jamDecimal:jamDecimal.toFixed(1)} Jam`;
             }
-
             rows += `<tr>
 <td>${moment(l.tanggal).format('DD/MM/YYYY')}</td>
 <td>${moment(l.tanggal).locale('id').format('dddd')}</td>
@@ -259,10 +252,16 @@ async function generatePDFLemburwithTTD(userId, db, ttdUserFile=null) {
     const logoBase64 = fs.existsSync(logoFile)? 'data:image/png;base64,'+fs.readFileSync(logoFile).toString('base64') : '';
 
     // TTD User
-    let ttdHTML = '';
+    let ttdUserHTML = '';
     if(ttdUserFile && fs.existsSync(ttdUserFile)){
         const ttdBase64 = fs.readFileSync(ttdUserFile).toString('base64');
-        ttdHTML = `<img src="data:image/png;base64,${ttdBase64}" style="max-width:150px; max-height:150px;" />`;
+        ttdUserHTML = `<img src="data:image/png;base64,${ttdBase64}" style="max-width:150px; max-height:150px;" />`;
+    }
+
+    // TTD Atasan dari approvals
+    let ttdAtasanHTML = '';
+    if(approval?.ttd_atasan){
+        ttdAtasanHTML = `<img src="data:image/png;base64,${approval.ttd_atasan}" style="max-width:150px; max-height:150px;" />`;
     }
 
     const templatePath = path.join(__dirname, `../../templates/lembur/${templateName}.html`);
@@ -275,10 +274,10 @@ async function generatePDFLemburwithTTD(userId, db, ttdUserFile=null) {
         .replace(/{{nik}}/g, user.nik||'-')
         .replace(/{{periode}}/g, periode)
         .replace(/{{logo}}/g, logoBase64)
-        .replace(/{{ttd_user}}/g, ttdHTML)
-        .replace(/{{nama_atasan}}/g, atasan?.nama_atasan || '-')
-        .replace(/{{nik_atasan}}/g, atasan?.nik_atasan || '')
-        .replace(/{{ttd_atasan}}/g, ''); // bisa tambahkan TTD atasan jika ada
+        .replace(/{{ttd_user}}/g, ttdUserHTML)
+        .replace(/{{nama_atasan}}/g, approval?.nama_atasan || '-')
+        .replace(/{{nik_atasan}}/g, approval?.nik_atasan || '')
+        .replace(/{{total_lembur}}/g, totalLemburKeseluruhan);
 
     const exportsDir = path.join(__dirname,'../../exports');
     if(!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir,{recursive:true});
@@ -288,5 +287,6 @@ async function generatePDFLemburwithTTD(userId, db, ttdUserFile=null) {
 
     return pdfFile;
 }
+
 
 
