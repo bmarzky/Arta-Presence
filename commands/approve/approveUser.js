@@ -49,10 +49,15 @@ module.exports = async function approveUser(chat, user, db) {
         else if (fs.existsSync(ttdJpg)) ttdFile = ttdJpg;
 
         if (!ttdFile)
-            return sendTyping(chat, `Kamu belum mengiim tanda tangan.`);
+            return sendTyping(chat, `Kamu belum mengirim tanda tangan.`);
 
         // generate ulang PDF dari DB + template
-        const updatedFilePath = await generatePDFwithTTD(user, db, ttdFile);
+        let updatedFilePath;
+        if (user.export_type === 'lembur') {
+            updatedFilePath = await generatePDFLemburwithTTD(user, db, ttdFile, approval.template_export);
+        } else {
+            updatedFilePath = await generatePDFwithTTD(user, db, ttdFile, approval.template_export);
+        }
 
         // kirim ke atasan
         let approverWA = approval.approver_wa;
@@ -62,11 +67,12 @@ module.exports = async function approveUser(chat, user, db) {
         const media = MessageMedia.fromFilePath(updatedFilePath);
         const greeting = getGreeting() || '';
         const nama_atasan = approval.nama_atasan || 'Atasan';
+        const jenis_laporan = approval.export_type === 'lembur' ? 'Lembur' : 'Absensi';
 
         await chat.client.sendMessage(
             approverWA,
-            `*Permintaan Approval Laporan Absensi*\n\n${greeting} *${nama_atasan}*\n\n` +
-            `*${nama_user}* meminta permohonan approval untuk laporan absensi.\nMohon untuk diperiksa.`
+            `*Permintaan Approval Laporan ${jenis_laporan}*\n\n${greeting} *${nama_atasan}*\n\n` +
+            `*${nama_user}* meminta permohonan approval untuk laporan ${jenis_laporan.toLowerCase()}.\nMohon untuk diperiksa.`
         );
         await chat.client.sendMessage(approverWA, media);
         await chat.client.sendMessage(
@@ -82,8 +88,8 @@ module.exports = async function approveUser(chat, user, db) {
     }
 };
 
-// Generate PDF dari DB + template + TTD
-async function generatePDFwithTTD(user, db, ttdFile) {
+// Generate PDF Absensi dari DB + template + TTD
+async function generatePDFwithTTD(user, db, ttdFile, templateName) {
     const query = (sql, params = []) =>
         new Promise((res, rej) => db.query(sql, params, (err, r) => err ? rej(err) : res(r)));
 
@@ -97,7 +103,7 @@ async function generatePDFwithTTD(user, db, ttdFile) {
     );
 
     // template HTML
-    const templatePath = path.join(__dirname, `../../templates/absensi/${user.template_export}.html`);
+    const templatePath = path.join(__dirname, `../../templates/absensi/${templateName}.html`);
     let html = fs.readFileSync(templatePath, 'utf8');
 
     // rows absensi
@@ -107,7 +113,7 @@ async function generatePDFwithTTD(user, db, ttdFile) {
         const dateObj = moment(`${tahun}-${bulan}-${i}`, 'YYYY-M-D');
         const r = absensi.find(a => moment(a.tanggal).format('YYYY-MM-DD') === dateObj.format('YYYY-MM-DD'));
         rows.push(
-            user.template_export === 'LMD'
+            templateName === 'LMD'
                 ? `<tr style="background-color:${[0,6].includes(dateObj.day())?'#f15a5a':'#FFF'}">
                      <td>${dateObj.format('DD/MM/YYYY')}</td>
                      <td>${dateObj.format('dddd')}</td>
@@ -126,7 +132,7 @@ async function generatePDFwithTTD(user, db, ttdFile) {
     }
 
     // logo
-    const logoFile = path.join(__dirname, `../../assets/logo/${user.template_export.toLowerCase()}.png`);
+    const logoFile = path.join(__dirname, `../../assets/logo/${templateName.toLowerCase()}.png`);
     const logoBase64 = fs.existsSync(logoFile)
         ? 'data:image/png;base64,' + fs.readFileSync(logoFile).toString('base64')
         : '';
@@ -146,8 +152,96 @@ async function generatePDFwithTTD(user, db, ttdFile) {
     // export PDF
     const exportsDir = path.join(__dirname, '../../exports');
     if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
-    const output = path.join(exportsDir, `ABSENSI-${user.nama_lengkap}-${user.template_export}.pdf`);
+    const output = path.join(exportsDir, `ABSENSI-${user.nama_lengkap}-${templateName}.pdf`);
 
     await generatePDF(html, output);
     return output;
+}
+
+// Generate PDF Lembur dari DB + template + TTD
+async function generatePDFLemburwithTTD(user, db, ttdFile, templateName) {
+    const query = (sql, params = []) =>
+        new Promise((res, rej) => db.query(sql, params, (err, r) => err ? rej(err) : res(r)));
+
+    const lemburData = await query(`SELECT * FROM lembur WHERE user_id=? ORDER BY tanggal`, [user.id]);
+    if (!lemburData.length) throw new Error('Belum ada data lembur untuk dibuat PDF.');
+
+    const bulanNama = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
+    let periode = '';
+    const firstTanggal = new Date(lemburData[0].tanggal);
+    const lastTanggal = new Date(lemburData[lemburData.length-1].tanggal);
+
+    if(templateName === 'LMD'){
+        periode = `${bulanNama[firstTanggal.getMonth()]} ${firstTanggal.getFullYear()}`;
+    } else {
+        const totalHari = new Date(firstTanggal.getFullYear(), firstTanggal.getMonth() + 1, 0).getDate();
+        periode = `1 - ${totalHari} ${bulanNama[firstTanggal.getMonth()]} ${firstTanggal.getFullYear()}`;
+    }
+
+    // Generate rows lembur
+    const rows = [];
+    if(templateName === 'LMD'){
+        for(const l of lemburData){
+            const tgl = moment(l.tanggal).format('DD/MM/YYYY');
+            const hari = moment(l.tanggal).locale('id').format('dddd');
+            rows.push(`<tr>
+                <td>${tgl}</td>
+                <td>${hari}</td>
+                <td>${l.jam_mulai || '-'}</td>
+                <td>${l.jam_selesai || '-'}</td>
+                <td>${l.total_lembur || '-'}</td>
+                <td>${l.deskripsi || '-'}</td>
+            </tr>`);
+        }
+    } else {
+        const totalHari = new Date(firstTanggal.getFullYear(), firstTanggal.getMonth() + 1, 0).getDate();
+        for(let i=1;i<=totalHari;i++){
+            const dateObj = moment(`${firstTanggal.getFullYear()}-${firstTanggal.getMonth()+1}-${i}`, 'YYYY-M-D');
+            const r = lemburData.find(l => moment(l.tanggal).format('YYYY-MM-DD') === dateObj.format('YYYY-MM-DD'));
+            rows.push(`<tr>
+                <td>${i}</td>
+                <td>${r?.jam_mulai || ''}</td>
+                <td>${r?.jam_selesai || ''}</td>
+                <td>${r?.total_lembur || ''}</td>
+                <td>${r?.deskripsi || ''}</td>
+                <td></td>
+            </tr>`);
+        }
+    }
+
+    // Logo
+    const logoFile = path.join(__dirname, `../../assets/logo/${templateName.toLowerCase()}.png`);
+    const logoBase64 = fs.existsSync(logoFile)
+        ? 'data:image/png;base64,' + fs.readFileSync(logoFile).toString('base64')
+        : '';
+
+    // TTD
+    const ttdBase64 = fs.readFileSync(ttdFile).toString('base64');
+    const ttdHTML = `<img src="data:image/png;base64,${ttdBase64}" style="max-width:150px; max-height:80px;" />`;
+
+    // Template HTML
+    const templatePath = path.join(__dirname, `../../templates/lembur/${templateName}.html`);
+    let htmlTemplate = fs.readFileSync(templatePath,'utf8');
+
+    const html = htmlTemplate
+        .replace(/{{rows_lembur}}/g, rows.join(''))
+        .replace(/{{nama}}/g, user.nama_lengkap || '-')
+        .replace(/{{jabatan}}/g, user.jabatan || '-')
+        .replace(/{{nik}}/g, user.nik || '-')
+        .replace(/{{periode}}/g, periode)
+        .replace(/{{logo}}/g, logoBase64)
+        .replace(/{{ttd_user}}/g, ttdHTML)
+        .replace(/{{ttd_atasan}}/g, '')
+        .replace(/{{nama_atasan}}/g, '')
+        .replace(/{{nik_atasan}}/g, '');
+
+    // export PDF
+    const exportsDir = path.join(__dirname,'../../exports');
+    if(!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir,{recursive:true});
+    const pdfFile = path.join(exportsDir, `LEMBUR-${user.nama_lengkap}-${templateName}.pdf`);
+    fs.writeFileSync(path.join(exportsDir, `LEMBUR-${user.nama_lengkap}-${templateName}.html`), html, 'utf8');
+
+    await generatePDF(html, pdfFile);
+    return pdfFile;
 }
