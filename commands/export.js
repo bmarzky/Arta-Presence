@@ -70,14 +70,16 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
 
             // CEK PENDING HANYA UNTUK JENIS TERPILIH
             const [pendingApproval] = await query(
-                `SELECT file_path, status
-                FROM approvals
-                WHERE user_id=? AND source='export'
+                `SELECT file_path 
+                FROM approvals 
+                WHERE user_id=? 
+                AND source='export' 
                 AND status='pending'
+                AND user_approved=1
                 AND file_path LIKE ?
-                ORDER BY created_at DESC
+                ORDER BY created_at DESC 
                 LIMIT 1`,
-                [user.id, (text === 'lembur' ? 'LEMBUR-%' : 'ABSENSI-%')]
+                [user.id, (text==='lembur' ? 'LEMBUR-%' : 'ABSENSI-%')]
             );
 
             if (pendingApproval) {
