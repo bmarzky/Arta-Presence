@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const handleAbsen = require('./absen');
-const handleExport = require('./export');
+const { handleExport } = require('./export');
 const greetings = require('../data/greetings');
 const greetingReplies = require('../data/greetingReplies');
 const sendingIntro = {};
