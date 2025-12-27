@@ -68,32 +68,26 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
             if (!['absensi', 'lembur'].includes(text))
                 return sendTyping(chat, 'Balas *absensi* atau *lembur* ya.');
 
-            // CEK PENDING PER JENIS
+            // CEK PENDING HANYA UNTUK JENIS TERPILIH
             const [pendingApproval] = await query(
                 `SELECT file_path, status
                 FROM approvals
-                WHERE user_id=? AND source='export' 
+                WHERE user_id=? AND source='export'
                 AND status='pending'
-                AND (file_path LIKE 'ABSENSI-%' OR file_path LIKE 'LEMBUR-%')
+                AND file_path LIKE ?
                 ORDER BY created_at DESC
                 LIMIT 1`,
-                [user.id]
+                [user.id, (text === 'lembur' ? 'LEMBUR-%' : 'ABSENSI-%')]
             );
 
             if (pendingApproval) {
-                const isLemburPending  = pendingApproval.file_path.startsWith('LEMBUR-') && pendingApproval.status === 'pending';
-                const isAbsensiPending = pendingApproval.file_path.startsWith('ABSENSI-') && pendingApproval.status === 'pending';
-
-                // blok hanya untuk jenis yang sama
-                if ((text === 'lembur' && isLemburPending) || (text === 'absensi' && isAbsensiPending)) {
-                    return sendTyping(
-                        chat,
-                        `*Laporan ${text} kamu masih menunggu approval atasan.*\nSilakan tunggu hingga selesai.`
-                    );
-                }
+                return sendTyping(
+                    chat,
+                    `Kamu masih punya laporan *${text.toUpperCase()}* yang menunggu approval.\nSilakan tunggu sampai proses approval selesai.`
+                );
             }
 
-            // SIMPAN PILIHAN & LANJUT
+            // SIMPAN PILIHAN & LANJUT KE TEMPLATE
             await query(
                 `UPDATE users 
                 SET export_type=?, step_input='choose_template' 
