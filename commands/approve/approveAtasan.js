@@ -36,10 +36,11 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                     u.nama_lengkap AS user_nama,
                     u.nik AS user_nik,
                     u.jabatan AS user_jabatan,
-                    u.template_export
+                    u.template_export,
+                    u.export_type
              FROM approvals a
              JOIN users u ON u.id = a.user_id
-             WHERE a.approver_wa=?
+             WHERE a.approver_wa=? 
                AND a.status IN ('pending','revised')
              ORDER BY a.created_at DESC
              LIMIT 1`,
@@ -146,7 +147,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             // jika TTD sudah ada dan step_input='ttd_atasan', langsung lanjut approve
             if (ttdAtasanBase64 && approval.step_input === 'ttd_atasan') {
                 await query(`UPDATE approvals SET step_input=NULL WHERE id=?`, [approval.id]);
-                // lanjut ke proses approve (kode generate PDF dan kirim pesan user)
+                // lanjut ke proses approve
             }
 
             /* ===== TTD USER ===== */
@@ -155,103 +156,18 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             const ttdUserJpg = path.join(__dirname, '../../assets/ttd', `${approval.user_wa}.jpg`);
             if (fs.existsSync(ttdUserPng)) ttdUserBase64 = fs.readFileSync(ttdUserPng, 'base64');
             else if (fs.existsSync(ttdUserJpg)) ttdUserBase64 = fs.readFileSync(ttdUserJpg, 'base64');
-            // tidak return error kalau user belum upload TTD, biarkan kosong
 
-            /* ===== TEMPLATE ===== */
-            const templatePath = path.join(
-                __dirname,
-                '../../templates/absensi',
-                `${templateHTML}.html`
-            );
-            if (!fs.existsSync(templatePath))
-                return sendTyping(chat, `Template ${templateHTML}.html tidak ditemukan.`);
-            const template = fs.readFileSync(templatePath, 'utf8');
-
-            /* ===== DATA ABSENSI ===== */
-            const now = new Date();
-            const bulan = now.getMonth();
-            const tahun = now.getFullYear();
-            const totalHari = new Date(tahun, bulan + 1, 0).getDate();
-
-            const absensi = await query(
-                `SELECT * FROM absensi
-                 WHERE user_id=? AND MONTH(tanggal)=? AND YEAR(tanggal)=?
-                 ORDER BY tanggal`,
-                [approval.user_id, bulan + 1, tahun]
-            );
-
-            // Tentukan periode sesuai template
-            let periodeStr = '';
-            if (templateHTML === 'KSPS') {
-                const firstDay = moment(`${tahun}-${bulan + 1}-01`);
-                const lastDay = moment(`${tahun}-${bulan + 1}-${totalHari}`);
-                periodeStr = `${firstDay.format('DD')}-${lastDay.format('DD MMMM YYYY')}`;
+            /* ===== GENERATE PDF SESUAI TIPE ===== */
+            let outputPath;
+            if (approval.export_type === 'lembur') {
+                // generate PDF lembur
+                outputPath = await generatePDFLemburForAtasan(approval, ttdAtasanBase64, ttdUserBase64);
             } else {
-                periodeStr = moment().locale('id').format('MMMM YYYY');
+                // generate PDF absensi biasa
+                outputPath = await generatePDFForAtasan(approval, ttdAtasanBase64, ttdUserBase64);
             }
 
-            const rows = [];
-            for (let i = 1; i <= totalHari; i++) {
-                const d = moment(`${tahun}-${bulan + 1}-${i}`, 'YYYY-M-D');
-                const r = absensi.find(a =>
-                    moment(a.tanggal).format('YYYY-MM-DD') === d.format('YYYY-MM-DD')
-                );
-
-                const dayOfWeek = d.day(); // 0 = Minggu, 6 = Sabtu
-                let rowColor = '';
-                if (dayOfWeek === 0 || dayOfWeek === 6) {
-                    rowColor = templateHTML === 'KSPS' ? 'background-color:#f0f0f0;' : 'background-color:#f15a5a;';
-                }
-
-                if (templateHTML === 'KSPS') {
-                    const deskripsiHTML = (dayOfWeek === 0 || dayOfWeek === 6) ? '<b>LIBUR</b>' : r?.deskripsi || '-';
-                    rows.push(`
-                        <tr style="${rowColor}">
-                            <td>${d.format('DD/MM/YYYY')}</td>
-                            <td>${r?.jam_masuk || '-'}</td>
-                            <td>${r?.jam_pulang || '-'}</td>
-                            <td>${deskripsiHTML}</td>
-                            <td>${r?.disetujui || '-'}</td>
-                        </tr>
-                    `);
-                } else {
-                    // LMD
-                    const hari = d.locale('id').format('dddd');
-                    const deskripsiHTML = (dayOfWeek === 0 || dayOfWeek === 6) ? `<b>${(r?.deskripsi || '').toUpperCase()}</b>` : r?.deskripsi || '-';
-                    rows.push(`
-                        <tr style="${rowColor}">
-                            <td>${d.format('DD/MM/YYYY')}</td>
-                            <td>${hari}</td>
-                            <td>${r?.jam_masuk || '-'}</td>
-                            <td>${r?.jam_pulang || '-'}</td>
-                            <td>${deskripsiHTML}</td>
-                        </tr>
-                    `);
-                }
-            }
-
-            const html = template
-                .replaceAll('{{logo}}', `data:image/png;base64,${logoBase64}`)
-                .replaceAll('{{nama}}', approval.user_nama)
-                .replaceAll('{{jabatan}}', approval.user_jabatan || '')
-                .replaceAll('{{nik}}', approval.user_nik)
-                .replaceAll('{{periode}}', periodeStr)
-                .replaceAll('{{rows_absensi}}', rows.join(''))
-                .replaceAll('{{ttd_atasan}}', `<img src="data:image/png;base64,${ttdAtasanBase64}" width="80"/>`)
-                .replaceAll('{{ttd_user}}', ttdUserBase64 ? `<img src="data:image/png;base64,${ttdUserBase64}" width="80"/>` : '')
-                .replaceAll('{{nama_atasan}}', atasan.nama_lengkap)
-                .replaceAll('{{nik_atasan}}', atasan.nik || '');
-
-            const exportsDir = path.join(__dirname, '../../exports');
-            if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
-
-            const outputPath = path.join(
-                exportsDir,
-                `ABSENSI-${approval.user_nama}-${templateHTML}-Approve.pdf`
-            );
-
-            await generatePDF(html, outputPath);
-
+            /* ===== UPDATE STATUS DAN KIRIM KE USER ===== */
             await query(
                 `UPDATE approvals
                  SET status='approved',
@@ -264,7 +180,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             await chat.client.sendMessage(userWA,
                 `*Laporan Absensi Berhasil Di-Approve*\n\n` +
                 `Halo *${approval.user_nama}*,\n` +
-                `Laporan absensi kamu telah *DISETUJUI* oleh *${atasan.nama_lengkap}*.\n\n` +
+                `Laporan kamu telah *DISETUJUI* oleh *${atasan.nama_lengkap}*.\n\n` +
                 `Terima kasih.`
             );
             return sendTyping(chat,
@@ -281,3 +197,139 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         return sendTyping(chat, 'Terjadi error pada sistem approval.');
     }
 };
+
+/* =========================
+   Fungsi generate PDF untuk atasan
+   - absensi
+========================= */
+async function generatePDFForAtasan(approval, ttdAtasanBase64, ttdUserBase64) {
+    const fs = require('fs');
+    const path = require('path');
+    const generatePDF = require('../../utils/pdfGenerator');
+    const moment = require('moment');
+
+    const templateHTML = approval.template_export.toUpperCase();
+    const templatePath = path.join(__dirname, '../../templates/absensi', `${templateHTML}.html`);
+    if (!fs.existsSync(templatePath)) throw new Error(`Template ${templateHTML}.html tidak ditemukan.`);
+    let template = fs.readFileSync(templatePath, 'utf8');
+
+    // ambil data absensi dari DB
+    const now = new Date();
+    const bulan = now.getMonth();
+    const tahun = now.getFullYear();
+    const totalHari = new Date(tahun, bulan + 1, 0).getDate();
+
+    const absensi = await new Promise((resolve, reject) =>
+        approval.db.query(
+            `SELECT * FROM absensi WHERE user_id=? AND MONTH(tanggal)=? AND YEAR(tanggal)=? ORDER BY tanggal`,
+            [approval.user_id, bulan + 1, tahun],
+            (err, res) => err ? reject(err) : resolve(res)
+        )
+    );
+
+    const rows = [];
+    for (let i = 1; i <= totalHari; i++) {
+        const d = moment(`${tahun}-${bulan + 1}-${i}`, 'YYYY-M-D');
+        const r = absensi.find(a => moment(a.tanggal).format('YYYY-MM-DD') === d.format('YYYY-MM-DD'));
+        const dayOfWeek = d.day();
+        let rowColor = '';
+        if (dayOfWeek === 0 || dayOfWeek === 6) rowColor = 'background-color:#f15a5a;';
+
+        const hari = d.locale('id').format('dddd');
+        const deskripsiHTML = (dayOfWeek === 0 || dayOfWeek === 6) ? `<b>${(r?.deskripsi || '').toUpperCase()}</b>` : r?.deskripsi || '-';
+        rows.push(`
+            <tr style="${rowColor}">
+                <td>${d.format('DD/MM/YYYY')}</td>
+                <td>${hari}</td>
+                <td>${r?.jam_masuk || '-'}</td>
+                <td>${r?.jam_pulang || '-'}</td>
+                <td>${deskripsiHTML}</td>
+            </tr>
+        `);
+    }
+
+    template = template
+        .replaceAll('{{nama}}', approval.user_nama)
+        .replaceAll('{{jabatan}}', approval.user_jabatan || '')
+        .replaceAll('{{nik}}', approval.user_nik)
+        .replaceAll('{{periode}}', moment().locale('id').format('MMMM YYYY'))
+        .replaceAll('{{rows_absensi}}', rows.join(''))
+        .replaceAll('{{ttd_atasan}}', `<img src="data:image/png;base64,${ttdAtasanBase64}" width="80"/>`)
+        .replaceAll('{{ttd_user}}', ttdUserBase64 ? `<img src="data:image/png;base64,${ttdUserBase64}" width="80"/>` : '')
+        .replaceAll('{{nama_atasan}}', approval.nama_atasan || '')
+        .replaceAll('{{nik_atasan}}', approval.nik_atasan || '');
+
+    const exportsDir = path.join(__dirname, '../../exports');
+    if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
+
+    const outputPath = path.join(exportsDir, `ABSENSI-${approval.user_nama}-${templateHTML}-Approve.pdf`);
+
+    await generatePDF(template, outputPath);
+    return outputPath;
+}
+
+/* =========================
+   Fungsi generate PDF untuk atasan
+   - lembur
+========================= */
+async function generatePDFLemburForAtasan(approval, ttdAtasanBase64, ttdUserBase64) {
+    const fs = require('fs');
+    const path = require('path');
+    const generatePDF = require('../../utils/pdfGenerator');
+    const moment = require('moment');
+
+    const templatePath = path.join(__dirname, '../../templates/lembur', `LEMBUR.html`);
+    if (!fs.existsSync(templatePath)) throw new Error(`Template LEMBUR.html tidak ditemukan.`);
+    let template = fs.readFileSync(templatePath, 'utf8');
+
+    // ambil data lembur dari DB
+    const now = new Date();
+    const bulan = now.getMonth();
+    const tahun = now.getFullYear();
+    const totalHari = new Date(tahun, bulan + 1, 0).getDate();
+
+    const lembur = await new Promise((resolve, reject) =>
+        approval.db.query(
+            `SELECT * FROM lembur WHERE user_id=? AND MONTH(tanggal)=? AND YEAR(tanggal)=? ORDER BY tanggal`,
+            [approval.user_id, bulan + 1, tahun],
+            (err, res) => err ? reject(err) : resolve(res)
+        )
+    );
+
+    const rows = [];
+    for (let i = 1; i <= totalHari; i++) {
+        const d = moment(`${tahun}-${bulan + 1}-${i}`, 'YYYY-M-D');
+        const r = lembur.find(a => moment(a.tanggal).format('YYYY-MM-DD') === d.format('YYYY-MM-DD'));
+        const dayOfWeek = d.day();
+        let rowColor = '';
+        if (dayOfWeek === 0 || dayOfWeek === 6) rowColor = 'background-color:#f0f0f0;';
+
+        rows.push(`
+            <tr style="${rowColor}">
+                <td>${d.format('DD/MM/YYYY')}</td>
+                <td>${r?.jam_mulai || '-'}</td>
+                <td>${r?.jam_selesai || '-'}</td>
+                <td>${r?.keterangan || '-'}</td>
+            </tr>
+        `);
+    }
+
+    template = template
+        .replaceAll('{{nama}}', approval.user_nama)
+        .replaceAll('{{jabatan}}', approval.user_jabatan || '')
+        .replaceAll('{{nik}}', approval.user_nik)
+        .replaceAll('{{periode}}', moment().locale('id').format('MMMM YYYY'))
+        .replaceAll('{{rows_lembur}}', rows.join(''))
+        .replaceAll('{{ttd_atasan}}', `<img src="data:image/png;base64,${ttdAtasanBase64}" width="80"/>`)
+        .replaceAll('{{ttd_user}}', ttdUserBase64 ? `<img src="data:image/png;base64,${ttdUserBase64}" width="80"/>` : '')
+        .replaceAll('{{nama_atasan}}', approval.nama_atasan || '')
+        .replaceAll('{{nik_atasan}}', approval.nik_atasan || '');
+
+    const exportsDir = path.join(__dirname, '../../exports');
+    if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
+
+    const outputPath = path.join(exportsDir, `LEMBUR-${approval.user_nama}-Approve.pdf`);
+
+    await generatePDF(template, outputPath);
+    return outputPath;
+}
