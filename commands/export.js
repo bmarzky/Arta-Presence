@@ -135,11 +135,10 @@ async function generatePDFandSend(chat, user, db, paramBulan){
         ===================================================== */
         const [pendingApproval] = await query(
             `SELECT status FROM approvals
-             WHERE user_id=?
-               AND export_type='absensi'
-               AND template_export=?
-             ORDER BY created_at DESC
-             LIMIT 1`,
+            WHERE user_id=?
+            AND template_export=?
+            ORDER BY created_at DESC
+            LIMIT 1`,
             [user.id, templateName]
         );
 
@@ -279,11 +278,10 @@ async function generatePDFLembur(chat, user, db){
         ===================================================== */
         const [pendingApproval] = await query(
             `SELECT status FROM approvals
-             WHERE user_id=?
-               AND export_type='lembur'
-               AND template_export=?
-             ORDER BY created_at DESC
-             LIMIT 1`,
+            WHERE user_id=?
+            AND template_export=?
+            ORDER BY created_at DESC
+            LIMIT 1`,
             [user.id, templateName]
         );
 
