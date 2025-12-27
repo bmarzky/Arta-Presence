@@ -70,22 +70,22 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
 
             // CEK PENDING HANYA UNTUK JENIS TERPILIH
             const [pendingApproval] = await query(
-                `SELECT file_path 
-                FROM approvals 
+                `SELECT file_path
+                FROM approvals
                 WHERE user_id=? 
                 AND source='export'
                 AND status='pending'
                 AND user_approved=1
-                AND file_path LIKE ? 
-                ORDER BY created_at DESC 
+                AND file_path LIKE ?
+                ORDER BY created_at DESC
                 LIMIT 1`,
-                [user.id, (text==='lembur' ? 'LEMBUR-%' : 'ABSENSI-%')]
+                [user.id, text === 'lembur' ? 'LEMBUR-%' : 'ABSENSI-%']
             );
 
             if (pendingApproval) {
                 return sendTyping(
                     chat,
-                    `Kamu masih punya laporan *${text.toUpperCase()}* yang menunggu approval.\nSilakan tunggu sampai proses approval selesai.`
+                    `*Laporan ${text} kamu masih menunggu approval atasan.*\nSilakan tunggu hingga selesai.`
                 );
             }
 
@@ -238,9 +238,9 @@ async function generatePDFandSend(chat, user, db, paramBulan){
 
         await query(
             `INSERT INTO approvals 
-             (user_id, approver_wa, file_path, template_export, status, source,
-              created_at, ttd_user_at, nama_atasan, nik_atasan)
-             VALUES (?, ?, ?, ?, 'pending', 'export', NOW(), NOW(), ?, ?)`,
+            (user_id, approver_wa, file_path, template_export, status, source,
+            created_at, ttd_user_at, nama_atasan, nik_atasan, user_approved)
+            VALUES (?, ?, ?, ?, 'pending', 'export', NOW(), NOW(), ?, ?, 0)`,
             [
                 user.id,
                 approverWA,
@@ -370,9 +370,9 @@ async function generatePDFLembur(chat, user, db){
 
         await query(
             `INSERT INTO approvals 
-             (user_id, approver_wa, file_path, template_export, status, source,
-              created_at, ttd_user_at, nama_atasan, nik_atasan)
-             VALUES (?, ?, ?, ?, 'pending', 'export', NOW(), NOW(), ?, ?)`,
+            (user_id, approver_wa, file_path, template_export, status, source,
+            created_at, ttd_user_at, nama_atasan, nik_atasan, user_approved)
+            VALUES (?, ?, ?, ?, 'pending', 'export', NOW(), NOW(), ?, ?, 0)`,
             [
                 user.id,
                 approverWA,
