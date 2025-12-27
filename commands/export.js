@@ -32,7 +32,7 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
         const text = pesan.toLowerCase().trim();
 
         /* =========================
-        COMMAND /EXPORT
+           COMMAND /EXPORT
         ========================= */
         if (text === '/export') {
             await query(`
@@ -48,7 +48,7 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
         }
 
         /* =========================
-        STEP: START EXPORT
+           STEP: START EXPORT
         ========================= */
         if (user.step_input === 'start_export') {
             await query(
@@ -63,24 +63,24 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
         }
 
         /* =========================
-        STEP: CHOOSE EXPORT TYPE
+           STEP: CHOOSE EXPORT TYPE
         ========================= */
         if (user.step_input === 'choose_export_type') {
             if (!['absensi', 'lembur'].includes(text))
                 return sendTyping(chat, 'Balas *absensi* atau *lembur* ya.');
 
             /* =========================
-            CEK APPROVAL PENDING
-            (HANYA JIKA SUDAH /APPROVE)
+               CEK APPROVAL PENDING
+               (SUDAH SESUAI TABEL approvals)
             ========================= */
             const [pendingApproval] = await query(
                 `SELECT id
-                FROM approvals
-                WHERE user_id=?
-                AND source='approve'
-                AND approved_at IS NULL
-                ORDER BY created_at DESC
-                LIMIT 1`,
+                 FROM approvals
+                 WHERE user_id=?
+                   AND source='approve'
+                   AND status='pending'
+                 ORDER BY created_at DESC
+                 LIMIT 1`,
                 [user.id]
             );
 
@@ -93,11 +93,10 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
                 );
             }
 
-
             await query(
                 `UPDATE users 
-                SET export_type=?, step_input='choose_template' 
-                WHERE id=?`,
+                 SET export_type=?, step_input='choose_template' 
+                 WHERE id=?`,
                 [text, user.id]
             );
 
@@ -108,7 +107,7 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
         }
 
         /* =========================
-        STEP: CHOOSE TEMPLATE
+           STEP: CHOOSE TEMPLATE
         ========================= */
         if (user.step_input === 'choose_template') {
             if (!['ksps', 'lmd'].includes(text))
@@ -116,20 +115,16 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
 
             await query(
                 `UPDATE users 
-                SET template_export=?, step_input=NULL 
-                WHERE id=?`,
+                 SET template_export=?, step_input=NULL 
+                 WHERE id=?`,
                 [text.toUpperCase(), user.id]
             );
 
-            // ambil ulang user SETELAH update
             const [freshUser] = await query(
                 `SELECT * FROM users WHERE id=?`,
                 [user.id]
             );
 
-            /* =========================
-            GENERATE PDF
-            ========================= */
             if (freshUser.export_type === 'absensi') {
                 return generatePDFandSend(chat, freshUser, db, paramBulan);
             } else {
@@ -151,7 +146,6 @@ async function generatePDFandSend(chat, user, db, paramBulan){
         new Promise((res, rej) => db.query(sql, params, (err,r)=>err?rej(err):res(r)));
 
     try {
-        /* ===== AMBIL DATA ATASAN (SEBELUM PDF) ===== */
         const [approver] = await query(
             `SELECT * FROM users WHERE jabatan='Head' LIMIT 1`
         );
@@ -160,13 +154,9 @@ async function generatePDFandSend(chat, user, db, paramBulan){
         const approverNama = approver?.nama_lengkap || '-';
         const approverNik  = approver?.nik || '-';
 
-        /* =====================================================
-           PENGAMAN TEMPLATE (INI INTI PERBAIKANNYA)
-        ===================================================== */
         const templateName = user.template_export || 'LMD';
         const templateSafe = templateName.toLowerCase();
 
-        /* ===== PERIODE ===== */
         const bulanNama = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
         const now = new Date();
         let bulan = now.getMonth();
@@ -182,7 +172,6 @@ async function generatePDFandSend(chat, user, db, paramBulan){
             ? `${bulanNama[bulan]} ${tahun}`
             : `1 - ${totalHari} ${bulanNama[bulan]} ${tahun}`;
 
-        /* ===== DATA ABSENSI ===== */
         const absensi = await query(
             `SELECT * FROM absensi WHERE user_id=? AND MONTH(tanggal)=? AND YEAR(tanggal)=? ORDER BY tanggal`,
             [user.id, bulan+1, tahun]
@@ -212,16 +201,11 @@ async function generatePDFandSend(chat, user, db, paramBulan){
             );
         }
 
-        /* ===== LOGO ===== */
-        const logoFile = path.join(
-            __dirname,
-            `../assets/logo/${templateSafe}.png`
-        );
+        const logoFile = path.join(__dirname, `../assets/logo/${templateSafe}.png`);
         const logoBase64 = fs.existsSync(logoFile)
             ? 'data:image/png;base64,'+fs.readFileSync(logoFile).toString('base64')
             : '';
 
-        /* ===== TTD USER ===== */
         const ttdPng = path.join(ttdFolder,`${user.wa_number}.png`);
         const ttdJpg = path.join(ttdFolder,`${user.wa_number}.jpg`);
         let ttdUserBase64='';
@@ -232,11 +216,7 @@ async function generatePDFandSend(chat, user, db, paramBulan){
             ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px;max-height:80px;">`
             : '';
 
-        /* ===== TEMPLATE HTML ===== */
-        const templatePath = path.join(
-            __dirname,
-            `../templates/absensi/${templateName}.html`
-        );
+        const templatePath = path.join(__dirname, `../templates/absensi/${templateName}.html`);
         let html = fs.readFileSync(templatePath,'utf8');
 
         html = html
@@ -250,24 +230,19 @@ async function generatePDFandSend(chat, user, db, paramBulan){
             .replace(/{{nama_atasan}}/g,approverNama)
             .replace(/{{nik_atasan}}/g,approverNik);
 
-        /* ===== EXPORT PDF ===== */
         const exportsDir = path.join(__dirname,'../exports');
         if(!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir,{recursive:true});
 
-        const pdfFile = path.join(
-            exportsDir,
-            `ABSENSI-${user.nama_lengkap}-${templateName}.pdf`
-        );
+        const pdfFile = path.join(exportsDir, `ABSENSI-${user.nama_lengkap}-${templateName}.pdf`);
 
         await generatePDF(html,pdfFile);
         await chat.sendMessage(MessageMedia.fromFilePath(pdfFile));
 
-        /* ===== SIMPAN KE APPROVAL ===== */
         await query(
             `INSERT INTO approvals 
-            (user_id, approver_wa, file_path, template_export, status, source,
-            created_at, ttd_user_at, nama_atasan, nik_atasan)
-            VALUES (?, ?, ?, ?, 'pending', 'export', NOW(), NOW(), ?, ?)`,
+             (user_id, approver_wa, file_path, template_export, status, source,
+              created_at, ttd_user_at, nama_atasan, nik_atasan)
+             VALUES (?, ?, ?, ?, 'pending', 'export', NOW(), NOW(), ?, ?)`,
             [
                 user.id,
                 approverWA,
@@ -298,7 +273,6 @@ async function generatePDFLembur(chat, user, db){
     try {
         const templateName = user.template_export || 'LMD';
 
-        /* ================= ATASAN ================= */
         const [approver] = await query(
             `SELECT * FROM users WHERE jabatan='Head' LIMIT 1`
         );
@@ -307,7 +281,6 @@ async function generatePDFLembur(chat, user, db){
         const approverNama = approver?.nama_lengkap || '-';
         const approverNik  = approver?.nik || '-';
 
-        /* ================= DATA LEMBUR ================= */
         const lemburData = await query(
             `SELECT * FROM lembur WHERE user_id=? ORDER BY tanggal`,
             [user.id]
@@ -322,23 +295,11 @@ async function generatePDFLembur(chat, user, db){
         ];
 
         const firstTanggal = new Date(lemburData[0].tanggal);
-        const lastTanggal  = new Date(lemburData.at(-1).tanggal);
 
-        /* ================= PERIODE (SAMA PERSIS) ================= */
-        let periode = '';
-        if(templateName === 'LMD'){
-            periode = `${bulanNama[firstTanggal.getMonth()]} ${firstTanggal.getFullYear()}`;
-        } else {
-            const totalHari = new Date(
-                firstTanggal.getFullYear(),
-                firstTanggal.getMonth() + 1,
-                0
-            ).getDate();
+        let periode = templateName === 'LMD'
+            ? `${bulanNama[firstTanggal.getMonth()]} ${firstTanggal.getFullYear()}`
+            : `1 - ${new Date(firstTanggal.getFullYear(), firstTanggal.getMonth()+1, 0).getDate()} ${bulanNama[firstTanggal.getMonth()]} ${firstTanggal.getFullYear()}`;
 
-            periode = `1 - ${totalHari} ${bulanNama[firstTanggal.getMonth()]} ${firstTanggal.getFullYear()}`;
-        }
-
-        /* ================= ROWS LEMBUR (SAMA PERSIS) ================= */
         const rows = [];
 
         if(templateName === 'LMD'){
@@ -353,21 +314,11 @@ async function generatePDFLembur(chat, user, db){
                 </tr>`);
             }
         } else {
-            const totalHari = new Date(
-                firstTanggal.getFullYear(),
-                firstTanggal.getMonth() + 1,
-                0
-            ).getDate();
+            const totalHari = new Date(firstTanggal.getFullYear(), firstTanggal.getMonth()+1, 0).getDate();
 
             for(let i=1;i<=totalHari;i++){
-                const dateObj = moment(
-                    `${firstTanggal.getFullYear()}-${firstTanggal.getMonth()+1}-${i}`,
-                    'YYYY-M-D'
-                );
-
-                const r = lemburData.find(l =>
-                    moment(l.tanggal).format('YYYY-MM-DD') === dateObj.format('YYYY-MM-DD')
-                );
+                const dateObj = moment(`${firstTanggal.getFullYear()}-${firstTanggal.getMonth()+1}-${i}`,'YYYY-M-D');
+                const r = lemburData.find(l => moment(l.tanggal).format('YYYY-MM-DD') === dateObj.format('YYYY-MM-DD'));
 
                 rows.push(`<tr>
                     <td>${i}</td>
@@ -380,17 +331,11 @@ async function generatePDFLembur(chat, user, db){
             }
         }
 
-        /* ================= LOGO ================= */
-        const logoFile = path.join(
-            __dirname,
-            `../assets/logo/${templateName.toLowerCase()}.png`
-        );
-
+        const logoFile = path.join(__dirname, `../assets/logo/${templateName.toLowerCase()}.png`);
         const logoBase64 = fs.existsSync(logoFile)
             ? 'data:image/png;base64,' + fs.readFileSync(logoFile).toString('base64')
             : '';
 
-        /* ================= TTD USER ================= */
         const ttdPng = path.join(ttdFolder,`${user.wa_number}.png`);
         const ttdJpg = path.join(ttdFolder,`${user.wa_number}.jpg`);
         let ttdUserBase64 = '';
@@ -402,12 +347,7 @@ async function generatePDFLembur(chat, user, db){
             ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:80px;" />`
             : '';
 
-        /* ================= TEMPLATE ================= */
-        const templatePath = path.join(
-            __dirname,
-            `../templates/lembur/${templateName}.html`
-        );
-
+        const templatePath = path.join(__dirname, `../templates/lembur/${templateName}.html`);
         let html = fs.readFileSync(templatePath,'utf8');
 
         html = html
@@ -422,23 +362,19 @@ async function generatePDFLembur(chat, user, db){
             .replace(/{{nik_atasan}}/g, approverNik)
             .replace(/{{ttd_atasan}}/g, '');
 
-        /* ================= EXPORT ================= */
         const exportsDir = path.join(__dirname,'../exports');
         if(!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir,{recursive:true});
 
-        const pdfFile = path.join(
-            exportsDir,
-            `LEMBUR-${user.nama_lengkap}-${templateName}.pdf`
-        );
+        const pdfFile = path.join(exportsDir, `LEMBUR-${user.nama_lengkap}-${templateName}.pdf`);
 
         await generatePDF(html, pdfFile);
         await chat.sendMessage(MessageMedia.fromFilePath(pdfFile));
 
         await query(
             `INSERT INTO approvals 
-            (user_id, approver_wa, file_path, template_export, status, source,
-            created_at, ttd_user_at, nama_atasan, nik_atasan)
-            VALUES (?, ?, ?, ?, 'pending', 'export', NOW(), NOW(), ?, ?)`,
+             (user_id, approver_wa, file_path, template_export, status, source,
+              created_at, ttd_user_at, nama_atasan, nik_atasan)
+             VALUES (?, ?, ?, ?, 'pending', 'export', NOW(), NOW(), ?, ?)`,
             [
                 user.id,
                 approverWA,
