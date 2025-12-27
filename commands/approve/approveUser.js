@@ -164,13 +164,33 @@ async function generatePDFwithTTD(user, db, ttdFile, templateName, namaAtasan='A
 }
 
 // ================= PDF Lembur =================
-async function generatePDFLemburwithTTD(user, db, ttdFile=null, namaAtasan='Atasan', nikAtasan='') {
+async function generatePDFLemburwithTTD(userId, db, ttdUserFile=null) {
+    const fs = require('fs');
+    const path = require('path');
+    const moment = require('moment');
+    const generatePDF = require('../../utils/pdfGenerator');
+
     const query = (sql, params=[]) =>
         new Promise((res, rej) => db.query(sql, params, (err,r)=>err?rej(err):res(r)));
 
+    // Ambil data user
+    const [user] = await query(`SELECT * FROM users WHERE id=?`, [userId]);
+    if(!user) throw new Error('User tidak ditemukan');
+
     const templateName = user.template_export || 'LMD';
-    const lemburData = await query(`SELECT * FROM lembur WHERE user_id=? ORDER BY tanggal`, [user.id]);
+
+    // Ambil data lembur user
+    const lemburData = await query(`SELECT * FROM lembur WHERE user_id=? ORDER BY tanggal`, [userId]);
     if(!lemburData.length) throw new Error('Belum ada data lembur.');
+
+    // Ambil data atasan dari tabel approval/relasi
+    const [atasan] = await query(
+        `SELECT u.nama AS nama_atasan, u.nik AS nik_atasan 
+         FROM approval a 
+         JOIN users u ON a.atasan_id=u.id 
+         WHERE a.user_id=? LIMIT 1`,
+        [userId]
+    );
 
     const bulanNama = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
     const firstTanggal = new Date(lemburData[0].tanggal);
@@ -191,13 +211,9 @@ async function generatePDFLemburwithTTD(user, db, ttdFile=null, namaAtasan='Atas
 
             let totalJam = '';
             if(l?.total_lembur){
-                let jamDecimal = 0;
-                if(l.total_lembur.includes(':')){
-                    const [h,m] = l.total_lembur.split(':').map(Number);
-                    jamDecimal = h + m/60;
-                } else {
-                    jamDecimal = parseFloat(l.total_lembur);
-                }
+                let jamDecimal = l.total_lembur.includes(':') 
+                    ? l.total_lembur.split(':').reduce((acc,v,i)=> i===0?acc+parseInt(v):acc+parseInt(v)/60, 0)
+                    : parseFloat(l.total_lembur);
                 totalLemburDecimal += jamDecimal;
                 totalJam = `${Number.isInteger(jamDecimal)?jamDecimal:jamDecimal.toFixed(1)} Jam`;
             }
@@ -238,12 +254,14 @@ async function generatePDFLemburwithTTD(user, db, ttdFile=null, namaAtasan='Atas
 
     const totalLemburKeseluruhan = `${Number.isInteger(totalLemburDecimal)?totalLemburDecimal:totalLemburDecimal.toFixed(1)} Jam`;
 
+    // Logo
     const logoFile = path.join(__dirname, `../../assets/logo/${templateName.toLowerCase()}.png`);
     const logoBase64 = fs.existsSync(logoFile)? 'data:image/png;base64,'+fs.readFileSync(logoFile).toString('base64') : '';
 
+    // TTD User
     let ttdHTML = '';
-    if(ttdFile && fs.existsSync(ttdFile)){
-        const ttdBase64 = fs.readFileSync(ttdFile).toString('base64');
+    if(ttdUserFile && fs.existsSync(ttdUserFile)){
+        const ttdBase64 = fs.readFileSync(ttdUserFile).toString('base64');
         ttdHTML = `<img src="data:image/png;base64,${ttdBase64}" style="max-width:150px; max-height:150px;" />`;
     }
 
@@ -258,10 +276,9 @@ async function generatePDFLemburwithTTD(user, db, ttdFile=null, namaAtasan='Atas
         .replace(/{{periode}}/g, periode)
         .replace(/{{logo}}/g, logoBase64)
         .replace(/{{ttd_user}}/g, ttdHTML)
-        .replace(/{{nama_atasan}}/g, namaAtasan) 
-        .replace(/{{nik_atasan}}/g, nikAtasan)
-        .replace(/{{ttd_atasan}}/g, '')                         // untuk approveUser bisa dikosongkan
-        .replace(/{{total_lembur}}/g, totalLemburKeseluruhan);
+        .replace(/{{nama_atasan}}/g, atasan?.nama_atasan || '-')
+        .replace(/{{nik_atasan}}/g, atasan?.nik_atasan || '')
+        .replace(/{{ttd_atasan}}/g, ''); // bisa tambahkan TTD atasan jika ada
 
     const exportsDir = path.join(__dirname,'../../exports');
     if(!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir,{recursive:true});
@@ -271,4 +288,5 @@ async function generatePDFLemburwithTTD(user, db, ttdFile=null, namaAtasan='Atas
 
     return pdfFile;
 }
+
 
