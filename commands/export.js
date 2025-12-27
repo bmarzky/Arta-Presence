@@ -18,64 +18,92 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
     if(!db || !user?.id) return;
 
     const query = (sql, params=[]) =>
-        new Promise((res, rej) => db.query(sql, params, (err, r) => err ? rej(err) : res(r)));
+        new Promise((res, rej) =>
+            db.query(sql, params, (err, r) => err ? rej(err) : res(r))
+        );
 
     try {
         const [dbUser] = await query(`SELECT * FROM users WHERE id=?`, [user.id]);
         if(!dbUser) return;
+
         user = { ...user, ...dbUser };
 
         const nama_wa = user.pushname || user.nama_wa || 'Arta';
         const text = pesan.toLowerCase().trim();
 
-        if(text === '/export') {
+        /* =====================
+           START EXPORT
+        ====================== */
+        if (text === '/export') {
             await query(`
                 UPDATE users 
                 SET step_input='start_export', template_export=NULL, export_type=NULL 
                 WHERE id=?
-            `,[user.id]);
+            `, [user.id]);
+
             user.step_input = 'start_export';
         }
 
-        if(user.step_input === 'start_export') {
-            await query(`UPDATE users SET step_input='choose_export_type' WHERE id=?`,[user.id]);
-            return sendTyping(chat,
+        if (user.step_input === 'start_export') {
+            await query(
+                `UPDATE users SET step_input='choose_export_type' WHERE id=?`,
+                [user.id]
+            );
+
+            return sendTyping(
+                chat,
                 `Halo *${nama_wa}*, mau export *Absensi* atau *Lembur*?\nBalas *absensi* atau *lembur*`
             );
         }
 
-        if(user.step_input === 'choose_export_type') {
-            if(!['absensi','lembur'].includes(text))
-                return sendTyping(chat,'Balas *absensi* atau *lembur* ya.');
+        /* =====================
+           PILIH JENIS EXPORT
+        ====================== */
+        if (user.step_input === 'choose_export_type') {
+            if (!['absensi', 'lembur'].includes(text))
+                return sendTyping(chat, 'Balas *absensi* atau *lembur* ya.');
 
             await query(
                 `UPDATE users SET export_type=?, step_input='choose_template' WHERE id=?`,
                 [text, user.id]
             );
 
-            return sendTyping(chat,
+            return sendTyping(
+                chat,
                 `Pilih template:\n1. KSPS\n2. LMD\nBalas *ksps* atau *lmd*`
             );
         }
 
-        if(user.step_input === 'choose_template') {
-            if(!['ksps','lmd'].includes(text))
-                return sendTyping(chat,'Balas *ksps* atau *lmd* ya.');
+        /* =====================
+           PILIH TEMPLATE
+        ====================== */
+        if (user.step_input === 'choose_template') {
+            if (!['ksps', 'lmd'].includes(text))
+                return sendTyping(chat, 'Balas *ksps* atau *lmd* ya.');
 
             await query(
                 `UPDATE users SET template_export=?, step_input=NULL WHERE id=?`,
                 [text.toUpperCase(), user.id]
             );
 
-            if(user.export_type === 'absensi')
-                return generatePDFandSend(chat, user, db, paramBulan);
+            // AMBIL USER TERBARU
+            const [freshUser] = await query(
+                `SELECT * FROM users WHERE id=?`,
+                [user.id]
+            );
+
+            if (!freshUser) return;
+
+            //  GUNAKAN freshUser
+            if (freshUser.export_type === 'absensi')
+                return generatePDFandSend(chat, freshUser, db, paramBulan);
             else
-                return generatePDFLembur(chat, user, db);
+                return generatePDFLembur(chat, freshUser, db);
         }
 
-    } catch(err) {
-        console.error(err);
-        return sendTyping(chat,'Terjadi kesalahan saat export.');
+    } catch (err) {
+        console.error('HANDLE EXPORT ERROR:', err);
+        return sendTyping(chat, 'Terjadi kesalahan saat export.');
     }
 }
 
