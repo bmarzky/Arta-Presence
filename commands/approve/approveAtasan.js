@@ -292,7 +292,7 @@ async function generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64
    Fungsi generate PDF untuk atasan
    - lembur
 ========================= */
-async function generatePDFLemburForAtasanUnified(approval, db, ttdAtasanBase64, ttdUserBase64) {
+async function generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64) {
     const fs = require('fs');
     const path = require('path');
     const generatePDF = require('../../utils/pdfGenerator');

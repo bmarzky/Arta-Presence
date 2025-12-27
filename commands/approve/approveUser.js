@@ -258,9 +258,9 @@ async function generatePDFLemburwithTTD(user, db, ttdFile=null) {
         .replace(/{{periode}}/g, periode)
         .replace(/{{logo}}/g, logoBase64)
         .replace(/{{ttd_user}}/g, ttdHTML)
-        .replace(/{{nama_atasan}}/g, '-') // untuk approveUser bisa dikosongkan
-        .replace(/{{nik_atasan}}/g, '')
-        .replace(/{{ttd_atasan}}/g, '')
+        .replace(/{{nama_atasan}}/g, approverNama) 
+        .replace(/{{nik_atasan}}/g, approverNik)
+        .replace(/{{ttd_atasan}}/g, '')                         // untuk approveUser bisa dikosongkan
         .replace(/{{total_lembur}}/g, totalLemburKeseluruhan);
 
     const exportsDir = path.join(__dirname,'../../exports');
