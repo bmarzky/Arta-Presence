@@ -5,11 +5,6 @@ moment.locale('id'); // set locale Indonesia
 
 /**
  * Fungsi bantu parsing jam fleksibel
- * Contoh input:
- *  - "9 pagi"          → 09:00
- *  - "2 siang"         → 14:00
- *  - "setengah 4 sore" → 15:30
- *  - "17:00"           → 17:00
  */
 function parseFlexibleTime(input) {
     input = input.trim().toLowerCase();
@@ -31,12 +26,12 @@ function parseFlexibleTime(input) {
         m = 30;
 
         switch(period) {
-            case 'pagi':   h = num - 1; break;   // 0-11
-            case 'siang':  h = (num % 12) + 12 - 1; break; // 12-15
-            case 'sore':   h = (num % 12) + 12 - 1; break; // 16-18
-            case 'malam':  h = (num % 12) + 12 - 1; break; // 19-23
+            case 'pagi':   h = num - 1; break;
+            case 'siang':  h = (num % 12) + 12 - 1; break;
+            case 'sore':   h = (num % 12) + 12 - 1; break;
+            case 'malam':  h = (num % 12) + 12 - 1; break;
         }
-        if (h < 0) h += 12; // koreksi setengah 1 pagi → 00:30
+        if (h < 0) h += 12;
         return { h, m };
     }
 
@@ -48,15 +43,40 @@ function parseFlexibleTime(input) {
         m = 0;
 
         switch(period) {
-            case 'pagi':   h = num % 12; break;       // 0-11
-            case 'siang':  h = (num % 12) + 12; break; // 12-15
-            case 'sore':   h = (num % 12) + 12; break; // 16-18
-            case 'malam':  h = (num % 12) + 12; break; // 19-23
+            case 'pagi':   h = num % 12; break;
+            case 'siang':  h = (num % 12) + 12; break;
+            case 'sore':   h = (num % 12) + 12; break;
+            case 'malam':  h = (num % 12) + 12; break;
         }
         return { h, m };
     }
 
-    return null; // gagal parsing
+    return null;
+}
+
+/**
+ * Hitung total jam lembur sebagai string HH:MM
+ */
+function calculateTotalJam(jamMulai, jamSelesai) {
+    const [hMulaiH, hMulaiM] = jamMulai.split(':').map(Number);
+    const [hSelesaiH, hSelesaiM] = jamSelesai.split(':').map(Number);
+
+    let mulai = hMulaiH * 60 + hMulaiM;
+    let selesai = hSelesaiH * 60 + hSelesaiM;
+    if (selesai < mulai) selesai += 24 * 60; // melewati tengah malam
+    const totalMenit = selesai - mulai;
+
+    const jam = Math.floor(totalMenit / 60);
+    const menit = totalMenit % 60;
+    return `${String(jam).padStart(2,'0')}:${String(menit).padStart(2,'0')}`;
+}
+
+/**
+ * Format total jam ke manusiawi (X jam Y menit)
+ */
+function formatTotalJamHuman(totalJamHHMM) {
+    const [jam, menit] = totalJamHHMM.split(':').map(Number);
+    return `${jam} jam ${menit} menit`;
 }
 
 // ===========================
@@ -84,8 +104,6 @@ module.exports = function handleLembur(chat, user, pesan, query) {
     if (!session.step && user.step_lembur) session.step = user.step_lembur;
 
     switch(session.step) {
-
-        // ===================
         case 'input_tanggal': {
             const date = moment(rawText, ['D MMMM YYYY', 'DD MMMM YYYY'], true);
             if (!date.isValid()) {
@@ -93,15 +111,10 @@ module.exports = function handleLembur(chat, user, pesan, query) {
             }
             const tanggal = date.format('YYYY-MM-DD');
 
-            // ✅ Cek duplikat tanggal langsung
+            // Cek duplikat tanggal langsung
             query(`SELECT * FROM lembur WHERE user_id=? AND tanggal=?`, [userId, tanggal], (err, results) => {
-                if (err) {
-                    console.error(err);
-                    return chat.sendMessage('Terjadi kesalahan saat memeriksa tanggal lembur.');
-                }
-                if (results.length > 0) {
-                    return chat.sendMessage('Mohon maaf, Anda sudah mencatat lembur pada tanggal tersebut.');
-                }
+                if (err) return chat.sendMessage('Terjadi kesalahan saat memeriksa tanggal lembur.');
+                if (results.length > 0) return chat.sendMessage('Mohon maaf, Anda sudah mencatat lembur pada tanggal tersebut.');
 
                 session.data.tanggal = tanggal;
                 session.step = 'input_jam_mulai';
@@ -113,23 +126,21 @@ module.exports = function handleLembur(chat, user, pesan, query) {
             break;
         }
 
-        // ===================
         case 'input_jam_mulai': {
             const t = parseFlexibleTime(rawText);
-            if (!t) return chat.sendMessage('Format jam salah. Misal: 9 pagi, setengah 4 sore, atau 14:30');
+            if (!t) return chat.sendMessage('Format jam salah.');
             session.data.jam_mulai = `${String(t.h).padStart(2,'0')}:${String(t.m).padStart(2,'0')}`;
             session.step = 'input_jam_selesai';
             query("UPDATE users SET step_lembur=? WHERE id=?", [session.step, userId], (err) => {
                 if (err) console.error(err);
-                chat.sendMessage('Masukkan jam selesai lembur (misal: 5 sore, setengah 6 sore, atau 02:00):');
+                chat.sendMessage('Masukkan jam selesai lembur:');
             });
             break;
         }
 
-        // ===================
         case 'input_jam_selesai': {
             const t = parseFlexibleTime(rawText);
-            if (!t) return chat.sendMessage('Format jam salah. Misal: 5 sore, setengah 6 sore, atau 02:00');
+            if (!t) return chat.sendMessage('Format jam salah.');
             session.data.jam_selesai = `${String(t.h).padStart(2,'0')}:${String(t.m).padStart(2,'0')}`;
             session.step = 'input_deskripsi';
             query("UPDATE users SET step_lembur=? WHERE id=?", [session.step, userId], (err) => {
@@ -139,44 +150,34 @@ module.exports = function handleLembur(chat, user, pesan, query) {
             break;
         }
 
-        // ===================
         case 'input_deskripsi': {
             session.data.deskripsi = rawText;
             session.step = 'confirm';
             query("UPDATE users SET step_lembur=? WHERE id=?", [session.step, userId], (err) => {
                 if (err) console.error(err);
+                const totalJamHHMM = calculateTotalJam(session.data.jam_mulai, session.data.jam_selesai);
                 chat.sendMessage(
                     `Apakah data berikut sudah benar?\n` +
                     `Tanggal: ${session.data.tanggal}\n` +
                     `Jam: ${session.data.jam_mulai} – ${session.data.jam_selesai}\n` +
+                    `Total lembur: ${formatTotalJamHuman(totalJamHHMM)}\n` +
                     `Deskripsi: ${session.data.deskripsi}\n(Ketik Ya/Tidak)`
                 );
             });
             break;
         }
 
-        // ===================
         case 'confirm': {
             const confirmText = rawText.toLowerCase();
             if (confirmText === 'ya') {
-                const [hMulaiH, hMulaiM] = session.data.jam_mulai.split(':').map(Number);
-                const [hSelesaiH, hSelesaiM] = session.data.jam_selesai.split(':').map(Number);
-
-                let mulai = hMulaiH + hMulaiM/60;
-                let selesai = hSelesaiH + hSelesaiM/60;
-                if (selesai < mulai) selesai += 24; // melewati tengah malam
-                const totalJam = selesai - mulai;
-
+                const totalJamHHMM = calculateTotalJam(session.data.jam_mulai, session.data.jam_selesai);
                 query(
                     `INSERT INTO lembur
                     (user_id, tanggal, jam_mulai, jam_selesai, total_lembur, deskripsi)
                     VALUES (?, ?, ?, ?, ?, ?)`,
-                    [userId, session.data.tanggal, session.data.jam_mulai, session.data.jam_selesai, totalJam, session.data.deskripsi],
+                    [userId, session.data.tanggal, session.data.jam_mulai, session.data.jam_selesai, totalJamHHMM, session.data.deskripsi],
                     (err2) => {
-                        if (err2) {
-                            console.error(err2);
-                            return chat.sendMessage('Terjadi kesalahan saat menyimpan data lembur.');
-                        }
+                        if (err2) return chat.sendMessage('Terjadi kesalahan saat menyimpan data lembur.');
                         session.step = null;
                         session.data = {};
                         query("UPDATE users SET step_lembur=NULL WHERE id=?", [userId], (err3) => {
@@ -197,6 +198,5 @@ module.exports = function handleLembur(chat, user, pesan, query) {
             }
             break;
         }
-
     }
 };
