@@ -130,8 +130,7 @@ module.exports = {
                 const [pendingApproval] = await query(
                     `SELECT file_path
                     FROM approvals
-                    WHERE user_id=?
-                    AND status='pending'
+                    WHERE user_id=? AND status='pending'
                     ORDER BY created_at DESC
                     LIMIT 1`,
                     [user.id]
@@ -148,11 +147,16 @@ module.exports = {
                     );
                 }
 
+                // HAPUS DRAFT LAMA SEBELUM GENERATE
+                await query(
+                    `DELETE FROM approvals WHERE user_id=? AND status='draft'`,
+                    [user.id]
+                );
+
                 const parts = pesan.split(' ').slice(1);
                 const paramBulan = parts.length ? parts[0] : null;
                 return handleExport(chat, user, pesan, db, paramBulan);
             }
-
 
             // =========================
             // ABSEN
