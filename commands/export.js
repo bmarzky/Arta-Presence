@@ -344,6 +344,27 @@ async function generatePDFLembur(chat, user, db){
             ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:150px;" />`
             : '';
 
+        // Hitung total keseluruhan jam lembur
+        let totalJam = 0;
+        let totalMenit = 0;
+
+        for (const l of lemburData) {
+            if (!l.total_lembur) continue;
+
+            // Asumsikan format HH:MM
+            const [h, m] = l.total_lembur.split(':').map(Number);
+            totalJam += h;
+            totalMenit += m;
+        }
+
+        // Konversi menit lebih dari 60 ke jam
+        totalJam += Math.floor(totalMenit / 60);
+        totalMenit = totalMenit % 60;
+
+        // Format kembali jadi HH:MM
+        const totalLemburKeseluruhan = `${totalJam.toString().padStart(2,'0')}:${totalMenit.toString().padStart(2,'0')}`;
+
+
         const templatePath = path.join(__dirname, `../templates/lembur/${templateName}.html`);
         let html = fs.readFileSync(templatePath,'utf8');
 
@@ -357,6 +378,7 @@ async function generatePDFLembur(chat, user, db){
             .replace(/{{ttd_user}}/g, ttdUserHTML)
             .replace(/{{nama_atasan}}/g, approverNama)
             .replace(/{{nik_atasan}}/g, approverNik)
+            .replace(/{{total_lembur}}/g, totalLemburKeseluruhan)
             .replace(/{{ttd_atasan}}/g, '');
 
         const exportsDir = path.join(__dirname,'../exports');
