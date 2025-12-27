@@ -142,7 +142,7 @@ async function generatePDFwithTTD(user, db, ttdFile, templateName, namaAtasan='A
 
     // TTD user
     const ttdBase64 = fs.readFileSync(ttdFile).toString('base64');
-    const ttdHTML = `<img src="data:image/png;base64,${ttdBase64}" style="max-width:150px; max-height:80px;" />`;
+    const ttdHTML = `<img src="data:image/png;base64,${ttdBase64}" style="max-width:150px; max-height:150px;" />`;
 
     html = html.replace(/{{logo}}/g, logoBase64)
                .replace(/{{nama}}/g, user.nama_lengkap)
@@ -223,7 +223,7 @@ async function generatePDFLemburwithTTD(user, db, ttdFile, templateName, namaAta
 
     // TTD user
     const ttdBase64 = fs.readFileSync(ttdFile).toString('base64');
-    const ttdHTML = `<img src="data:image/png;base64,${ttdBase64}" style="max-width:150px; max-height:80px;" />`;
+    const ttdHTML = `<img src="data:image/png;base64,${ttdBase64}" style="max-width:150px; max-height:150px;" />`;
 
     // Template HTML
     const templatePath = path.join(__dirname, `../../templates/lembur/${templateName}.html`);

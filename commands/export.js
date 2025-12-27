@@ -210,7 +210,7 @@ async function generatePDFandSend(chat, user, db, paramBulan){
         else if(fs.existsSync(ttdJpg)) ttdUserBase64=fs.readFileSync(ttdJpg,'base64');
 
         const ttdUserHTML = ttdUserBase64
-            ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px;max-height:80px;">`
+            ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px;max-height:150px;">`
             : '';
 
         const templatePath = path.join(__dirname, `../templates/absensi/${templateName}.html`);
@@ -341,7 +341,7 @@ async function generatePDFLembur(chat, user, db){
         else if(fs.existsSync(ttdJpg)) ttdUserBase64 = fs.readFileSync(ttdJpg,'base64');
 
         const ttdUserHTML = ttdUserBase64
-            ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:80px;" />`
+            ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:150px;" />`
             : '';
 
         const templatePath = path.join(__dirname, `../templates/lembur/${templateName}.html`);

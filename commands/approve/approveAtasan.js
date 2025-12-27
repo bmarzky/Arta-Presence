@@ -262,11 +262,11 @@ async function generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64
 
     // TTD user
     const ttdUserHTML = ttdUserBase64
-        ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:80px;" />`
+        ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:150px;" />`
         : '';
 
     // TTD atasan
-    const ttdAtasanHTML = `<img src="data:image/png;base64,${ttdAtasanBase64}" style="max-width:150px; max-height:80px;" />`;
+    const ttdAtasanHTML = `<img src="data:image/png;base64,${ttdAtasanBase64}" style="max-width:150px; max-height:150px;" />`;
 
     html = html.replace(/{{logo}}/g, logoBase64)
                .replace(/{{nama}}/g, approval.user_nama)
@@ -359,12 +359,12 @@ async function generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUser
 
     // TTD Atasan
     const ttdAtasanHTML = ttdAtasanBase64
-        ? `<img src="data:image/png;base64,${ttdAtasanBase64}" style="max-width:150px; max-height:80px;" />`
+        ? `<img src="data:image/png;base64,${ttdAtasanBase64}" style="max-width:150px; max-height:150px;" />`
         : '';
 
     // TTD User
     const ttdUserHTML = ttdUserBase64
-        ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:80px;" />`
+        ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:150px;" />`
         : '';
 
     const periode = moment(firstTanggal).locale('id').format('MMMM YYYY');
