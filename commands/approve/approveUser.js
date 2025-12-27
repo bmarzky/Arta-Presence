@@ -164,7 +164,7 @@ async function generatePDFwithTTD(user, db, ttdFile, templateName, namaAtasan='A
 }
 
 // ================= PDF Lembur =================
-async function generatePDFLemburUnified(user, db, ttdFile=null) {
+async function generatePDFLemburwithTTD(user, db, ttdFile=null) {
     const query = (sql, params=[]) =>
         new Promise((res, rej) => db.query(sql, params, (err,r)=>err?rej(err):res(r)));
 
@@ -271,3 +271,4 @@ async function generatePDFLemburUnified(user, db, ttdFile=null) {
 
     return pdfFile;
 }
+
