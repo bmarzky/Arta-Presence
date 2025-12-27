@@ -8,6 +8,7 @@ const sendingIntro = {};
 const approveUser = require('./approve/approveUser');
 const approveAtasan = require('./approve/approveAtasan');
 const { sendTyping } = require('../utils/sendTyping');
+const lembur = require('./absensi/lembur')
 
 const ttdFolder = path.join(__dirname, '../assets/ttd/');
 
@@ -164,6 +165,12 @@ module.exports = {
             if (lowerMsg === '/absen' || user.step_absen) {
                 return handleAbsen(chat, user, lowerMsg, pesan, query);
             }
+
+            if (lowerMsg === '/lembur' || user.step_lembur) {
+                const queryCallback = (sql, params, cb) => db.query(sql, params, cb);
+                return handleLembur(chat, user, pesan, queryCallback);
+            }
+            
 
             // =========================
             // APPROVE USER (SUBMIT LAPORAN)
