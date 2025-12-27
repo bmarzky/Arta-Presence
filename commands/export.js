@@ -69,30 +69,29 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
             if (!['absensi', 'lembur'].includes(text))
                 return sendTyping(chat, 'Balas *absensi* atau *lembur* ya.');
 
-            // CEK APPROVAL PENDING BERDASARKAN JENIS
+            /* BLOCK BERDASARKAN APPROVAL PENDING */
             const [pendingApproval] = await query(
-                `SELECT template_export
-                FROM approvals
-                WHERE user_id=?
-                AND source='approve'
-                AND status='pending'
-                ORDER BY created_at DESC
-                LIMIT 1`,
+                `SELECT file_path
+                 FROM approvals
+                 WHERE user_id=?
+                   AND source='approve'
+                   AND status='pending'
+                 ORDER BY created_at DESC
+                 LIMIT 1`,
                 [user.id]
             );
 
             if (pendingApproval) {
-                const approvalType =
-                    pendingApproval.template_export === 'LEMBUR'
-                        ? 'lembur'
-                        : 'absensi';
+                const isLemburPending  = pendingApproval.file_path.startsWith('LEMBUR-');
+                const isAbsensiPending = pendingApproval.file_path.startsWith('ABSENSI-');
 
-                if (text === approvalType) {
+                if (
+                    (text === 'lembur' && isLemburPending) ||
+                    (text === 'absensi' && isAbsensiPending)
+                ) {
                     return sendTyping(
                         chat,
-                        text === 'lembur'
-                            ? '*Laporan lembur sedang dalam proses approval atasan.*\nSilakan tunggu hingga selesai.'
-                            : '*Laporan absensi sedang dalam proses approval atasan.*\nSilakan tunggu hingga selesai.'
+                        ` *Laporan ${text} kamu masih dalam proses approval atasan.*\nSilakan tunggu hingga selesai.`
                     );
                 }
             }
@@ -100,8 +99,8 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
             // SIMPAN PILIHAN & LANJUT
             await query(
                 `UPDATE users 
-                SET export_type=?, step_input='choose_template' 
-                WHERE id=?`,
+                 SET export_type=?, step_input='choose_template' 
+                 WHERE id=?`,
                 [text, user.id]
             );
 
@@ -110,7 +109,6 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
                 `Pilih template:\n1. KSPS\n2. LMD\nBalas *ksps* atau *lmd*`
             );
         }
-
 
         /* =========================
            STEP: CHOOSE TEMPLATE
