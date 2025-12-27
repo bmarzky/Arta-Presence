@@ -258,8 +258,8 @@ async function generatePDFLemburwithTTD(user, db, ttdFile=null) {
         .replace(/{{periode}}/g, periode)
         .replace(/{{logo}}/g, logoBase64)
         .replace(/{{ttd_user}}/g, ttdHTML)
-        .replace(/{{nama_atasan}}/g, approverNama) 
-        .replace(/{{nik_atasan}}/g, approverNik)
+        .replace(/{{nama_atasan}}/g, namaAtasan) 
+        .replace(/{{nik_atasan}}/g, nikAtasan)
         .replace(/{{ttd_atasan}}/g, '')                         // untuk approveUser bisa dikosongkan
         .replace(/{{total_lembur}}/g, totalLemburKeseluruhan);
 
