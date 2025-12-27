@@ -159,8 +159,8 @@ module.exports = function handleLembur(chat, user, pesan, query) {
                 chat.sendMessage(
                     `Apakah data berikut sudah benar?\n\n` +
                     `Tanggal: ${session.data.tanggal}\n` +
-                    `Deskripsi: ${session.data.deskripsi}\n\n`+
                     `Jam: ${session.data.jam_mulai} – ${session.data.jam_selesai}\n` +
+                    `Deskripsi: ${session.data.deskripsi}\n\n`+
 
                     `Total lembur: ${formatTotalJamHuman(totalJamHHMM)}\n\n (Ketik Ya/Tidak)`
                 );
