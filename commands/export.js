@@ -344,25 +344,32 @@ async function generatePDFLembur(chat, user, db){
             ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:150px;" />`
             : '';
 
-        // Hitung total keseluruhan jam lembur
-        let totalJam = 0;
-        let totalMenit = 0;
+        // Hitung total keseluruhan jam lembur (format desimal)
+        let totalLemburDecimal = 0;
 
         for (const l of lemburData) {
             if (!l.total_lembur) continue;
 
-            // Asumsikan format HH:MM
-            const [h, m] = l.total_lembur.split(':').map(Number);
-            totalJam += h;
-            totalMenit += m;
+            let jamDecimal = 0;
+
+            if (l.total_lembur.includes(':')) {
+                // Format HH:MM → konversi ke desimal
+                const [h, m] = l.total_lembur.split(':').map(Number);
+                jamDecimal = h + m/60;
+            } else {
+                // Format desimal langsung
+                jamDecimal = parseFloat(l.total_lembur);
+            }
+
+            totalLemburDecimal += jamDecimal;
+
+            // Ubah total_lembur per baris menjadi contoh "3.5 Jam"
+            l.total_lembur = `${jamDecimal.toFixed(1)} Jam`;
         }
 
-        // Konversi menit lebih dari 60 ke jam
-        totalJam += Math.floor(totalMenit / 60);
-        totalMenit = totalMenit % 60;
+        // Total keseluruhan
+        const totalLemburKeseluruhan = `${totalLemburDecimal.toFixed(1)} Jam`;
 
-        // Format kembali jadi HH:MM
-        const totalLemburKeseluruhan = `${totalJam.toString().padStart(2,'0')}:${totalMenit.toString().padStart(2,'0')}`;
 
 
         const templatePath = path.join(__dirname, `../templates/lembur/${templateName}.html`);
