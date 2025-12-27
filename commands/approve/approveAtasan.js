@@ -220,7 +220,7 @@ async function generatePDFForAtasan(approval, ttdAtasanBase64, ttdUserBase64, db
     const totalHari = new Date(tahun, bulan + 1, 0).getDate();
 
     const absensi = await new Promise((resolve, reject) =>
-        approval.db.query(
+        db.query( // ganti approval.db -> db
             `SELECT * FROM absensi WHERE user_id=? AND MONTH(tanggal)=? AND YEAR(tanggal)=? ORDER BY tanggal`,
             [approval.user_id, bulan + 1, tahun],
             (err, res) => err ? reject(err) : resolve(res)
