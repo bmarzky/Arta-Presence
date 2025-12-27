@@ -31,19 +31,25 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
         const nama_wa = user.pushname || user.nama_wa || 'Arta';
         const text = pesan.toLowerCase().trim();
 
-        /* =====================
-           START EXPORT
-        ====================== */
+        /* =========================
+        COMMAND /EXPORT
+        ========================= */
         if (text === '/export') {
             await query(`
                 UPDATE users 
-                SET step_input='start_export', template_export=NULL, export_type=NULL 
+                SET step_input='start_export',
+                    template_export=NULL,
+                    export_type=NULL
                 WHERE id=?
             `, [user.id]);
 
             user.step_input = 'start_export';
+            return;
         }
 
+        /* =========================
+        STEP: START EXPORT
+        ========================= */
         if (user.step_input === 'start_export') {
             await query(
                 `UPDATE users SET step_input='choose_export_type' WHERE id=?`,
@@ -56,15 +62,42 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
             );
         }
 
-        /* =====================
-           PILIH JENIS EXPORT
-        ====================== */
+        /* =========================
+        STEP: CHOOSE EXPORT TYPE
+        ========================= */
         if (user.step_input === 'choose_export_type') {
             if (!['absensi', 'lembur'].includes(text))
                 return sendTyping(chat, 'Balas *absensi* atau *lembur* ya.');
 
+            /* =========================
+            CEK APPROVAL PENDING
+            (HANYA JIKA SUDAH /APPROVE)
+            ========================= */
+            const [pendingApproval] = await query(
+                `SELECT id
+                FROM approvals
+                WHERE user_id=?
+                AND source='approve'
+                AND approved_at IS NULL
+                ORDER BY created_at DESC
+                LIMIT 1`,
+                [user.id]
+            );
+
+            if (pendingApproval) {
+                return sendTyping(
+                    chat,
+                    text === 'lembur'
+                        ? '*Laporan lembur kamu sedang dalam proses approval atasan.*\nSilakan tunggu hingga selesai.'
+                        : '*Laporan absensi kamu sedang dalam proses approval atasan.*\nSilakan tunggu hingga selesai.'
+                );
+            }
+
+
             await query(
-                `UPDATE users SET export_type=?, step_input='choose_template' WHERE id=?`,
+                `UPDATE users 
+                SET export_type=?, step_input='choose_template' 
+                WHERE id=?`,
                 [text, user.id]
             );
 
@@ -74,35 +107,38 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
             );
         }
 
-        /* =====================
-           PILIH TEMPLATE
-        ====================== */
+        /* =========================
+        STEP: CHOOSE TEMPLATE
+        ========================= */
         if (user.step_input === 'choose_template') {
             if (!['ksps', 'lmd'].includes(text))
                 return sendTyping(chat, 'Balas *ksps* atau *lmd* ya.');
 
             await query(
-                `UPDATE users SET template_export=?, step_input=NULL WHERE id=?`,
+                `UPDATE users 
+                SET template_export=?, step_input=NULL 
+                WHERE id=?`,
                 [text.toUpperCase(), user.id]
             );
 
-            // AMBIL USER TERBARU
+            // ambil ulang user SETELAH update
             const [freshUser] = await query(
                 `SELECT * FROM users WHERE id=?`,
                 [user.id]
             );
 
-            if (!freshUser) return;
-
-            //  GUNAKAN freshUser
-            if (freshUser.export_type === 'absensi')
+            /* =========================
+            GENERATE PDF
+            ========================= */
+            if (freshUser.export_type === 'absensi') {
                 return generatePDFandSend(chat, freshUser, db, paramBulan);
-            else
+            } else {
                 return generatePDFLembur(chat, freshUser, db);
+            }
         }
 
     } catch (err) {
-        console.error('HANDLE EXPORT ERROR:', err);
+        console.error(err);
         return sendTyping(chat, 'Terjadi kesalahan saat export.');
     }
 }
@@ -129,25 +165,6 @@ async function generatePDFandSend(chat, user, db, paramBulan){
         ===================================================== */
         const templateName = user.template_export || 'LMD';
         const templateSafe = templateName.toLowerCase();
-
-        /* =====================================================
-        CEK APPROVAL PENDING ABSENSI
-        ===================================================== */
-        const [pendingApproval] = await query(
-            `SELECT status FROM approvals
-            WHERE user_id=?
-            AND template_export=?
-            ORDER BY created_at DESC
-            LIMIT 1`,
-            [user.id, templateName]
-        );
-
-        if (pendingApproval?.status === 'pending') {
-            return sendTyping(
-                chat,
-                '❗ *Laporan absensi kamu sedang dalam proses approval.*\nSilakan tunggu atasan melakukan *Approve* atau *Revisi*.'
-            );
-        }
 
         /* ===== PERIODE ===== */
         const bulanNama = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
@@ -248,8 +265,9 @@ async function generatePDFandSend(chat, user, db, paramBulan){
         /* ===== SIMPAN KE APPROVAL ===== */
         await query(
             `INSERT INTO approvals 
-            (user_id, approver_wa, file_path, template_export, status, created_at, ttd_user_at, nama_atasan, nik_atasan)
-            VALUES (?, ?, ?, ?, 'pending', NOW(), NOW(), ?, ?)`,
+            (user_id, approver_wa, file_path, template_export, status, source,
+            created_at, ttd_user_at, nama_atasan, nik_atasan)
+            VALUES (?, ?, ?, ?, 'pending', 'export', NOW(), NOW(), ?, ?)`,
             [
                 user.id,
                 approverWA,
@@ -279,25 +297,6 @@ async function generatePDFLembur(chat, user, db){
 
     try {
         const templateName = user.template_export || 'LMD';
-
-        /* =====================================================
-           CEK APPROVAL PENDING (PER TEMPLATE)
-        ===================================================== */
-        const [pendingApproval] = await query(
-            `SELECT status FROM approvals
-            WHERE user_id=?
-            AND template_export=?
-            ORDER BY created_at DESC
-            LIMIT 1`,
-            [user.id, templateName]
-        );
-
-        if (pendingApproval?.status === 'pending') {
-            return sendTyping(
-                chat,
-                '*Laporan kamu sedang dalam proses approval.*\nSilakan tunggu atasan melakukan *Approve* atau *Revisi*.'
-            );
-        }
 
         /* ================= ATASAN ================= */
         const [approver] = await query(
@@ -437,8 +436,9 @@ async function generatePDFLembur(chat, user, db){
 
         await query(
             `INSERT INTO approvals 
-            (user_id, approver_wa, file_path, template_export, status, created_at, ttd_user_at, nama_atasan, nik_atasan)
-            VALUES (?, ?, ?, ?, 'pending', NOW(), NOW(), ?, ?)`,
+            (user_id, approver_wa, file_path, template_export, status, source,
+            created_at, ttd_user_at, nama_atasan, nik_atasan)
+            VALUES (?, ?, ?, ?, 'pending', 'export', NOW(), NOW(), ?, ?)`,
             [
                 user.id,
                 approverWA,
