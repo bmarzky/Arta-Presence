@@ -278,7 +278,9 @@ async function generatePDFLemburForAtasan(approval, ttdAtasanBase64, ttdUserBase
     const generatePDF = require('../../utils/pdfGenerator');
     const moment = require('moment');
 
-    const templatePath = path.join(__dirname, `../../templates/lembur/${templateName}.html`);
+    const exportType = approval.export_type || 'absen'; // ambil dari users
+    const templateName = exportType === 'lembur' ? 'LEMBUR' : approval.template_export || 'LMD';
+    const templatePath = path.join(__dirname, `../../templates/${exportType}/${templateName}.html`);
     let htmlTemplate = fs.readFileSync(templatePath,'utf8');
 
     // ambil data lembur dari DB
@@ -313,7 +315,7 @@ async function generatePDFLemburForAtasan(approval, ttdAtasanBase64, ttdUserBase
         `);
     }
 
-    template = template
+    htmlTemplate = htmlTemplate
         .replaceAll('{{nama}}', approval.user_nama)
         .replaceAll('{{jabatan}}', approval.user_jabatan || '')
         .replaceAll('{{nik}}', approval.user_nik)
@@ -329,6 +331,6 @@ async function generatePDFLemburForAtasan(approval, ttdAtasanBase64, ttdUserBase
 
     const outputPath = path.join(exportsDir, `LEMBUR-${approval.user_nama}-Approve.pdf`);
 
-    await generatePDF(template, outputPath);
+    await generatePDF(htmlTemplate, outputPath);
     return outputPath;
 }
