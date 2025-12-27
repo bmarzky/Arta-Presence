@@ -248,9 +248,16 @@ async function generatePDFandSend(chat, user, db, paramBulan){
         /* ===== SIMPAN KE APPROVAL ===== */
         await query(
             `INSERT INTO approvals 
-            (user_id, approver_wa, file_path, template_export, export_type, status, created_at, ttd_user_at, nama_atasan, nik_atasan)
-            VALUES (?, ?, ?, ?, 'absensi', 'pending', NOW(), NOW(), ?, ?)`,
-            [user.id, approverWA, path.basename(pdfFile), templateName, approverNama, approverNik]
+            (user_id, approver_wa, file_path, template_export, status, created_at, ttd_user_at, nama_atasan, nik_atasan)
+            VALUES (?, ?, ?, ?, 'pending', NOW(), NOW(), ?, ?)`,
+            [
+                user.id,
+                approverWA,
+                path.basename(pdfFile),
+                templateName,
+                approverNama,
+                approverNik
+            ]
         );
 
         await sendTyping(chat,'Laporan absensi berhasil dibuat.');
@@ -430,8 +437,8 @@ async function generatePDFLembur(chat, user, db){
 
         await query(
             `INSERT INTO approvals 
-            (user_id, approver_wa, file_path, template_export, export_type, status, created_at, ttd_user_at, nama_atasan, nik_atasan)
-            VALUES (?, ?, ?, ?, 'lembur', 'pending', NOW(), NOW(), ?, ?)`,
+            (user_id, approver_wa, file_path, template_export, status, created_at, ttd_user_at, nama_atasan, nik_atasan)
+            VALUES (?, ?, ?, ?, 'pending', NOW(), NOW(), ?, ?)`,
             [
                 user.id,
                 approverWA,
