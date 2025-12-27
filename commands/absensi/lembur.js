@@ -155,7 +155,10 @@ module.exports = function handleLembur(chat, user, pesan, query) {
             session.step = 'confirm';
             query("UPDATE users SET step_lembur=? WHERE id=?", [session.step, userId], (err) => {
                 if (err) console.error(err);
+
+                const tanggalHuman = moment(session.data.tanggal).format('DD MMMM YYYY');
                 const totalJamHHMM = calculateTotalJam(session.data.jam_mulai, session.data.jam_selesai);
+
                 chat.sendMessage(
                     `===== Konfirmasi Lembur =====\n` +
                     `Tanggal       : ${tanggalHuman}\n` +
