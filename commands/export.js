@@ -130,6 +130,26 @@ async function generatePDFandSend(chat, user, db, paramBulan){
         const templateName = user.template_export || 'LMD';
         const templateSafe = templateName.toLowerCase();
 
+        /* =====================================================
+        CEK APPROVAL PENDING ABSENSI
+        ===================================================== */
+        const [pendingApproval] = await query(
+            `SELECT status FROM approvals
+             WHERE user_id=?
+               AND export_type='absensi'
+               AND template_export=?
+             ORDER BY created_at DESC
+             LIMIT 1`,
+            [user.id, templateName]
+        );
+
+        if (pendingApproval?.status === 'pending') {
+            return sendTyping(
+                chat,
+                '❗ *Laporan absensi kamu sedang dalam proses approval.*\nSilakan tunggu atasan melakukan *Approve* atau *Revisi*.'
+            );
+        }
+
         /* ===== PERIODE ===== */
         const bulanNama = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
         const now = new Date();
@@ -229,8 +249,8 @@ async function generatePDFandSend(chat, user, db, paramBulan){
         /* ===== SIMPAN KE APPROVAL ===== */
         await query(
             `INSERT INTO approvals 
-             (user_id, approver_wa, file_path, template_export, status, created_at, ttd_user_at, nama_atasan, nik_atasan)
-             VALUES (?, ?, ?, ?, 'pending', NOW(), NOW(), ?, ?)`,
+            (user_id, approver_wa, file_path, template_export, export_type, status, created_at, ttd_user_at, nama_atasan, nik_atasan)
+            VALUES (?, ?, ?, ?, 'absensi', 'pending', NOW(), NOW(), ?, ?)`,
             [user.id, approverWA, path.basename(pdfFile), templateName, approverNama, approverNik]
         );
 
@@ -253,6 +273,26 @@ async function generatePDFLembur(chat, user, db){
 
     try {
         const templateName = user.template_export || 'LMD';
+
+        /* =====================================================
+           CEK APPROVAL PENDING (PER TEMPLATE)
+        ===================================================== */
+        const [pendingApproval] = await query(
+            `SELECT status FROM approvals
+             WHERE user_id=?
+               AND export_type='lembur'
+               AND template_export=?
+             ORDER BY created_at DESC
+             LIMIT 1`,
+            [user.id, templateName]
+        );
+
+        if (pendingApproval?.status === 'pending') {
+            return sendTyping(
+                chat,
+                '*Laporan kamu sedang dalam proses approval.*\nSilakan tunggu atasan melakukan *Approve* atau *Revisi*.'
+            );
+        }
 
         /* ================= ATASAN ================= */
         const [approver] = await query(
@@ -392,8 +432,8 @@ async function generatePDFLembur(chat, user, db){
 
         await query(
             `INSERT INTO approvals 
-             (user_id, approver_wa, file_path, template_export, status, created_at, ttd_user_at, nama_atasan, nik_atasan)
-             VALUES (?, ?, ?, ?, 'pending', NOW(), NOW(), ?, ?)`,
+            (user_id, approver_wa, file_path, template_export, export_type, status, created_at, ttd_user_at, nama_atasan, nik_atasan)
+            VALUES (?, ?, ?, ?, 'lembur', 'pending', NOW(), NOW(), ?, ?)`,
             [
                 user.id,
                 approverWA,
