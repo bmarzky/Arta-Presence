@@ -13,12 +13,14 @@ module.exports = async function handleRiwayat(chat, user, pesan, db) {
             )
         );
 
-    /* =========================
+    /* =====================
        STEP 0 — TRIGGER
-    ========================== */
+    ====================== */
     if (text === '/riwayat') {
         await query(
-            `UPDATE users SET step_riwayat='pilih' WHERE id=?`,
+            `UPDATE users 
+             SET step_riwayat='pilih', riwayat_jenis=NULL 
+             WHERE id=?`,
             [user.id]
         );
 
@@ -31,9 +33,9 @@ Balas: absen atau lembur`
         );
     }
 
-    /* =========================
+    /* =====================
        STEP 1 — PILIH JENIS
-    ========================== */
+    ====================== */
     if (user.step_riwayat === 'pilih') {
 
         if (!['absen', 'lembur'].includes(text)) {
@@ -41,27 +43,26 @@ Balas: absen atau lembur`
         }
 
         await query(
-            `UPDATE users SET step_riwayat='periode' WHERE id=?`,
-            [user.id]
+            `UPDATE users 
+             SET step_riwayat='periode', riwayat_jenis=? 
+             WHERE id=?`,
+            [text, user.id]
         );
-
-        // simpan jenis ke memory user object (cukup runtime)
-        user.riwayat_jenis = text;
 
         return sendTyping(
             chat,
-            'Silakan ketik bulan dan tahun laporan.\nContoh: 12 2024'
+            'Silakan ketik bulan dan tahun laporan.\nContoh: 12 2025'
         );
     }
 
-    /* =========================
-       STEP 2 — INPUT BULAN & TAHUN
-    ========================== */
+    /* =====================
+       STEP 2 — BULAN & TAHUN
+    ====================== */
     if (user.step_riwayat === 'periode') {
 
         const match = pesan.match(/^(\d{1,2})\s+(\d{4})$/);
         if (!match) {
-            return sendTyping(chat, 'Format salah.\nContoh: 12 2024');
+            return sendTyping(chat, 'Format salah.\nContoh: 12 2025');
         }
 
         const bulan = Number(match[1]);
@@ -75,9 +76,6 @@ Balas: absen atau lembur`
             ? 'LEMBUR'
             : 'ABSENSI';
 
-        /* =========================
-           AMBIL FILE PDF DARI APPROVALS
-        ========================== */
         const [laporan] = await query(
             `SELECT file_path
              FROM approvals
@@ -91,7 +89,7 @@ Balas: absen atau lembur`
              LIMIT 1`,
             [
                 user.id,
-                `${jenis}-%`,
+                `%${jenis}%`,
                 bulan,
                 tahun
             ]
@@ -99,10 +97,11 @@ Balas: absen atau lembur`
 
         // reset state
         await query(
-            `UPDATE users SET step_riwayat=NULL WHERE id=?`,
+            `UPDATE users 
+             SET step_riwayat=NULL, riwayat_jenis=NULL 
+             WHERE id=?`,
             [user.id]
         );
-        delete user.riwayat_jenis;
 
         if (!laporan) {
             return sendTyping(
@@ -111,24 +110,17 @@ Balas: absen atau lembur`
             );
         }
 
-        const filePath = path.join(
-            __dirname,
-            '../../exports',
-            laporan.file_path
-        );
+        const filePath = laporan.file_path.startsWith('/')
+            ? laporan.file_path
+            : path.join(__dirname, '../../exports', laporan.file_path);
 
         if (!fs.existsSync(filePath)) {
-            return sendTyping(
-                chat,
-                'File laporan ditemukan di database, tapi file fisik tidak ada.'
-            );
+            return sendTyping(chat, 'File ditemukan di database tapi tidak ada di server.');
         }
 
         await sendTyping(chat, '📄 Mengirim laporan...');
         await chat.sendMessage(
             MessageMedia.fromFilePath(filePath)
         );
-
-        return;
     }
 };
