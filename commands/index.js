@@ -214,7 +214,7 @@ module.exports = {
                     );
 
                     if (!approval) {
-                        return sendTyping(chat, 'Kamu belum menyiapkan laporan. Silakan ketik /export terlebih dahulu.');
+                        return sendTyping(chat, 'Kamu belum menyiapkan laporan.');
                     }
 
                     // ubah draft jadi pending
