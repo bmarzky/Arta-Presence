@@ -5,4 +5,4 @@ async function sendTyping(chat, message, typingTime = 1000) {
     return chat.sendMessage(message);
 }
 
-module.exports = { sendTyping }; // named export
+module.exports = { sendTyping };

@@ -4,9 +4,7 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
 const mysql = require('mysql2');
 const commands = require('./commands');
 
-// =====================
-// DATABASE
-// =====================
+// DB
 const db = mysql.createPool({
   host: '127.0.0.1',
   user: 'admin',
@@ -25,14 +23,12 @@ db.getConnection((err, conn) => {
     console.error('DB connection failed:', err.message);
     process.exit(1);
   }
-  console.log('Database connected!');
+  console.log('Database ready!');
   conn.release();
   startWhatsAppBot();
 });
 
-// =====================
-// WHATSAPP BOT
-// =====================
+// Whatsapp bot
 let botStarted = false;
 
 function startWhatsAppBot() {
@@ -56,12 +52,10 @@ function startWhatsAppBot() {
   });
 
   client.on('ready', () => {
-    console.log('Bot WhatsApp ON!');
+    console.log('Arta is online. All services running.');
   });
 
-  // =====================
-  // MESSAGE HANDLER
-  // =====================
+  // Message handdler
   client.on('message', async msg => {
       try {
           const chat = await msg.getChat();

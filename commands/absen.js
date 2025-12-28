@@ -12,15 +12,11 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query) 
     );
     const todayAbsen = rows[0];
 
-    // =========================
-    // HANDLE STEP ABSEN
-    // =========================
+    // Handle step absen
     if (user.step_absen) {
         switch (user.step_absen) {
 
-            // -------------------------
-            // KONFIRMASI KETERANGAN MASUK
-            // -------------------------
+            // konfirmasi keterangan masuk
             case 'ket_masuk': {
                 if (lowerMsg === 'ya') {
                     await query(
@@ -41,13 +37,11 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query) 
                     );
                 }
 
-                //JAWABAN TIDAK VALID
+                // Jawaban ga valid
                 return sendTyping(chat, 'Mohon jawab dengan *ya* atau *tidak*');
             }
 
-            // -------------------------
-            // INPUT KETERANGAN MASUK
-            // -------------------------
+            // Input keterangan masuk
             case 'isi_ket': {
                 await query(
                     `UPDATE absensi SET deskripsi=? WHERE user_id=? AND tanggal=?`,
@@ -63,9 +57,7 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query) 
                 return sendTyping(chat, 'Jangan lupa untuk absen saat pulang.');
             }
 
-            // -------------------------
-            // INPUT KETERANGAN SEBELUM PULANG
-            // -------------------------
+            // Input keterangan saat pulang
             case 'isi_ket_pulang': {
                 await query(
                     `UPDATE absensi SET deskripsi=? WHERE user_id=? AND tanggal=?`,
@@ -81,9 +73,7 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query) 
                 return sendTyping(chat, 'Mau absen PULANG sekarang? (ya/tidak)');
             }
 
-            // -------------------------
-            // KONFIRMASI ABSEN PULANG
-            // -------------------------
+            // Konfirmasi absen pulang
             case 'konfirmasi_pulang': {
                 if (lowerMsg === 'ya') {
                     await query(
@@ -111,20 +101,17 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query) 
                     return sendTyping(chat, 'Absen pulang dibatalkan.');
                 }
 
-                // ❗ JAWABAN TIDAK VALID
+                // Jawaban ga valid
                 return sendTyping(chat, 'Mohon jawab dengan *ya* atau *tidak* 🙏');
             }
         }
     }
 
-    // =========================
-    // COMMAND /absen SAJA
-    // =========================
+
+    // Command
     if (lowerMsg !== '/absen') return;
 
-    // -------------------------
-    // BELUM ABSEN HARI INI
-    // -------------------------
+    // Belum absen hari ini
     if (!todayAbsen) {
         await query(
             `INSERT INTO absensi (user_id, tanggal, jam_masuk)
@@ -141,9 +128,7 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query) 
         return sendTyping(chat, 'Mau tambahkan keterangan? (ya/tidak)');
     }
 
-    // -------------------------
-    // SUDAH MASUK, BELUM PULANG
-    // -------------------------
+    // Sudah masuk, belum pulang
     if (todayAbsen.jam_masuk && !todayAbsen.jam_pulang) {
 
         if (!todayAbsen.deskripsi) {
@@ -165,8 +150,6 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query) 
         return sendTyping(chat, 'Mau absen PULANG sekarang? (ya/tidak)');
     }
 
-    // -------------------------
-    // ABSEN SUDAH LENGKAP
-    // -------------------------
+    // Absen sudah lengkap
     return sendTyping(chat, 'Absensi hari ini sudah lengkap');
 };

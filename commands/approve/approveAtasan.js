@@ -1,3 +1,4 @@
+// approveAtasan.js
 const { MessageMedia } = require('whatsapp-web.js');
 const { sendTyping } = require('../../utils/sendTyping');
 const path = require('path');
@@ -16,9 +17,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     const text = rawText.trim().toLowerCase();
 
     try {
-        /* =========================
-           DATA ATASAN
-        ========================= */
+        // Data Atasan
         const [atasan] = await query(
             `SELECT * FROM users WHERE wa_number=? LIMIT 1`,
             [user.wa_number]
@@ -27,9 +26,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         if (!atasan)
             return sendTyping(chat, 'Data atasan tidak ditemukan.');
 
-        /* =========================
-           APPROVAL TERAKHIR
-        ========================= */
+        // Approval terakhir
         const [approval] = await query(
             `SELECT a.*,
                     u.wa_number AS user_wa,
@@ -54,9 +51,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             ? approval.user_wa
             : approval.user_wa + '@c.us';
 
-        /* =========================
-           INPUT ALASAN REVISI
-        ========================= */
+        // Input alasan revisi
         if (approval.step_input === 'alasan_revisi') {
 
             if (approval.status !== 'revised')
@@ -84,9 +79,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             return sendTyping(chat, 'Revisi berhasil dikirim.');
         }
 
-        /* =========================
-           REVISI
-        ========================= */
+        // Revisi
         if (text === 'revisi') {
 
             if (approval.status !== 'pending')
@@ -106,9 +99,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             return sendTyping(chat, 'Silakan ketik *alasan revisi*.');
         }
 
-        /* =========================
-        APPROVE
-        ========================= */
+        // Approve
         if (text === 'approve') {
 
             if (approval.status !== 'pending')
@@ -117,12 +108,12 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                     'Laporan ini tidak bisa di-approve karena sudah direvisi.'
                 );
 
-            /* ===== NORMALISASI TEMPLATE ===== */
+            // Normalisasi template
             const templateRaw = approval.template_export || 'LMD';
             const templateHTML = templateRaw.toUpperCase();
             const templateLogo = templateRaw.toLowerCase();
 
-            /* ===== LOGO ===== */
+            // logo
             let logoBase64 = '';
             let logoPath = path.join(__dirname, '../../assets/logo', `${templateLogo}.png`);
             if (!fs.existsSync(logoPath))
@@ -130,7 +121,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             if (fs.existsSync(logoPath))
                 logoBase64 = fs.readFileSync(logoPath, 'base64');
 
-            /* ===== TTD ATASAN ===== */
+            // ttd atasan
             let ttdAtasanBase64 = '';
             const ttdPng = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.png`);
             const ttdJpg = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.jpg`);
@@ -150,24 +141,24 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 // lanjut ke proses approve
             }
 
-            /* ===== TTD USER ===== */
+            // ttd user
             let ttdUserBase64 = '';
             const ttdUserPng = path.join(__dirname, '../../assets/ttd', `${approval.user_wa}.png`);
             const ttdUserJpg = path.join(__dirname, '../../assets/ttd', `${approval.user_wa}.jpg`);
             if (fs.existsSync(ttdUserPng)) ttdUserBase64 = fs.readFileSync(ttdUserPng, 'base64');
             else if (fs.existsSync(ttdUserJpg)) ttdUserBase64 = fs.readFileSync(ttdUserJpg, 'base64');
 
-            /* ===== GENERATE PDF SESUAI TIPE ===== */
+            // pdf generate
             let outputPath;
             if (approval.export_type === 'lembur') {
-                // generate PDF lembur
+                // generate lembur
                 outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64);
             } else {
-                // generate PDF absensi biasa
+                // generate absensi 
                 outputPath = await generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64);
             }
 
-            /* ===== UPDATE STATUS DAN KIRIM KE USER ===== */
+            // Update status kirim ke user
             await query(
                 `UPDATE approvals
                  SET status='approved',
@@ -198,10 +189,8 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     }
 };
 
-/* =========================
-   Fungsi generate PDF untuk atasan
-   - absensi
-========================= */
+// Fungsi generate PDF untuk atasan - absensi
+
 async function generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64) {
     const fs = require('fs');
     const path = require('path');
@@ -288,10 +277,7 @@ async function generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64
     return outputPath;
 }
 
-/* =========================
-   Fungsi generate PDF untuk atasan
-   - lembur
-========================= */
+// Fungsi generate PDF untuk atasan - lembur
 async function generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64) {
     const fs = require('fs');
     const path = require('path');
@@ -309,7 +295,7 @@ async function generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUser
 
     if (!lemburData.length) throw new Error('Belum ada data lembur.');
 
-    // Tentukan periode
+    // periode
     const firstTanggal = new Date(lemburData[0].tanggal);
     const bulanNama = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
     let periode = templateName === 'LMD'

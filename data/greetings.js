@@ -19,7 +19,6 @@ module.exports = {
     'assalamualaikum': 'Waalaikumsalam',
     'salam': 'Salam',
     'salom': 'Salam',
-    // tambahkan lebih banyak sapaan sesuai kebutuhan
     'makasih': 'Sama-sama',
     'terima kasih': 'Senang bisa membantu',
     'thanks': 'You\'re welcome',

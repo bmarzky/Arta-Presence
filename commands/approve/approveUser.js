@@ -91,7 +91,7 @@ module.exports = async function approveUser(chat, user, db) {
     }
 };
 
-// ================= PDF Absensi =================
+// pdf absensi
 async function generatePDFwithTTD(user, db, ttdFile, templateName, namaAtasan='Atasan', nikAtasan='') {
     const query = (sql, params = []) =>
         new Promise((res, rej) => db.query(sql, params, (err, r) => err ? rej(err) : res(r)));
@@ -163,7 +163,7 @@ async function generatePDFwithTTD(user, db, ttdFile, templateName, namaAtasan='A
     return output;
 }
 
-// ================= PDF Lembur =================
+// pdf lembur
 async function generatePDFLemburwithTTD(user, db, ttdFile, templateName, namaAtasan='Atasan', nikAtasan='') {
     const query = (sql, params = []) =>
         new Promise((res, rej) => db.query(sql, params, (err, r) => err ? rej(err) : res(r)));

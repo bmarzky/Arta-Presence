@@ -3,9 +3,7 @@ const sessions = {}; // session sementara
 const moment = require('moment');
 moment.locale('id'); // set locale Indonesia
 
-/**
- * Fungsi bantu parsing jam fleksibel
- */
+// Fungsi bantu parsing jam fleksibel
 function parseFlexibleTime(input) {
     input = input.trim().toLowerCase();
     let h = 0, m = 0;
@@ -54,9 +52,7 @@ function parseFlexibleTime(input) {
     return null;
 }
 
-/**
- * Hitung total jam lembur sebagai string HH:MM
- */
+// Hitung total jam lembur sebagai string HH:MM
 function calculateTotalJam(jamMulai, jamSelesai) {
     const [hMulaiH, hMulaiM] = jamMulai.split(':').map(Number);
     const [hSelesaiH, hSelesaiM] = jamSelesai.split(':').map(Number);
@@ -71,17 +67,14 @@ function calculateTotalJam(jamMulai, jamSelesai) {
     return `${String(jam).padStart(2,'0')}:${String(menit).padStart(2,'0')}`;
 }
 
-/**
- * Format total jam ke manusiawi (X jam Y menit)
- */
+// Format total jam (X jam Y menit)
 function formatTotalJamHuman(totalJamHHMM) {
     const [jam, menit] = totalJamHHMM.split(':').map(Number);
     return `${jam} jam ${menit} menit`;
 }
 
-// ===========================
+
 // Modul handleLembur
-// ===========================
 module.exports = function handleLembur(chat, user, pesan, query) {
     const userId = user.id;
     const lowerMsg = pesan.trim().toLowerCase();

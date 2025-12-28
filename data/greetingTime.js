@@ -1,3 +1,4 @@
+// greetingTime.js
 module.exports = function () {
     const h = new Date().getHours();
     if (h < 11) return 'Selamat pagi';

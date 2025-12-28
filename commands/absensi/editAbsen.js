@@ -1,11 +1,10 @@
+// editAbsen.js
 const { sendTyping } = require('../../utils/sendTyping');
 const moment = require('moment');
 
 const editSessions = {};
 
-// ===============================
-// HITUNG TOTAL LEMBUR
-// ===============================
+// Fungsi hitung total lembur
 function hitungTotalLembur(jamMulai, jamSelesai) {
     const start = moment(jamMulai, 'HH:mm');
     let end = moment(jamSelesai, 'HH:mm');
@@ -26,9 +25,7 @@ module.exports = async function handleEdit(chat, user, pesan, query) {
     const text = pesan.trim();
     const lower = text.toLowerCase();
 
-    // ===============================
-    // RESET TOTAL SETIAP /edit
-    // ===============================
+    // Reset total setiap /edit
     if (lower === '/edit') {
         editSessions[wa] = { step: 'choose_type' };
         return sendTyping(chat, 'Mau edit *absen* atau *lembur*?');
@@ -43,9 +40,7 @@ module.exports = async function handleEdit(chat, user, pesan, query) {
 
     const session = editSessions[wa];
 
-    // ===============================
-    // STEP 1: PILIH TIPE
-    // ===============================
+    // Step 1: pilih tipe
     if (session.step === 'choose_type') {
         if (!['absen', 'lembur'].includes(lower)) {
             return sendTyping(chat, 'Balas dengan *absen* atau *lembur*.');
@@ -56,9 +51,7 @@ module.exports = async function handleEdit(chat, user, pesan, query) {
         return sendTyping(chat, `Mau edit ${lower} tanggal berapa? (YYYY-MM-DD)`);
     }
 
-    // ===============================
-    // STEP 2: PILIH TANGGAL
-    // ===============================
+    // Step 2: pilih tanggal
     if (session.step === 'choose_date') {
 
         if (!moment(text, 'YYYY-MM-DD', true).isValid()) {
@@ -108,9 +101,7 @@ module.exports = async function handleEdit(chat, user, pesan, query) {
         }
     }
 
-    // ===============================
-    // STEP 3: INPUT DATA BARU
-    // ===============================
+    // Step 3: input data baru
     if (session.step === 'input_new') {
         const parts = text.split(',');
         if (parts.length < 3) {
@@ -129,7 +120,7 @@ module.exports = async function handleEdit(chat, user, pesan, query) {
                 deskripsi: parts[2].trim()
             };
 
-        // HITUNG TOTAL LEMBUR
+        // Hitung total lembur
         if (session.type === 'lembur') {
             session.new.total_lembur = hitungTotalLembur(
                 session.new.jam_mulai,
@@ -153,9 +144,7 @@ module.exports = async function handleEdit(chat, user, pesan, query) {
         return sendTyping(chat, msg);
     }
 
-    // ===============================
-    // STEP 4: KONFIRMASI
-    // ===============================
+    // Step 4: konfirmasi
     if (session.step === 'confirm') {
         if (lower === 'ya') {
             const table = session.type === 'absen' ? 'absensi' : 'lembur';

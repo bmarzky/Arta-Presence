@@ -1,4 +1,4 @@
-// data/greetingReplies.js
+// greetingReplies.js
 module.exports = [
     "Senang bertemu denganmu 😄",
     "Apa kabar hari ini?",

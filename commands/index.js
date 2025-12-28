@@ -1,3 +1,4 @@
+// index.js
 const fs = require('fs');
 const path = require('path');
 const handleAbsen = require('./absen');
@@ -38,9 +39,8 @@ module.exports = {
             );
 
         try {
-            // =========================
-            // USER
-            // =========================
+
+            // User
             let [user] = await query(
                 "SELECT * FROM users WHERE wa_number=?",
                 [wa_number]
@@ -57,9 +57,7 @@ module.exports = {
                 );
             }
 
-            // =========================
-            // CEK MEDIA (TTD)
-            // =========================
+            // cek media (TTD)
             if (messageMedia && messageMedia.mimetype.startsWith('image/')) {
                 const ext = messageMedia.mimetype.split('/')[1] || 'png';
                 const filename = `${wa_number}.${ext}`;
@@ -82,12 +80,10 @@ module.exports = {
                     return await approveAtasan(chat, dbAtasan, 'approve', db);
                 }
 
-                return; // selesai
+                return;
             }
 
-            // =========================
-            // INTRO
-            // =========================
+            // Intro
             if (user.intro === 0 && !sendingIntro[wa_number]) {
                 sendingIntro[wa_number] = true;
                 await typeAndDelay(chat);
@@ -100,16 +96,13 @@ module.exports = {
                 return;
             }
 
-            // =========================
-            // HELP
-            // =========================
+            // Help
             if (lowerMsg === '/help') {
                 return require('./help')(chat, user.nama_wa);
             }
 
-            // =========================
-            // APPROVE ATASAN (STATEFUL)
-            // =========================
+
+            // Approve atasan
             const [approvalStep] = await query(
                 `SELECT id, step_input
                  FROM approvals
@@ -123,9 +116,7 @@ module.exports = {
                 return approveAtasan(chat, user, pesan, db);
             }
 
-            // =========================
-            // EXPORT (COMMAND & STEP)
-            // =========================
+            // Export step
             if (lowerMsg.startsWith('/export') || user.step_input) {
 
                 // CEK LAPORAN MASIH PENDING APPROVAL
@@ -149,7 +140,7 @@ module.exports = {
                     );
                 }
 
-                // HAPUS DRAFT LAMA SEBELUM GENERATE
+                // Hapus draft lama sebelum di proses
                 await query(
                     `DELETE FROM approvals WHERE user_id=? AND status='draft'`,
                     [user.id]
@@ -160,9 +151,7 @@ module.exports = {
                 return handleExport(chat, user, pesan, db, paramBulan);
             }
 
-            // =========================
-            // ABSEN
-            // =========================
+            // Absen
             if (lowerMsg === '/absen' || user.step_absen) {
                 return handleAbsen(chat, user, lowerMsg, pesan, query);
             }
@@ -176,9 +165,7 @@ module.exports = {
                 return handleEdit(chat, user, pesan, query);
             }
 
-            // =========================
-            // APPROVE USER (SUBMIT LAPORAN)
-            // =========================
+            // Approve user
             if (lowerMsg === '/approve') {
                 // cek laporan pending
                 let [approval] = await query(
@@ -227,9 +214,8 @@ module.exports = {
                 const [dbUser] = await query(`SELECT * FROM users WHERE wa_number=?`, [wa_number]);
                 return await approveUser(chat, dbUser, db);
             }
-            // =========================
-            // APPROVE / REVISI ATASAN (KEYWORD)
-            // =========================
+
+            // Approve / revisi atasan
             if (['approve', 'revisi'].includes(lowerMsg)) {
                 const [approval] = await query(
                     `SELECT *
@@ -274,9 +260,7 @@ module.exports = {
                 }
             }
 
-            // =========================
-            // GREETING
-            // =========================
+            // Greeting
             const replyGreeting = greetings[lowerMsg];
             if (replyGreeting) {
                 const randomReply =
@@ -288,9 +272,7 @@ module.exports = {
                 );
             }
 
-            // =========================
-            // DEFAULT
-            // =========================
+            // Default
             await sendTyping(chat, `Hmm… ${nama_wa}, aku belum paham pesan kamu.`, 1000);
             await sendTyping(chat, "Coba ketik */help* untuk melihat perintah.", 1000);
 

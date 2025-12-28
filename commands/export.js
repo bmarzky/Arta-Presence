@@ -1,3 +1,4 @@
+//export.js
 const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
@@ -31,9 +32,8 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
         const nama_wa = user.pushname || user.nama_wa || 'Arta';
         const text = pesan.toLowerCase().trim();
 
-        /* =========================
-           COMMAND /EXPORT
-        ========================= */
+        // Command
+
         if (text === '/export') {
             await query(`
                 UPDATE users 
@@ -46,9 +46,7 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
             user.step_input = 'start_export';
         }
 
-        /* =========================
-           STEP: START EXPORT
-        ========================= */
+        // Step: start export
         if (user.step_input === 'start_export') {
             await query(
                 `UPDATE users SET step_input='choose_export_type' WHERE id=?`,
@@ -57,18 +55,16 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
 
             return sendTyping(
                 chat,
-                `Halo *${nama_wa}*, mau export *Absensi* atau *Lembur*?\nBalas *absensi* atau *lembur*`
+                `Halo *${nama_wa}*, mau export *Absensi* atau *Lembur*?`
             );
         }
 
-        /* =========================
-           STEP: CHOOSE EXPORT TYPE
-        ========================= */
+        // Step: pilih tipe export
         if (user.step_input === 'choose_export_type') {
             if (!['absensi', 'lembur'].includes(text))
                 return sendTyping(chat, 'Balas *absensi* atau *lembur* ya.');
 
-            // CEK PENDING HANYA UNTUK JENIS TERPILIH
+            // Cek pending untuk jenis
             const [pendingApproval] = await query(
                 `SELECT file_path
                 FROM approvals
@@ -88,7 +84,7 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
                 );
             }
 
-            // SIMPAN PILIHAN & LANJUT KE TEMPLATE
+            // Simpan pilihan dan lanjut ke pilih template
             await query(
                 `UPDATE users 
                 SET export_type=?, step_input='choose_template' 
@@ -103,9 +99,8 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
         }
 
 
-        /* =========================
-           STEP: CHOOSE TEMPLATE
-        ========================= */
+        // Step: pilih template
+
         if (user.step_input === 'choose_template') {
             if (!['ksps', 'lmd'].includes(text))
                 return sendTyping(chat, 'Balas *ksps* atau *lmd* ya.');
@@ -135,9 +130,8 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
     }
 }
 
-/* ==============================
-   GENERATE PDF ABSENSI
-============================== */
+// Generate pdf absensi
+
 async function generatePDFandSend(chat, user, db, paramBulan){
     const query = (sql, params=[]) =>
         new Promise((res, rej) => db.query(sql, params, (err,r)=>err?rej(err):res(r)));
@@ -258,9 +252,8 @@ async function generatePDFandSend(chat, user, db, paramBulan){
     }
 }
 
-/* ==============================
-   GENERATE PDF LEMBUR
-============================== */
+// Generate pdf lembur
+
 async function generatePDFLembur(chat, user, db){
     const query = (sql, params=[]) =>
         new Promise((res, rej) =>
@@ -410,7 +403,7 @@ async function generatePDFLembur(chat, user, db){
             ]
         );
 
-        await sendTyping(chat,'PDF lembur berhasil dibuat.');
+        await sendTyping(chat,'Laporan lembur berhasil dibuat.');
 
     } catch(err){
         console.error('PDF LEMBUR ERROR:', err);

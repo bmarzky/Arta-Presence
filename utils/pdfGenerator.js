@@ -1,11 +1,10 @@
-// utils/pdfGenerator.js
+//pdfGenerator.js
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
 
 module.exports = async function generatePDF(html, outputPath) {
 
-  // Pastikan folder exports ada
   const dir = path.dirname(outputPath);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
