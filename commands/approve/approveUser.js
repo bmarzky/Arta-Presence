@@ -197,6 +197,9 @@ async function generatePDFLemburwithTTD(user, db, ttdFile = '', templateName = '
     const exportsDir = path.join(__dirname,'../../exports');
     if(!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir,{recursive:true});
 
+    // deklarasi array untuk menyimpan semua PDF
+    const pdfFiles = [];
+
     for(const key of keysToGenerate){
         const dataBulan = grouped[key];
         const sample = dataBulan[0];
@@ -296,9 +299,12 @@ async function generatePDFLemburwithTTD(user, db, ttdFile = '', templateName = '
 
         // Simpan HTML sementara (opsional)
         fs.writeFileSync(path.join(exportsDir, `LEMBUR-${user.nama_lengkap}-${templateName}-${bulanNama[bulanIdx]}-${tahun}.html`), html, 'utf8');
+
+        pdfFiles.push(pdfFile); // simpan PDF yang di-generate
     }
 
-    return pdfFile;
+    // kembalikan array PDF jika lebih dari 1, atau string PDF terakhir
+    return pdfFiles.length === 1 ? pdfFiles[0] : pdfFiles;
 }
 
 
