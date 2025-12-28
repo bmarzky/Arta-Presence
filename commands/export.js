@@ -253,7 +253,6 @@ async function generatePDFandSend(chat, user, db, paramBulan){
 }
 
 // Generate pdf lembur
-
 async function generatePDFLembur(chat, user, db){
     const query = (sql, params=[]) =>
         new Promise((res, rej) =>
@@ -291,6 +290,24 @@ async function generatePDFLembur(chat, user, db){
             'Juli','Agustus','September','Oktober','November','Desember'
         ];
 
+        // logo
+        const logoFile = path.join(__dirname, `../assets/logo/${templateName.toLowerCase()}.png`);
+        const logoBase64 = fs.existsSync(logoFile)
+            ? 'data:image/png;base64,' + fs.readFileSync(logoFile).toString('base64')
+            : '';
+
+        // ttd user
+        const ttdPng = path.join(ttdFolder, `${user.wa_number}.png`);
+        const ttdJpg = path.join(ttdFolder, `${user.wa_number}.jpg`);
+        let ttdUserBase64 = '';
+
+        if (fs.existsSync(ttdPng)) ttdUserBase64 = fs.readFileSync(ttdPng, 'base64');
+        else if (fs.existsSync(ttdJpg)) ttdUserBase64 = fs.readFileSync(ttdJpg, 'base64');
+
+        const ttdUserHTML = ttdUserBase64
+            ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px;max-height:150px;">`
+            : '';
+    
         // Group data by bulan
         const grouped = {};
         for(const l of lemburData){
@@ -302,8 +319,23 @@ async function generatePDFLembur(chat, user, db){
         const exportsDir = path.join(__dirname,'../exports');
         if(!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir,{recursive:true});
 
+        // prioritas bulan sekarang
+        const now = new Date();
+        const currentKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
+
+        let keysToGenerate = [];
+
+        if (grouped[currentKey]) {
+            // ada data bulan sekarang
+            keysToGenerate = [currentKey];
+        } else {
+            // tidak ada → ambil bulan terakhir
+            const sortedKeys = Object.keys(grouped).sort();
+            keysToGenerate = [sortedKeys[sortedKeys.length - 1]];
+        }
+
         // Loop stiap laporan 1 bulan
-        for(const key of Object.keys(grouped)){
+        for(const key of keysToGenerate){
             const dataBulan = grouped[key];
             const sample = dataBulan[0];
 
@@ -376,11 +408,13 @@ async function generatePDFLembur(chat, user, db){
             let html = fs.readFileSync(templatePath,'utf8');
 
             html = html
+                .replace(/{{logo}}/g, logoBase64)
                 .replace(/{{rows_lembur}}/g, rows)
                 .replace(/{{periode}}/g, periode)
                 .replace(/{{nama}}/g, user.nama_lengkap || '-')
                 .replace(/{{jabatan}}/g, user.jabatan || '-')
                 .replace(/{{nik}}/g, user.nik || '-')
+                .replace(/{{ttd_user}}/g, ttdUserHTML)
                 .replace(/{{nama_atasan}}/g, approverNama)
                 .replace(/{{nik_atasan}}/g, approverNik)
                 .replace(/{{total_lembur}}/g, totalLembur);
