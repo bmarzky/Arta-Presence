@@ -85,7 +85,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             if (!approvalSelected) return sendTyping(chat, `Tidak ditemukan laporan ${export_type}-${user_nama} yang menunggu approval.`);
 
             if (action === 'approve') {
-                return await processApprove(chat, approvalSelected, atasan, db);
+                return await processApprove(chat, approvalSelected, atasan, query);
             } else if (action === 'revisi') {
                 await query(`UPDATE approvals SET status='revised', step_input='alasan_revisi' WHERE id=?`, [approvalSelected.id]);
                 return sendTyping(chat, `Silakan ketik *alasan revisi* untuk ${export_type}-${user_nama}.`);
@@ -124,7 +124,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             if (approval.status !== 'pending')
                 return sendTyping(chat, 'Laporan ini tidak bisa di-approve karena sudah direvisi.');
 
-            return await processApprove(chat, approval, atasan, db);
+            return await processApprove(chat, approval, atasan, query);
         }
 
         if (text !== 'approve' && text !== 'revisi') {
@@ -138,7 +138,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 };
 
 // Fungsi terpisah untuk proses approve
-async function processApprove(chat, approval, atasan, db) {
+async function processApprove(chat, approval, atasan, query) {
     const path = require('path');
     const fs = require('fs');
 
@@ -163,12 +163,12 @@ async function processApprove(chat, approval, atasan, db) {
     // Step TTD Atasan
     if (!ttdAtasanBase64 && approval.step_input !== 'ttd_atasan') {
         await sendTyping(chat, 'Silakan kirim foto TTD kamu untuk approve laporan ini.');
-        await db.query(`UPDATE approvals SET step_input='ttd_atasan' WHERE id=?`, [approval.id]);
+        await query(`UPDATE approvals SET step_input='ttd_atasan' WHERE id=?`, [approval.id]);
         return;
     }
 
     if (ttdAtasanBase64 && approval.step_input === 'ttd_atasan') {
-        await db.query(`UPDATE approvals SET step_input=NULL WHERE id=?`, [approval.id]);
+        await query(`UPDATE approvals SET step_input=NULL WHERE id=?`, [approval.id]);
     }
 
     // TTD User
@@ -181,13 +181,13 @@ async function processApprove(chat, approval, atasan, db) {
     // Generate PDF
     let outputPath;
     if (approval.export_type === 'lembur') {
-        outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64);
+        outputPath = await generatePDFLemburForAtasan(approval, query, ttdAtasanBase64, ttdUserBase64);
     } else {
-        outputPath = await generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64);
+        outputPath = await generatePDFForAtasan(approval, query, ttdAtasanBase64, ttdUserBase64);
     }
 
     // Update status
-    await db.query(`UPDATE approvals SET status='approved', file_path=? WHERE id=?`, [Array.isArray(outputPath) ? outputPath.join(',') : outputPath, approval.id]);
+    await query(`UPDATE approvals SET status='approved', file_path=? WHERE id=?`, [Array.isArray(outputPath) ? outputPath.join(',') : outputPath, approval.id]);
 
     // Kirim file ke user
     if (Array.isArray(outputPath)) {
