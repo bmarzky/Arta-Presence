@@ -1,4 +1,4 @@
-//approveAtasan.js
+// approveAtasan.js
 const { MessageMedia } = require('whatsapp-web.js');
 const { sendTyping } = require('../../utils/sendTyping');
 const path = require('path');
@@ -7,7 +7,6 @@ const moment = require('moment');
 const generatePDF = require('../../utils/pdfGenerator');
 
 module.exports = async function approveAtasan(chat, user, pesan, db) {
-
     const query = (sql, params = []) =>
         new Promise((resolve, reject) => db.query(sql, params, (err, res) => err ? reject(err) : resolve(res)));
 
@@ -19,7 +18,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         const [atasan] = await query(`SELECT * FROM users WHERE wa_number=? LIMIT 1`, [user.wa_number]);
         if (!atasan) return sendTyping(chat, 'Data atasan tidak ditemukan.');
 
-        // Daftar approval yang pending / revised
+        // Daftar approval pending/revised
         const approvals = await query(`
             SELECT a.*,
                    u.wa_number AS user_wa,
@@ -46,11 +45,31 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             return sendTyping(chat, msg);
         }
 
-        // Pilih approval pertama yang pending / revised
-        const approval = approvals[0];
-        const userWA = approval.user_wa.includes('@') ? approval.user_wa : approval.user_wa + '@c.us';
+        // ================= PARSING FORMAT =================
+        const match = rawText.trim().match(/^(approve|revisi)\s+(\w+)-(.+)$/i);
 
-        // ====== REVISI ======
+        let action, export_type, namaUser, approval;
+        if (match) {
+            action = match[1].toLowerCase();        // approve / revisi
+            export_type = match[2].toLowerCase();   // lembur / absensi
+            namaUser = match[3].trim();             // nama lengkap user
+
+            // cari approval sesuai export_type + nama user
+            approval = approvals.find(a =>
+                a.export_type.toLowerCase() === export_type &&
+                a.user_nama.toLowerCase() === namaUser.toLowerCase()
+            );
+
+            if (!approval)
+                return sendTyping(chat, `Tidak ditemukan laporan ${export_type}-${namaUser} yang menunggu approval/revisi.`);
+
+            // update userWA sesuai approval terpilih
+            var userWA = approval.user_wa.includes('@') ? approval.user_wa : approval.user_wa + '@c.us';
+        } else {
+            return sendTyping(chat, 'Format salah. Contoh:\napprove lembur-Bima Rizki\nrevisi absensi-Asep');
+        }
+
+        // ====== REVISI (alasan_revisi) ======
         if (approval.step_input === 'alasan_revisi') {
             if (approval.status !== 'revised')
                 return sendTyping(chat, 'Status laporan tidak valid untuk revisi.');
@@ -73,16 +92,16 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         }
 
         // ====== MULAI REVISI ======
-        if (text === 'revisi') {
+        if (action === 'revisi') {
             if (approval.status !== 'pending')
                 return sendTyping(chat, 'Laporan sudah direvisi atau tidak bisa direvisi lagi.');
 
             await query(`UPDATE approvals SET status='revised', step_input='alasan_revisi' WHERE id=?`, [approval.id]);
-            return sendTyping(chat, 'Silakan ketik *alasan revisi*.');
+            return sendTyping(chat, `Silakan ketik *alasan revisi* untuk ${export_type}-${namaUser}.`);
         }
 
         // ====== APPROVE ======
-        if (text === 'approve') {
+        if (action === 'approve') {
             if (approval.status !== 'pending')
                 return sendTyping(chat, 'Laporan ini tidak bisa di-approve karena sudah direvisi.');
 
@@ -134,17 +153,13 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
             await chat.client.sendMessage(userWA, MessageMedia.fromFilePath(outputPath));
             await chat.client.sendMessage(userWA,
-                `*Laporan Absensi Berhasil Di-Approve*\n\n` +
+                `*Laporan ${approval.export_type.toUpperCase()} Berhasil Di-Approve*\n\n` +
                 `Halo *${approval.user_nama}*,\n` +
                 `Laporan kamu telah *DISETUJUI* oleh *${atasan.nama_lengkap}*.\n\n` +
                 `Terima kasih.`
             );
-            return sendTyping(chat, `Approval berhasil dikirim ke *${approval.user_nama}*.`);
-        }
 
-        // Jika input salah
-        if (!['approve','revisi','status'].includes(text)) {
-            return sendTyping(chat, 'Ketik *approve*, *revisi*, atau *status* untuk melihat daftar laporan pending.');
+            return sendTyping(chat, `Approval berhasil dikirim ke *${approval.user_nama}*.`);
         }
 
     } catch (err) {
