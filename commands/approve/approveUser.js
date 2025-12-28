@@ -164,31 +164,24 @@ async function generatePDFwithTTD(user, db, ttdFile, templateName, namaAtasan='A
 }
 
 // pdf lembur
-const fs = require('fs');
-const path = require('path');
-const moment = require('moment');
-const { generatePDF } = require('../utils/pdf'); // sesuaikan path
-
-async function generatePDFLemburwithTTD(user, db, ttdFolder, templateName = 'LMD') {
+async function generatePDFLemburwithTTD(user, db, ttdFile = '', templateName = 'LMD', namaAtasan = '', nikAtasan = '') {
     const query = (sql, params = []) =>
         new Promise((res, rej) => db.query(sql, params, (err, r) => err ? rej(err) : res(r)));
 
-    // Ambil approver otomatis
-    const [approver] = await query(`SELECT * FROM users WHERE jabatan='Head' LIMIT 1`);
-    const approverNama = approver?.nama_lengkap || '-';
-    const approverNik  = approver?.nik || '-';
+    // Ambil approver dari DB jika kosong
+    if (!namaAtasan || !nikAtasan) {
+        const [approver] = await query(`SELECT * FROM users WHERE jabatan='Head' LIMIT 1`);
+        namaAtasan = approver?.nama_lengkap || 'Atasan';
+        nikAtasan  = approver?.nik || '-';
+    }
 
     // Ambil data lembur
-    const lemburData = await query(
-        `SELECT YEAR(tanggal) AS tahun, MONTH(tanggal) AS bulan, lembur.* 
-         FROM lembur WHERE user_id=? ORDER BY tanggal`, 
-        [user.id]
-    );
+    const lemburData = await query(`SELECT YEAR(tanggal) AS tahun, MONTH(tanggal) AS bulan, lembur.* FROM lembur WHERE user_id=? ORDER BY tanggal`, [user.id]);
     if (!lemburData.length) throw new Error('Belum ada data lembur untuk dibuat PDF.');
 
     const bulanNama = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
-    // Group data per bulan
+    // Grouping per bulan
     const grouped = {};
     for(const l of lemburData){
         const key = `${l.tahun}-${l.bulan}`;
@@ -198,11 +191,11 @@ async function generatePDFLemburwithTTD(user, db, ttdFolder, templateName = 'LMD
 
     // Prioritas bulan sekarang, fallback bulan terakhir
     const now = new Date();
-    const currentKey = `${now.getFullYear()}-${now.getMonth()+1}`;
+    const currentKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
     const keysToGenerate = grouped[currentKey] ? [currentKey] : [Object.keys(grouped).sort().pop()];
 
     const exportsDir = path.join(__dirname,'../../exports');
-    if(!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
+    if(!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir,{recursive:true});
 
     for(const key of keysToGenerate){
         const dataBulan = grouped[key];
@@ -220,18 +213,19 @@ async function generatePDFLemburwithTTD(user, db, ttdFolder, templateName = 'LMD
             ? 'data:image/png;base64,' + fs.readFileSync(logoFile).toString('base64')
             : '';
 
-        // TTD user (cek PNG/JPG di folder ttdFolder)
+        // TTD user fallback PNG/JPG
         let ttdUserBase64 = '';
-        const ttdPng = path.join(ttdFolder, `${user.wa_number}.png`);
-        const ttdJpg = path.join(ttdFolder, `${user.wa_number}.jpg`);
-        if(fs.existsSync(ttdPng)) ttdUserBase64 = fs.readFileSync(ttdPng).toString('base64');
-        else if(fs.existsSync(ttdJpg)) ttdUserBase64 = fs.readFileSync(ttdJpg).toString('base64');
+        if(ttdFile && fs.existsSync(ttdFile)){
+            ttdUserBase64 = fs.readFileSync(ttdFile).toString('base64');
+        } else {
+            const ttdPng = path.join(__dirname, '../../assets/ttd', `${user.wa_number}.png`);
+            const ttdJpg = path.join(__dirname, '../../assets/ttd', `${user.wa_number}.jpg`);
+            if(fs.existsSync(ttdPng)) ttdUserBase64 = fs.readFileSync(ttdPng).toString('base64');
+            else if(fs.existsSync(ttdJpg)) ttdUserBase64 = fs.readFileSync(ttdJpg).toString('base64');
+        }
+        const ttdUserHTML = ttdUserBase64 ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:150px;">` : '';
 
-        const ttdUserHTML = ttdUserBase64
-            ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:150px;">`
-            : '';
-
-        // Generate rows lembur
+        // Generate rows
         let rows = '';
         let totalLemburDecimal = 0;
 
@@ -258,7 +252,7 @@ async function generatePDFLemburwithTTD(user, db, ttdFolder, templateName = 'LMD
     <td></td>
 </tr>`;
             }
-        } else { // LMD
+        } else {
             for(const l of dataBulan){
                 let jam = 0;
                 if(l.total_lembur){
@@ -282,32 +276,29 @@ async function generatePDFLemburwithTTD(user, db, ttdFolder, templateName = 'LMD
 
         // Template HTML
         const templatePath = path.join(__dirname, `../../templates/lembur/${templateName}.html`);
-        let html = fs.readFileSync(templatePath,'utf8');
+        let htmlTemplate = fs.readFileSync(templatePath,'utf8');
 
-        html = html
-            .replace(/{{logo}}/g, logoBase64)
+        const html = htmlTemplate
             .replace(/{{rows_lembur}}/g, rows)
-            .replace(/{{periode}}/g, periode)
             .replace(/{{nama}}/g, user.nama_lengkap || '-')
             .replace(/{{jabatan}}/g, user.jabatan || '-')
             .replace(/{{nik}}/g, user.nik || '-')
+            .replace(/{{periode}}/g, periode)
+            .replace(/{{logo}}/g, logoBase64)
             .replace(/{{ttd_user}}/g, ttdUserHTML)
-            .replace(/{{nama_atasan}}/g, approverNama)
-            .replace(/{{nik_atasan}}/g, approverNik)
+            .replace(/{{nama_atasan}}/g, namaAtasan)
+            .replace(/{{nik_atasan}}/g, nikAtasan)
             .replace(/{{total_lembur}}/g, totalLembur)
-            .replace(/{{ttd_atasan}}/g, ''); // TTD atasan tetap kosong, diisi saat approve
+            .replace(/{{ttd_atasan}}/g, ''); // diisi saat approve
 
-        // PDF file name sesuai export.js
         const pdfFile = path.join(exportsDir, `LEMBUR-${user.nama_lengkap}-${templateName}-${bulanNama[bulanIdx]}-${tahun}.pdf`);
         await generatePDF(html, pdfFile);
 
-        // Simpan HTML sementara (optional)
+        // Simpan HTML sementara (opsional)
         fs.writeFileSync(path.join(exportsDir, `LEMBUR-${user.nama_lengkap}-${templateName}-${bulanNama[bulanIdx]}-${tahun}.html`), html, 'utf8');
     }
 
     return true;
 }
-
-module.exports = { generatePDFLemburwithTTD };
 
 
