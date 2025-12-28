@@ -269,7 +269,7 @@ async function generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUser
     // Ambil semua data lembur user
     const lemburData = await new Promise((resolve, reject) =>
         db.query(
-            `SELECT YEAR(tanggal) AS tahun, MONTH(tanggal) AS bulan, * FROM lembur WHERE user_id=? ORDER BY tanggal`,
+            `SELECT *, YEAR(tanggal) AS tahun, MONTH(tanggal) AS bulan FROM lembur WHERE user_id=? ORDER BY tanggal`,
             [approval.user_id],
             (err, res) => err ? reject(err) : resolve(res)
         )
