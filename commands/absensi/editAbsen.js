@@ -7,6 +7,7 @@ module.exports = async function handleEdit(chat, user, pesan, query) {
     const wa_number = user.wa_number;
     const lowerMsg = pesan.toLowerCase().trim();
 
+    // Mulai session baru
     if (!editSessions[wa_number]) {
         editSessions[wa_number] = { step: 'choose_type' };
         return sendTyping(chat, 'Mau edit *absen* atau *lembur*?');
@@ -30,10 +31,18 @@ module.exports = async function handleEdit(chat, user, pesan, query) {
         session.date = lowerMsg;
         try {
             let table = session.type === 'absen' ? 'absensi' : 'lembur';
-            const rows = await query(
-                `SELECT * FROM ${table} WHERE user_id=? AND tanggal=?`,
-                [user.id, session.date]
-            );
+
+            // query dengan callback dibungkus promise
+            const rows = await new Promise((resolve, reject) => {
+                query(
+                    `SELECT * FROM ${table} WHERE user_id=? AND tanggal=?`,
+                    [user.id, session.date],
+                    (err, results) => {
+                        if (err) return reject(err);
+                        resolve(results);
+                    }
+                );
+            });
 
             if (!rows.length) {
                 delete editSessions[wa_number];
@@ -115,13 +124,19 @@ module.exports = async function handleEdit(chat, user, pesan, query) {
         if (lowerMsg === 'ya') {
             try {
                 let table = session.type === 'absen' ? 'absensi' : 'lembur';
-                let setFields = Object.keys(session.newData)
-                    .map(k => `${k}=?`)
-                    .join(',');
-                await query(
-                    `UPDATE ${table} SET ${setFields} WHERE id=?`,
-                    [...Object.values(session.newData), session.oldData.id]
-                );
+
+                await new Promise((resolve, reject) => {
+                    let setFields = Object.keys(session.newData).map(k => `${k}=?`).join(',');
+                    query(
+                        `UPDATE ${table} SET ${setFields} WHERE id=?`,
+                        [...Object.values(session.newData), session.oldData.id],
+                        (err, result) => {
+                            if (err) return reject(err);
+                            resolve(result);
+                        }
+                    );
+                });
+
                 delete editSessions[wa_number];
                 return sendTyping(chat, `Perubahan berhasil disimpan.`);
             } catch (err) {
