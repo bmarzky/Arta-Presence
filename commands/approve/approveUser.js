@@ -164,118 +164,150 @@ async function generatePDFwithTTD(user, db, ttdFile, templateName, namaAtasan='A
 }
 
 // pdf lembur
-async function generatePDFLemburwithTTD(user, db, ttdFile, templateName, namaAtasan='Atasan', nikAtasan='') {
+const fs = require('fs');
+const path = require('path');
+const moment = require('moment');
+const { generatePDF } = require('../utils/pdf'); // sesuaikan path
+
+async function generatePDFLemburwithTTD(user, db, ttdFolder, templateName = 'LMD') {
     const query = (sql, params = []) =>
         new Promise((res, rej) => db.query(sql, params, (err, r) => err ? rej(err) : res(r)));
 
-    const lemburData = await query(`SELECT * FROM lembur WHERE user_id=? ORDER BY tanggal`, [user.id]);
+    // Ambil approver otomatis
+    const [approver] = await query(`SELECT * FROM users WHERE jabatan='Head' LIMIT 1`);
+    const approverNama = approver?.nama_lengkap || '-';
+    const approverNik  = approver?.nik || '-';
+
+    // Ambil data lembur
+    const lemburData = await query(
+        `SELECT YEAR(tanggal) AS tahun, MONTH(tanggal) AS bulan, lembur.* 
+         FROM lembur WHERE user_id=? ORDER BY tanggal`, 
+        [user.id]
+    );
     if (!lemburData.length) throw new Error('Belum ada data lembur untuk dibuat PDF.');
 
     const bulanNama = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
-    const firstTanggal = new Date(lemburData[0].tanggal);
-
-    let periode = '';
-    if(templateName === 'LMD'){
-        periode = `${bulanNama[firstTanggal.getMonth()]} ${firstTanggal.getFullYear()}`;
-    } else {
-        const totalHari = new Date(firstTanggal.getFullYear(), firstTanggal.getMonth() + 1, 0).getDate();
-        periode = `1 - ${totalHari} ${bulanNama[firstTanggal.getMonth()]} ${firstTanggal.getFullYear()}`;
+    // Group data per bulan
+    const grouped = {};
+    for(const l of lemburData){
+        const key = `${l.tahun}-${l.bulan}`;
+        if(!grouped[key]) grouped[key] = [];
+        grouped[key].push(l);
     }
 
-    // Generate rows lembur dengan format total_lembur decimal + " Jam"
-    const rows = [];
-    let totalLemburDecimal = 0;
+    // Prioritas bulan sekarang, fallback bulan terakhir
+    const now = new Date();
+    const currentKey = `${now.getFullYear()}-${now.getMonth()+1}`;
+    const keysToGenerate = grouped[currentKey] ? [currentKey] : [Object.keys(grouped).sort().pop()];
 
-    if(templateName === 'LMD'){
-        for(const l of lemburData){
-            let jamDecimal = 0;
-            if(l.total_lembur){
-                if(l.total_lembur.includes(':')){
-                    const [h,m] = l.total_lembur.split(':').map(Number);
-                    jamDecimal = h + m/60;
-                } else {
-                    jamDecimal = parseFloat(l.total_lembur);
-                }
-                totalLemburDecimal += jamDecimal;
-                l.total_lembur = `${Number.isInteger(jamDecimal) ? jamDecimal : jamDecimal.toFixed(1)} Jam`;
-            }
-
-            rows.push(`<tr>
-                <td>${moment(l.tanggal).format('DD/MM/YYYY')}</td>
-                <td>${moment(l.tanggal).locale('id').format('dddd')}</td>
-                <td>${l.jam_mulai || '-'}</td>
-                <td>${l.jam_selesai || '-'}</td>
-                <td>${l.total_lembur || '-'}</td>
-                <td>${l.deskripsi || '-'}</td>
-            </tr>`);
-        }
-    } else { // KSPS
-        const totalHari = new Date(firstTanggal.getFullYear(), firstTanggal.getMonth() + 1, 0).getDate();
-        for(let i=1;i<=totalHari;i++){
-            const dateObj = moment(`${firstTanggal.getFullYear()}-${firstTanggal.getMonth()+1}-${i}`, 'YYYY-M-D');
-            const l = lemburData.find(l => moment(l.tanggal).format('YYYY-MM-DD') === dateObj.format('YYYY-MM-DD'));
-
-            let totalJam = '';
-            if(l?.total_lembur){
-                let jamDecimal = 0;
-                if(l.total_lembur.includes(':')){
-                    const [h,m] = l.total_lembur.split(':').map(Number);
-                    jamDecimal = h + m/60;
-                } else {
-                    jamDecimal = parseFloat(l.total_lembur);
-                }
-                totalLemburDecimal += jamDecimal;
-                totalJam = `${Number.isInteger(jamDecimal) ? jamDecimal : jamDecimal.toFixed(1)} Jam`;
-            }
-
-            rows.push(`<tr>
-                <td>${i}</td>
-                <td>${l?.jam_mulai || ''}</td>
-                <td>${l?.jam_selesai || ''}</td>
-                <td>${totalJam}</td>
-                <td>${l?.deskripsi || ''}</td>
-                <td></td>
-            </tr>`);
-        }
-    }
-
-    const totalLemburKeseluruhan = `${Number.isInteger(totalLemburDecimal) ? totalLemburDecimal : totalLemburDecimal.toFixed(1)} Jam`;
-
-    // Logo
-    const logoFile = path.join(__dirname, `../../assets/logo/${templateName.toLowerCase()}.png`);
-    const logoBase64 = fs.existsSync(logoFile)
-        ? 'data:image/png;base64,' + fs.readFileSync(logoFile).toString('base64')
-        : '';
-
-    // TTD user
-    const ttdBase64 = fs.readFileSync(ttdFile).toString('base64');
-    const ttdHTML = `<img src="data:image/png;base64,${ttdBase64}" style="max-width:150px; max-height:150px;" />`;
-
-    // Template HTML
-    const templatePath = path.join(__dirname, `../../templates/lembur/${templateName}.html`);
-    let htmlTemplate = fs.readFileSync(templatePath,'utf8');
-
-    const html = htmlTemplate
-        .replace(/{{rows_lembur}}/g, rows.join(''))
-        .replace(/{{nama}}/g, user.nama_lengkap || '-')
-        .replace(/{{jabatan}}/g, user.jabatan || '-')
-        .replace(/{{nik}}/g, user.nik || '-')
-        .replace(/{{periode}}/g, periode)
-        .replace(/{{logo}}/g, logoBase64)
-        .replace(/{{ttd_user}}/g, ttdHTML)
-        .replace(/{{nama_atasan}}/g, namaAtasan)
-        .replace(/{{nik_atasan}}/g, nikAtasan)
-        .replace(/{{total_lembur}}/g, totalLemburKeseluruhan)
-        .replace(/{{ttd_atasan}}/g, ''); // tetap kosong, TTD atasan ditambahkan saat approve
-
-    // export PDF
     const exportsDir = path.join(__dirname,'../../exports');
-    if(!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir,{recursive:true});
-    const pdfFile = path.join(exportsDir, `LEMBUR-${user.nama_lengkap}-${templateName}.pdf`);
-    fs.writeFileSync(path.join(exportsDir, `LEMBUR-${user.nama_lengkap}-${templateName}.html`), html, 'utf8');
+    if(!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
 
-    await generatePDF(html, pdfFile);
-    return pdfFile;
+    for(const key of keysToGenerate){
+        const dataBulan = grouped[key];
+        const sample = dataBulan[0];
+        const bulanIdx = sample.bulan - 1;
+        const tahun = sample.tahun;
+
+        const periode = templateName === 'LMD'
+            ? `${bulanNama[bulanIdx]} ${tahun}`
+            : `1 - ${new Date(tahun, bulanIdx+1, 0).getDate()} ${bulanNama[bulanIdx]} ${tahun}`;
+
+        // Logo
+        const logoFile = path.join(__dirname, `../../assets/logo/${templateName.toLowerCase()}.png`);
+        const logoBase64 = fs.existsSync(logoFile)
+            ? 'data:image/png;base64,' + fs.readFileSync(logoFile).toString('base64')
+            : '';
+
+        // TTD user (cek PNG/JPG di folder ttdFolder)
+        let ttdUserBase64 = '';
+        const ttdPng = path.join(ttdFolder, `${user.wa_number}.png`);
+        const ttdJpg = path.join(ttdFolder, `${user.wa_number}.jpg`);
+        if(fs.existsSync(ttdPng)) ttdUserBase64 = fs.readFileSync(ttdPng).toString('base64');
+        else if(fs.existsSync(ttdJpg)) ttdUserBase64 = fs.readFileSync(ttdJpg).toString('base64');
+
+        const ttdUserHTML = ttdUserBase64
+            ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:150px;">`
+            : '';
+
+        // Generate rows lembur
+        let rows = '';
+        let totalLemburDecimal = 0;
+
+        if(templateName === 'KSPS'){
+            const totalHari = new Date(tahun, bulanIdx+1, 0).getDate();
+            for(let i=1;i<=totalHari;i++){
+                const dateObj = moment(`${tahun}-${bulanIdx+1}-${i}`, 'YYYY-M-D');
+                const l = dataBulan.find(x => moment(x.tanggal).format('YYYY-MM-DD') === dateObj.format('YYYY-MM-DD'));
+
+                let totalJam = '';
+                if(l?.total_lembur){
+                    const [h,m=0] = l.total_lembur.includes(':') ? l.total_lembur.split(':').map(Number) : [parseFloat(l.total_lembur),0];
+                    const jam = h + m/60;
+                    totalLemburDecimal += jam;
+                    totalJam = `${jam % 1 === 0 ? jam : jam.toFixed(1)} Jam`;
+                }
+
+                rows += `<tr>
+    <td>${i}</td>
+    <td>${l?.jam_mulai || ''}</td>
+    <td>${l?.jam_selesai || ''}</td>
+    <td>${totalJam}</td>
+    <td>${l?.deskripsi || ''}</td>
+    <td></td>
+</tr>`;
+            }
+        } else { // LMD
+            for(const l of dataBulan){
+                let jam = 0;
+                if(l.total_lembur){
+                    const [h,m=0] = l.total_lembur.includes(':') ? l.total_lembur.split(':').map(Number) : [parseFloat(l.total_lembur),0];
+                    jam = h + m/60;
+                    totalLemburDecimal += jam;
+                }
+
+                rows += `<tr>
+    <td>${moment(l.tanggal).format('DD/MM/YYYY')}</td>
+    <td>${moment(l.tanggal).locale('id').format('dddd')}</td>
+    <td>${l.jam_mulai || '-'}</td>
+    <td>${l.jam_selesai || '-'}</td>
+    <td>${jam ? (jam % 1 === 0 ? jam : jam.toFixed(1))+' Jam' : '-'}</td>
+    <td>${l.deskripsi || '-'}</td>
+</tr>`;
+            }
+        }
+
+        const totalLembur = `${totalLemburDecimal % 1 === 0 ? totalLemburDecimal : totalLemburDecimal.toFixed(1)} Jam`;
+
+        // Template HTML
+        const templatePath = path.join(__dirname, `../../templates/lembur/${templateName}.html`);
+        let html = fs.readFileSync(templatePath,'utf8');
+
+        html = html
+            .replace(/{{logo}}/g, logoBase64)
+            .replace(/{{rows_lembur}}/g, rows)
+            .replace(/{{periode}}/g, periode)
+            .replace(/{{nama}}/g, user.nama_lengkap || '-')
+            .replace(/{{jabatan}}/g, user.jabatan || '-')
+            .replace(/{{nik}}/g, user.nik || '-')
+            .replace(/{{ttd_user}}/g, ttdUserHTML)
+            .replace(/{{nama_atasan}}/g, approverNama)
+            .replace(/{{nik_atasan}}/g, approverNik)
+            .replace(/{{total_lembur}}/g, totalLembur)
+            .replace(/{{ttd_atasan}}/g, ''); // TTD atasan tetap kosong, diisi saat approve
+
+        // PDF file name sesuai export.js
+        const pdfFile = path.join(exportsDir, `LEMBUR-${user.nama_lengkap}-${templateName}-${bulanNama[bulanIdx]}-${tahun}.pdf`);
+        await generatePDF(html, pdfFile);
+
+        // Simpan HTML sementara (optional)
+        fs.writeFileSync(path.join(exportsDir, `LEMBUR-${user.nama_lengkap}-${templateName}-${bulanNama[bulanIdx]}-${tahun}.html`), html, 'utf8');
+    }
+
+    return true;
 }
+
+module.exports = { generatePDFLemburwithTTD };
+
 
