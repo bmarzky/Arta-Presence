@@ -43,15 +43,17 @@ module.exports = async function handleEditLembur(chat, user, pesan, query) {
     const lowerMsg = rawText.toLowerCase();
 
     // =========================
-    // RESET SESSION SETIAP /editLembur
+    // RESET SESSION SETIAP /edit
     // =========================
     if (lowerMsg === '/edit') {
-        // reset session dari awal
         sessions[userId] = { step: 'choose_date', data: {} };
         return chat.sendMessage('Silakan masukkan tanggal lembur yang ingin diedit (format: YYYY-MM-DD):');
     }
 
-    // Pastikan session sudah ada
+    // Abaikan command lain supaya tidak terseret ke step input
+    if (lowerMsg.startsWith('/')) return;
+
+    // Pastikan session ada
     if (!sessions[userId]) sessions[userId] = { step: 'choose_date', data: {} };
     const session = sessions[userId];
 
