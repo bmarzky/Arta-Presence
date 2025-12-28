@@ -32,7 +32,7 @@ module.exports = async function approveUser(chat, user, db) {
         );
 
         if (!approval || !approval.file_path)
-            return sendTyping(chat, 'Kamu belum menyiapkan laporan. Silakan ketik */export* terlebih dahulu.');
+            return sendTyping(chat, 'Kamu belum menyiapkan laporan.');
 
         if (approval.status === 'revised')
             return sendTyping(chat, 'Laporan perlu revisi. Silakan export ulang.');
