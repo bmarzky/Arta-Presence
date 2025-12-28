@@ -170,7 +170,7 @@ module.exports = {
             }
 
             // handler /approve untuk user
-            if (text === '/approve' || text === 'approve') {
+            if (lowerMsg === '/approve') {
                 return sendApprovalToAtasan(chat, user, db);
             }
 
