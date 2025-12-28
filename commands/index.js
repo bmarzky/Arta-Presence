@@ -183,17 +183,14 @@ module.exports = {
                 return handleRiwayatAbsen(chat, user, pesan, db);
             }
 
-            // ABSEN
             if (lowerMsg === '/absen' || user.step_absen) {
                 return handleAbsen(chat, user, lowerMsg, pesan, query);
             }
 
-            // LEMBUR
             if (lowerMsg === '/lembur' || user.step_lembur) {
-                return handleLembur(chat, user, pesan, queryCallback);
+                return handleLembur(chat, user, pesan, query);
             }
 
-            // EDIT
             if (lowerMsg === '/edit' || handleEdit.isEditing(user.wa_number)) {
                 return handleEdit(chat, user, pesan, query);
             }
