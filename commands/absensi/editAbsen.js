@@ -3,6 +3,24 @@ const moment = require('moment');
 
 const editSessions = {};
 
+// ===============================
+// HITUNG TOTAL LEMBUR
+// ===============================
+function hitungTotalLembur(jamMulai, jamSelesai) {
+    const start = moment(jamMulai, 'HH:mm');
+    let end = moment(jamSelesai, 'HH:mm');
+
+    if (end.isBefore(start)) {
+        end.add(1, 'day');
+    }
+
+    const durasi = moment.duration(end.diff(start));
+    const jam = Math.floor(durasi.asHours());
+    const menit = durasi.minutes();
+
+    return `${String(jam).padStart(2, '0')}:${String(menit).padStart(2, '0')}`;
+}
+
 module.exports = async function handleEdit(chat, user, pesan, query) {
     const wa = user.wa_number;
     const text = pesan.trim();
@@ -16,12 +34,8 @@ module.exports = async function handleEdit(chat, user, pesan, query) {
         return sendTyping(chat, 'Mau edit *absen* atau *lembur*?');
     }
 
-    // Abaikan command lain
     if (lower.startsWith('/')) return;
 
-    // ===============================
-    // PASTIKAN SESSION ADA
-    // ===============================
     if (!editSessions[wa]) {
         editSessions[wa] = { step: 'choose_type' };
         return sendTyping(chat, 'Mau edit *absen* atau *lembur*?');
@@ -59,16 +73,14 @@ module.exports = async function handleEdit(chat, user, pesan, query) {
                 [user.id, text]
             );
 
-            //  TIDAK ADA DATA
             if (!rows.length) {
-                delete editSessions[wa]; // reset session
+                delete editSessions[wa];
                 return sendTyping(
                     chat,
-                    `Tidak ada data *${session.type}* pada tanggal ${text}.\nSilakan ketik */edit* untuk memulai ulang.`
+                    `Tidak ada data *${session.type}* pada tanggal ${text}.\nKetik */edit* untuk ulang.`
                 );
             }
 
-            // DATA ADA
             session.old = rows[0];
             session.step = 'input_new';
 
@@ -79,6 +91,7 @@ module.exports = async function handleEdit(chat, user, pesan, query) {
             } else {
                 msg += `Jam Mulai  : ${rows[0].jam_mulai}\n`;
                 msg += `Jam Selesai: ${rows[0].jam_selesai}\n`;
+                msg += `Total      : ${rows[0].total_lembur || '-'}\n`;
             }
             msg += `Deskripsi  : ${rows[0].deskripsi || '-'}\n\n`;
             msg += 'Kirim data baru:\n';
@@ -90,11 +103,10 @@ module.exports = async function handleEdit(chat, user, pesan, query) {
 
         } catch (err) {
             console.error(err);
-            delete editSessions[wa]; // reset juga kalau error
+            delete editSessions[wa];
             return sendTyping(chat, 'Terjadi kesalahan saat mengambil data.');
         }
     }
-
 
     // ===============================
     // STEP 3: INPUT DATA BARU
@@ -116,6 +128,14 @@ module.exports = async function handleEdit(chat, user, pesan, query) {
                 jam_selesai: parts[1].trim(),
                 deskripsi: parts[2].trim()
             };
+
+        // HITUNG TOTAL LEMBUR
+        if (session.type === 'lembur') {
+            session.new.total_lembur = hitungTotalLembur(
+                session.new.jam_mulai,
+                session.new.jam_selesai
+            );
+        }
 
         session.step = 'confirm';
 
