@@ -168,11 +168,6 @@ module.exports = {
                 return handleExport(chat, user, pesan, db, paramBulan);
             }
 
-            if (approval.status === 'draft') {
-                await query(`UPDATE approvals SET status='pending' WHERE id=?`, [approval.id]);
-                approval.status = 'pending';
-            }
-
             // handler /approve untuk user
             if (lowerMsg === '/approve') {
                 return approveUser(chat, user, db);
