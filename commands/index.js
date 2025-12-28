@@ -9,7 +9,7 @@ const approveUser = require('./approve/approveUser');
 const approveAtasan = require('./approve/approveAtasan');
 const { sendTyping } = require('../utils/sendTyping');
 const handleLembur = require('./absensi/lembur'); 
-const handleEdit = require('./editAbsen');
+const handleEdit = require('../commands/absensi/editAbsen');
 
 const ttdFolder = path.join(__dirname, '../assets/ttd/');
 
