@@ -1,4 +1,4 @@
-const { sendTyping } = require('../utils/sendTyping');
+const { sendTyping } = require('../../utils/sendTyping');
 
 module.exports = async function handleRiwayatAbsen(chat, user, pesan, db){
     const text = pesan.trim().toLowerCase();
