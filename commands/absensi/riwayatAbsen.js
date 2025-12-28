@@ -72,25 +72,23 @@ Balas: absen atau lembur`
         const prefix = user.riwayat_jenis === 'lembur' ? 'LEMBUR' : 'ABSENSI';
 
         try {
-            // Ambil laporan terakhir dengan status approved
+            // Ambil file approved terakhir berdasarkan jenis laporan
             const [laporan] = await query(
                 `SELECT file_path
                  FROM approvals
-                 WHERE user_id=?
+                 WHERE user_id=? 
                    AND source='export'
                    AND status='approved'
                    AND file_path LIKE ?
-                   AND MONTH(created_at)=?
-                   AND YEAR(created_at)=?
                  ORDER BY created_at DESC
                  LIMIT 1`,
-                [user.id, `${prefix}%`, bulan, tahun]
+                [user.id, `${prefix}%`]
             );
 
             if (!laporan) {
                 return sendTyping(
                     chat,
-                    `Tidak ditemukan laporan ${prefix.toLowerCase()} untuk ${bulan}/${tahun}.`
+                    `Tidak ditemukan laporan ${prefix.toLowerCase()} terbaru.`
                 );
             }
 
