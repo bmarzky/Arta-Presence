@@ -11,7 +11,7 @@ const approveAtasan = require('./approve/approveAtasan');
 const { sendTyping } = require('../utils/sendTyping');
 const handleLembur = require('./absensi/lembur'); 
 const handleEdit = require('./absensi/editAbsen');
-const handleRiwayat = require('./absensi/riwayatAbsen');
+const handleRiwayatAbsen = require('./absensi/riwayatAbsen');
 
 const ttdFolder = path.join(__dirname, '../assets/ttd/');
 
