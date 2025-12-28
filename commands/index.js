@@ -178,21 +178,23 @@ module.exports = {
             }
 
             // Absen
+            if (lowerMsg === '/riwayat' || user.step_riwayat) {
+                return handleRiwayatAbsen(chat, user, pesan, db);
+            }
+
+            // ABSEN
             if (lowerMsg === '/absen' || user.step_absen) {
                 return handleAbsen(chat, user, lowerMsg, pesan, query);
             }
 
+            // LEMBUR
             if (lowerMsg === '/lembur' || user.step_lembur) {
-                const queryCallback = (sql, params, cb) => db.query(sql, params, cb);
                 return handleLembur(chat, user, pesan, queryCallback);
             }
-            
+
+            // EDIT
             if (lowerMsg === '/edit' || handleEdit.isEditing(user.wa_number)) {
                 return handleEdit(chat, user, pesan, query);
-            }
-
-            if (lowerMsg === '/riwayat' || user.step_riwayat) {
-                return handleRiwayat(chat, user, pesan, db);
             }
 
             // Approve user
