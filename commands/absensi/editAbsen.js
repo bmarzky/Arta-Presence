@@ -151,3 +151,7 @@ module.exports = async function handleEdit(chat, user, pesan, query) {
         return sendTyping(chat, 'Balas dengan *ya* atau *tidak*.');
     }
 };
+
+module.exports.isEditing = (wa) => {
+    return !!editSessions[wa];
+};
