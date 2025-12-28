@@ -1,4 +1,4 @@
-const { sendTyping } = require('../../utils/');
+const { sendTyping } = require('../../utils/sendTyping');
 const moment = require('moment');
 
 const editSessions = {};
