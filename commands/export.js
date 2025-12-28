@@ -276,10 +276,10 @@ async function generatePDFLembur(chat, user, db){
             `SELECT 
                 YEAR(tanggal) AS tahun,
                 MONTH(tanggal) AS bulan,
-                *
-             FROM lembur
-             WHERE user_id=?
-             ORDER BY tanggal`,
+                lembur.*
+            FROM lembur
+            WHERE user_id=?
+            ORDER BY tanggal`,
             [user.id]
         );
 
@@ -291,7 +291,7 @@ async function generatePDFLembur(chat, user, db){
             'Juli','Agustus','September','Oktober','November','Desember'
         ];
 
-        // 🔥 GROUP DATA PER BULAN
+        // Group data by bulan
         const grouped = {};
         for(const l of lemburData){
             const key = `${l.tahun}-${l.bulan}`;
@@ -302,7 +302,7 @@ async function generatePDFLembur(chat, user, db){
         const exportsDir = path.join(__dirname,'../exports');
         if(!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir,{recursive:true});
 
-        // 🔥 LOOP SETIAP BULAN → 1 PDF
+        // Loop stiap laporan 1 bulan
         for(const key of Object.keys(grouped)){
             const dataBulan = grouped[key];
             const sample = dataBulan[0];
