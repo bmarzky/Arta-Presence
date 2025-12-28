@@ -13,12 +13,14 @@ module.exports = async function handleHelp(chat, nama_wa) {
     // Perintah Absensi
     await sendTyping(
         chat,
-`*Perintah Absensi:*
+`*Absensi:*
 - /absen - Mulai proses absen untuk (MASUK / PULANG)
 
 - /lembur - Mulai proses untuk lmbur
 
-- /edit - Edit data absensi atau lembur yang sudah dibuat`
+- /edit - Edit data absensi atau lembur yang sudah dibuat
+
+- /riwayat - Melihat data laporan approved sebelumnya`
         ,
         1000
     );
@@ -26,7 +28,7 @@ module.exports = async function handleHelp(chat, nama_wa) {
     // Perintah Export
     await sendTyping(
         chat,
-`*Perintah Export:*
+`*Export:*
 - /export - Export laporan Absensi atau Lembur ke PDF
 `
         ,
@@ -36,7 +38,7 @@ module.exports = async function handleHelp(chat, nama_wa) {
     // Perintah Approval
     await sendTyping(
         chat,
-`*Perintah Pengajuan:*
+`*Pengajuan:*
 - /approve - Kirim laporan ke atasan untuk disetujui`
         ,
         1000
@@ -46,7 +48,7 @@ module.exports = async function handleHelp(chat, nama_wa) {
     await sendTyping(
         chat,
 `*Perintah Lain:*
-- /info - Informasi singkat tentang bot ARTA PRESENCE`
+- /info - Informasi singkat tentang bot ARTA PRESENCE *(maintenance)*`
         ,
         1000
     );
