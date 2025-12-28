@@ -3,11 +3,19 @@ const { sendTyping } = require('../../utils/sendTyping');
 module.exports = async function handleRiwayatAbsen(chat, user, pesan, db) {
     const text = pesan.trim().toLowerCase();
 
+    // helper query PROMISE (WAJIB)
+    const query = (sql, params = []) =>
+        new Promise((res, rej) =>
+            db.query(sql, params, (err, rows) =>
+                err ? rej(err) : res(rows)
+            )
+        );
+
     /* =========================
        STEP 0 — TRIGGER
     ========================== */
     if (text === '/riwayat') {
-        await db.query(
+        await query(
             `UPDATE users SET step_riwayat='pilih' WHERE id=?`,
             [user.id]
         );
@@ -27,27 +35,20 @@ Balas: absen atau lembur`
     if (user.step_riwayat === 'pilih') {
 
         if (!['absen', 'lembur'].includes(text)) {
-            return sendTyping(
-                chat,
-                'Balas dengan: absen atau lembur'
-            );
+            return sendTyping(chat, 'Balas dengan: absen atau lembur');
         }
 
-        // sementara hanya absen
+        // sementara lembur belum
         if (text === 'lembur') {
-            await db.query(
+            await query(
                 `UPDATE users SET step_riwayat=NULL WHERE id=?`,
                 [user.id]
             );
 
-            return sendTyping(
-                chat,
-                'Riwayat lembur menyusul 🙏'
-            );
+            return sendTyping(chat, 'Riwayat lembur menyusul 🙏');
         }
 
-        // lanjut ke periode
-        await db.query(
+        await query(
             `UPDATE users SET step_riwayat='periode' WHERE id=?`,
             [user.id]
         );
@@ -65,40 +66,31 @@ Balas: absen atau lembur`
 
         const match = pesan.match(/^(\d{1,2})\s+(\d{4})$/);
         if (!match) {
-            return sendTyping(
-                chat,
-                'Format salah.\nContoh: 12 2024'
-            );
+            return sendTyping(chat, 'Format salah.\nContoh: 12 2024');
         }
 
         const bulan = Number(match[1]);
         const tahun = Number(match[2]);
 
         if (bulan < 1 || bulan > 12) {
-            return sendTyping(
-                chat,
-                'Bulan harus antara 1–12'
-            );
+            return sendTyping(chat, 'Bulan harus antara 1–12');
         }
 
         /* =========================
-           QUERY DATA ABSENSI
+           QUERY ABSENSI
         ========================== */
-        const data = await new Promise((res, rej) => {
-            db.query(
-                `SELECT *
-                 FROM absensi
-                 WHERE user_id=?
-                   AND MONTH(tanggal)=?
-                   AND YEAR(tanggal)=?
-                 ORDER BY tanggal ASC`,
-                [user.id, bulan, tahun],
-                (err, rows) => err ? rej(err) : res(rows)
-            );
-        });
+        const data = await query(
+            `SELECT *
+             FROM absensi
+             WHERE user_id=?
+               AND MONTH(tanggal)=?
+               AND YEAR(tanggal)=?
+             ORDER BY tanggal ASC`,
+            [user.id, bulan, tahun]
+        );
 
-        // reset state (SEBELUM return apa pun)
-        await db.query(
+        // RESET STATE (WAJIB)
+        await query(
             `UPDATE users SET step_riwayat=NULL WHERE id=?`,
             [user.id]
         );
@@ -110,10 +102,6 @@ Balas: absen atau lembur`
             );
         }
 
-        /* =========================
-           OUTPUT (sementara text)
-           PDF bisa ditambahkan di sini
-        ========================== */
         return sendTyping(
             chat,
             `📄 Riwayat absen ${bulan}/${tahun} ditemukan.\n` +
