@@ -1,5 +1,5 @@
 // editAbsen.js
-const { sendTyping } = require('../utils/sendTyping');
+const { sendTyping } = require('../../utils/sendTyping');
 
 const editSessions = {};
 
