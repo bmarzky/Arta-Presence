@@ -6,7 +6,7 @@ module.exports = async function handleHelp(chat, nama_wa) {
     // Pesan pembuka
     await sendTyping(
         chat,
-        `Halo *${nama_wa}* 👋\nBerikut daftar perintah yang bisa kamu gunakan di ARTA PRESENCE:`,
+        `Halo *${nama_wa}* 👋\nBerikut daftar perintah yang bisa kamu gunakan di *ARTA PRESENCE*:`,
         1000
     );
 
@@ -15,48 +15,35 @@ module.exports = async function handleHelp(chat, nama_wa) {
         chat,
 `*Absensi:*
 - /absen - Mulai proses absen untuk (MASUK / PULANG)
-
 - /lembur - Mulai proses untuk lmbur
-
 - /edit - Edit data absensi atau lembur yang sudah dibuat
-
-- /riwayat - Melihat data laporan approved sebelumnya`
-        ,
-        1000
+- /riwayat - Melihat data laporan approved sebelumnya`,1000
     );
 
     // Perintah Export
     await sendTyping(
         chat,
 `*Export:*
-- /export - Export laporan Absensi atau Lembur ke PDF
-`
-        ,
-        1000
+- /export - Export laporan Absensi atau Lembur ke PDF`,1000
     );
 
     // Perintah Approval
     await sendTyping(
         chat,
 `*Pengajuan:*
-- /approve - Kirim laporan ke atasan untuk disetujui`
-        ,
-        1000
+- /approve - Kirim laporan ke approval untuk disetujui`,1000
     );
 
     // Perintah Lain
     await sendTyping(
         chat,
 `*Perintah Lain:*
-- /info - Informasi singkat tentang bot ARTA PRESENCE *(maintenance)*`
-        ,
-        1000
+- /info - Informasi singkat tentang bot ARTA PRESENCE *(maintenance)*`,1000
     );
 
     // Pesan penutup
     await sendTyping(
         chat,
-        `Jika kamu mengalami kendala, tolong hubungi author 🤗`,
-        1000
+        `Jika kamu mengalami kendala, tolong hubungi author 🤗`,1000
     );
 };
