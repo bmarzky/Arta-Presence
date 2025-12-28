@@ -15,7 +15,7 @@ module.exports = async function handleRiwayat(chat, user, pesan, db) {
             )
         );
 
-    //commands
+    // STEP 0 — TRIGGER
     if (text === '/riwayat') {
         await query(
             `UPDATE users
@@ -34,7 +34,7 @@ Balas: absen atau lembur`
         );
     }
 
-    // Step 1: pilih jenis
+    // STEP 1 — PILIH JENIS
     if (user.step_riwayat === 'pilih') {
 
         if (!['absen', 'lembur'].includes(text)) {
@@ -54,8 +54,7 @@ Balas: absen atau lembur`
         );
     }
 
-    // Step 2: bulan tahun
-
+    // STEP 2 — INPUT BULAN & TAHUN
     if (user.step_riwayat === 'periode') {
 
         const match = rawText.match(/^(\d{1,2})\s+(\d{4})$/);
@@ -70,11 +69,10 @@ Balas: absen atau lembur`
             return sendTyping(chat, 'Bulan harus antara 1–12');
         }
 
-        const prefix = user.riwayat_jenis === 'lembur'
-            ? 'LEMBUR'
-            : 'ABSENSI';
+        const prefix = user.riwayat_jenis === 'lembur' ? 'LEMBUR' : 'ABSENSI';
 
         try {
+            // Ambil laporan terakhir dengan status approved
             const [laporan] = await query(
                 `SELECT file_path
                  FROM approvals
@@ -86,12 +84,7 @@ Balas: absen atau lembur`
                    AND YEAR(created_at)=?
                  ORDER BY created_at DESC
                  LIMIT 1`,
-                [
-                    user.id,
-                    `${prefix}%`,
-                    bulan,
-                    tahun
-                ]
+                [user.id, `${prefix}%`, bulan, tahun]
             );
 
             if (!laporan) {
@@ -112,13 +105,13 @@ Balas: absen atau lembur`
                 );
             }
 
-            await sendTyping(chat, 'Menyiapkan laporan...');
+            await sendTyping(chat, 'Mengirim laporan...');
             await chat.sendMessage(
                 MessageMedia.fromFilePath(filePath)
             );
 
         } finally {
-            // WAJIB reset state agar user tidak nyangkut
+            // Reset state user agar tidak nyangkut
             await query(
                 `UPDATE users
                  SET step_riwayat=NULL, riwayat_jenis=NULL
