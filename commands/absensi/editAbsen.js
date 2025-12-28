@@ -45,7 +45,8 @@ module.exports = async function handleEditLembur(chat, user, pesan, query) {
     // =========================
     // RESET SESSION SETIAP /editLembur
     // =========================
-    if (lowerMsg === '/editlembur') {
+    if (lowerMsg === '/edit') {
+        // reset session dari awal
         sessions[userId] = { step: 'choose_date', data: {} };
         return chat.sendMessage('Silakan masukkan tanggal lembur yang ingin diedit (format: YYYY-MM-DD):');
     }
