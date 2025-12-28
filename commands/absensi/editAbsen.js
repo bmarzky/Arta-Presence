@@ -1,139 +1,153 @@
-// editLembur.js
-const sessions = {};
+const { sendTyping } = require('../../utils/');
 const moment = require('moment');
-moment.locale('id');
 
-function parseFlexibleTime(input) {
-    input = input.trim().toLowerCase();
-    let h = 0, m = 0;
+const editSessions = {};
 
-    const matchHHMM = input.match(/^(\d{1,2}):(\d{2})$/);
-    if (matchHHMM) return { h: parseInt(matchHHMM[1]), m: parseInt(matchHHMM[2]) };
+module.exports = async function handleEdit(chat, user, pesan, query) {
+    const wa = user.wa_number;
+    const text = pesan.trim();
+    const lower = text.toLowerCase();
 
-    const matchSetengah = input.match(/^setengah\s+(\d{1,2})\s*(pagi|siang|sore|malam)$/);
-    if (matchSetengah) {
-        let num = parseInt(matchSetengah[1]);
-        const period = matchSetengah[2];
-        m = 30;
-        switch(period){
-            case 'pagi': h = num-1; break;
-            case 'siang': case 'sore': case 'malam': h = (num%12)+12-1; break;
-        }
-        if (h<0) h+=12;
-        return {h,m};
+    // ===============================
+    // RESET TOTAL SETIAP /edit
+    // ===============================
+    if (lower === '/edit') {
+        editSessions[wa] = { step: 'choose_type' };
+        return sendTyping(chat, 'Mau edit *absen* atau *lembur*?');
     }
 
-    const matchPeriod = input.match(/^(\d{1,2})\s*(pagi|siang|sore|malam)$/);
-    if (matchPeriod) {
-        let num = parseInt(matchPeriod[1]);
-        const period = matchPeriod[2];
-        m = 0;
-        switch(period){
-            case 'pagi': h = num%12; break;
-            case 'siang': case 'sore': case 'malam': h = (num%12)+12; break;
-        }
-        return {h,m};
-    }
-    return null;
-}
+    // Abaikan command lain
+    if (lower.startsWith('/')) return;
 
-module.exports = async function handleEditLembur(chat, user, pesan, query) {
-    const userId = user.id;
-    const rawText = pesan.trim();
-    const lowerMsg = rawText.toLowerCase();
-
-    // =========================
-    // RESET SESSION SETIAP /edit
-    // =========================
-    if (lowerMsg === '/edit') {
-        sessions[userId] = { step: 'choose_date', data: {} };
-        return chat.sendMessage('Silakan masukkan tanggal lembur yang ingin diedit (format: YYYY-MM-DD):');
+    // ===============================
+    // PASTIKAN SESSION ADA
+    // ===============================
+    if (!editSessions[wa]) {
+        editSessions[wa] = { step: 'choose_type' };
+        return sendTyping(chat, 'Mau edit *absen* atau *lembur*?');
     }
 
-    // Abaikan command lain supaya tidak terseret ke step input
-    if (lowerMsg.startsWith('/')) return;
+    const session = editSessions[wa];
 
-    // Pastikan session ada
-    if (!sessions[userId]) sessions[userId] = { step: 'choose_date', data: {} };
-    const session = sessions[userId];
-
-    switch(session.step) {
-        case 'choose_date': {
-            const date = moment(rawText, ['YYYY-MM-DD','D MMMM YYYY'], true);
-            if (!date.isValid()) return chat.sendMessage('Format tanggal tidak valid. Contoh: 28 Desember 2025');
-            const tanggal = date.format('YYYY-MM-DD');
-            session.data.tanggal = tanggal;
-
-            query(`SELECT * FROM lembur WHERE user_id=? AND tanggal=?`, [userId, tanggal], (err, results) => {
-                if (err) return chat.sendMessage('Terjadi kesalahan saat mengambil data lembur.');
-                if (!results.length) {
-                    delete sessions[userId];
-                    return chat.sendMessage(`Tidak ada data lembur pada tanggal ${tanggal}`);
-                }
-
-                session.data.old = results[0];
-                session.step = 'input_new_data';
-
-                let msgOldData = `Data lama:\n`;
-                msgOldData += `Tanggal     : ${results[0].tanggal}\n`;
-                msgOldData += `Jam Mulai   : ${results[0].jam_mulai}\n`;
-                msgOldData += `Jam Selesai : ${results[0].jam_selesai}\n`;
-                msgOldData += `Deskripsi   : ${results[0].deskripsi || '-'}\n`;
-                msgOldData += `\nKirim data baru (format: jam_mulai,jam_selesai,deskripsi)`;
-                chat.sendMessage(msgOldData);
-            });
-            break;
+    // ===============================
+    // STEP 1: PILIH TIPE
+    // ===============================
+    if (session.step === 'choose_type') {
+        if (!['absen', 'lembur'].includes(lower)) {
+            return sendTyping(chat, 'Balas dengan *absen* atau *lembur*.');
         }
 
-        case 'input_new_data': {
-            const parts = rawText.split(',');
-            if (parts.length < 3) return chat.sendMessage('Format salah. Kirim: jam_mulai,jam_selesai,deskripsi');
+        session.type = lower;
+        session.step = 'choose_date';
+        return sendTyping(chat, `Mau edit ${lower} tanggal berapa? (YYYY-MM-DD)`);
+    }
 
-            const jamMulaiParsed = parseFlexibleTime(parts[0]);
-            const jamSelesaiParsed = parseFlexibleTime(parts[1]);
-            if (!jamMulaiParsed || !jamSelesaiParsed) return chat.sendMessage('Format jam salah.');
+    // ===============================
+    // STEP 2: PILIH TANGGAL
+    // ===============================
+    if (session.step === 'choose_date') {
+        if (!moment(text, 'YYYY-MM-DD', true).isValid()) {
+            return sendTyping(chat, 'Format tanggal salah. Contoh: 2025-12-14');
+        }
 
-            session.data.new = {
-                jam_mulai: `${String(jamMulaiParsed.h).padStart(2,'0')}:${String(jamMulaiParsed.m).padStart(2,'0')}`,
-                jam_selesai: `${String(jamSelesaiParsed.h).padStart(2,'0')}:${String(jamSelesaiParsed.m).padStart(2,'0')}`,
+        const table = session.type === 'absen' ? 'absensi' : 'lembur';
+
+        try {
+            const rows = await query(
+                `SELECT * FROM ${table} WHERE user_id=? AND tanggal=?`,
+                [user.id, text]
+            );
+
+            if (!rows.length) {
+                delete editSessions[wa];
+                return sendTyping(chat, `Tidak ada data ${session.type} pada tanggal tersebut.`);
+            }
+
+            session.old = rows[0];
+            session.step = 'input_new';
+
+            let msg = '*Data lama:*\n';
+            if (session.type === 'absen') {
+                msg += `Jam Masuk  : ${rows[0].jam_masuk || '-'}\n`;
+                msg += `Jam Pulang : ${rows[0].jam_pulang || '-'}\n`;
+            } else {
+                msg += `Jam Mulai  : ${rows[0].jam_mulai}\n`;
+                msg += `Jam Selesai: ${rows[0].jam_selesai}\n`;
+            }
+            msg += `Deskripsi  : ${rows[0].deskripsi || '-'}\n\n`;
+            msg += 'Kirim data baru:\n';
+            msg += session.type === 'absen'
+                ? '`jam_masuk,jam_pulang,deskripsi`'
+                : '`jam_mulai,jam_selesai,deskripsi`';
+
+            return sendTyping(chat, msg);
+
+        } catch (err) {
+            console.error(err);
+            delete editSessions[wa];
+            return sendTyping(chat, 'Terjadi kesalahan.');
+        }
+    }
+
+    // ===============================
+    // STEP 3: INPUT DATA BARU
+    // ===============================
+    if (session.step === 'input_new') {
+        const parts = text.split(',');
+        if (parts.length < 3) {
+            return sendTyping(chat, 'Format salah. Kirim ulang sesuai format.');
+        }
+
+        session.new = session.type === 'absen'
+            ? {
+                jam_masuk: parts[0].trim(),
+                jam_pulang: parts[1].trim(),
+                deskripsi: parts[2].trim()
+            }
+            : {
+                jam_mulai: parts[0].trim(),
+                jam_selesai: parts[1].trim(),
                 deskripsi: parts[2].trim()
             };
 
-            session.step = 'confirm';
+        session.step = 'confirm';
 
-            let msgConfirm = 'Data lama:\n';
-            msgConfirm += `Jam Mulai   : ${session.data.old.jam_mulai}\n`;
-            msgConfirm += `Jam Selesai : ${session.data.old.jam_selesai}\n`;
-            msgConfirm += `Deskripsi   : ${session.data.old.deskripsi || '-'}\n\n`;
-
-            msgConfirm += 'Data baru:\n';
-            msgConfirm += `Jam Mulai   : ${session.data.new.jam_mulai}\n`;
-            msgConfirm += `Jam Selesai : ${session.data.new.jam_selesai}\n`;
-            msgConfirm += `Deskripsi   : ${session.data.new.deskripsi}\n`;
-            msgConfirm += '\nApakah ingin menyimpan perubahan? (Ya/Tidak)';
-
-            chat.sendMessage(msgConfirm);
-            break;
+        let msg = '*Konfirmasi Perubahan*\n\n*Data lama:*\n';
+        for (const k in session.new) {
+            msg += `${k}: ${session.old[k] || '-'}\n`;
         }
 
-        case 'confirm': {
-            if (lowerMsg === 'ya') {
-                query(
-                    `UPDATE lembur SET jam_mulai=?, jam_selesai=?, deskripsi=? WHERE id=?`,
-                    [session.data.new.jam_mulai, session.data.new.jam_selesai, session.data.new.deskripsi, session.data.old.id],
-                    (err) => {
-                        if (err) return chat.sendMessage('Terjadi kesalahan saat menyimpan data.');
-                        delete sessions[userId];
-                        chat.sendMessage('Perubahan lembur berhasil disimpan. Total lembur akan dihitung saat export.');
-                    }
-                );
-            } else if (lowerMsg === 'tidak') {
-                delete sessions[userId];
-                chat.sendMessage('Perubahan dibatalkan.');
-            } else {
-                chat.sendMessage('Ketik Ya atau Tidak untuk konfirmasi.');
-            }
-            break;
+        msg += '\n*Data baru:*\n';
+        for (const k in session.new) {
+            msg += `${k}: ${session.new[k]}\n`;
         }
+
+        msg += '\nSimpan perubahan? (ya/tidak)';
+        return sendTyping(chat, msg);
+    }
+
+    // ===============================
+    // STEP 4: KONFIRMASI
+    // ===============================
+    if (session.step === 'confirm') {
+        if (lower === 'ya') {
+            const table = session.type === 'absen' ? 'absensi' : 'lembur';
+            const fields = Object.keys(session.new).map(k => `${k}=?`).join(',');
+
+            await query(
+                `UPDATE ${table} SET ${fields} WHERE id=?`,
+                [...Object.values(session.new), session.old.id]
+            );
+
+            delete editSessions[wa];
+            return sendTyping(chat, 'Perubahan berhasil disimpan.');
+        }
+
+        if (lower === 'tidak') {
+            delete editSessions[wa];
+            return sendTyping(chat, 'Perubahan dibatalkan.');
+        }
+
+        return sendTyping(chat, 'Balas dengan *ya* atau *tidak*.');
     }
 };

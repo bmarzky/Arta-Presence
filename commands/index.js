@@ -172,7 +172,7 @@ module.exports = {
                 return handleLembur(chat, user, pesan, queryCallback);
             }
             
-            if (lowerMsg === '/edit' || user.step_edit) {
+            if (lowerMsg === '/edit' || editSessions[user.wa_number]) {
                 return handleEdit(chat, user, pesan, query);
             }
 
