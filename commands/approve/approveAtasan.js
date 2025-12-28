@@ -46,7 +46,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         }
 
         // ================= PARSING FORMAT =================
-        const match = rawText.trim().match(/^(approve|revisi)\s+(\w+)-(.+)$/i);
+        const match = rawText.trim().match(/^(approve|revisi)\s+([^\s-]+)-(.+)$/i);
 
         let action, export_type, namaUser, approval;
         if (match) {
@@ -167,6 +167,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         return sendTyping(chat, 'Terjadi error pada sistem approval.');
     }
 };
+
 
 // Fungsi generate PDF untuk atasan - absensi
 async function generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64) {
