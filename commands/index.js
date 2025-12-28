@@ -188,9 +188,11 @@ module.exports = {
             }
 
             if (lowerMsg === '/lembur' || user.step_lembur) {
-                return handleLembur(chat, user, pesan, query);
+                const queryCallback = (sql, params, cb) => db.query(sql, params, cb);
+                return handleLembur(chat, user, pesan, queryCallback);
             }
 
+            // EDIT
             if (lowerMsg === '/edit' || handleEdit.isEditing(user.wa_number)) {
                 return handleEdit(chat, user, pesan, query);
             }
