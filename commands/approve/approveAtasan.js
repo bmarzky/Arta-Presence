@@ -260,42 +260,38 @@ async function generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64
 async function generatePDFLemburForAtasan(chat, approval, db, ttdAtasanBase64, ttdUserBase64) {
     const fs = require('fs');
     const path = require('path');
-    const generatePDF = require('../../utils/pdfGenerator');
     const moment = require('moment');
+    const generatePDF = require('../../utils/pdfGenerator');
+
+    const query = (sql, params=[]) =>
+        new Promise((resolve, reject) =>
+            db.query(sql, params, (err, result) => err ? reject(err) : resolve(result))
+        );
 
     const templateName = approval.template_export || 'LMD';
-    const bulanNama = [
-        'Januari','Februari','Maret','April','Mei','Juni',
-        'Juli','Agustus','September','Oktober','November','Desember'
-    ];
+    const bulanNama = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
-    // Ambil semua data lembur user
-    const lemburData = await new Promise((resolve, reject) =>
-        db.query(
-            `SELECT YEAR(tanggal) AS tahun, MONTH(tanggal) AS bulan, * 
-             FROM lembur WHERE user_id=? ORDER BY tanggal`,
-            [approval.user_id],
-            (err, res) => err ? reject(err) : resolve(res)
-        )
+    // Ambil data lembur user
+    const lemburData = await query(
+        `SELECT YEAR(tanggal) AS tahun, MONTH(tanggal) AS bulan, * 
+         FROM lembur WHERE user_id=? ORDER BY tanggal`,
+        [approval.user_id]
     );
     if (!lemburData.length) throw new Error('Belum ada data lembur.');
 
-    // Ambil info atasan (jika belum tersedia di approval)
+    // Ambil info atasan
     let approverNama = approval.nama_atasan || '-';
     let approverNik  = approval.nik_atasan || '-';
     let approverWA   = null;
 
-    if(!approval.nama_atasan){
-        const [approver] = await new Promise((resolve, reject) =>
-            db.query(`SELECT * FROM users WHERE jabatan='Head' LIMIT 1`,
-            (err,res)=>err?reject(err):resolve(res))
-        );
+    if (!approval.nama_atasan) {
+        const [approver] = await query(`SELECT * FROM users WHERE jabatan='Head' LIMIT 1`);
         approverNama = approver?.nama_lengkap || '-';
         approverNik  = approver?.nik || '-';
         approverWA   = approver?.wa_number || null;
     }
 
-    // TTD User & Atasan
+    // TTD
     const ttdUserHTML = ttdUserBase64
         ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px;max-height:150px;">`
         : '';
@@ -305,30 +301,26 @@ async function generatePDFLemburForAtasan(chat, approval, db, ttdAtasanBase64, t
 
     // Logo
     const logoFile = path.join(__dirname, `../../assets/logo/${templateName.toLowerCase()}.png`);
-    const logoBase64 = fs.existsSync(logoFile) 
+    const logoBase64 = fs.existsSync(logoFile)
         ? 'data:image/png;base64,' + fs.readFileSync(logoFile).toString('base64')
         : '';
 
-    // Group data by bulan
+    // Group data per bulan
     const grouped = {};
-    for(const l of lemburData){
+    for (const l of lemburData) {
         const key = `${l.tahun}-${l.bulan}`;
-        if(!grouped[key]) grouped[key] = [];
+        if (!grouped[key]) grouped[key] = [];
         grouped[key].push(l);
     }
 
-    // Prioritas bulan sekarang
     const now = new Date();
-    const currentKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
-    const keysToGenerate = grouped[currentKey]
-        ? [currentKey]
-        : Object.keys(grouped).sort().slice(-1); // ambil bulan terakhir jika bulan sekarang kosong
+    const currentKey = `${now.getFullYear()}-${now.getMonth()+1}`;
+    const keysToGenerate = grouped[currentKey] ? [currentKey] : [Object.keys(grouped).sort().pop()];
 
     const exportsDir = path.join(__dirname, '../../exports');
-    if(!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir,{recursive:true});
+    if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
 
-    // Loop per bulan untuk generate PDF
-    for(const key of keysToGenerate){
+    for (const key of keysToGenerate) {
         const dataBulan = grouped[key];
         const sample = dataBulan[0];
         const bulanIdx = sample.bulan - 1;
@@ -341,20 +333,15 @@ async function generatePDFLemburForAtasan(chat, approval, db, ttdAtasanBase64, t
         let rows = '';
         let totalLemburDecimal = 0;
 
-        if(templateName === 'KSPS'){
+        if (templateName === 'KSPS') {
             const totalHari = new Date(tahun, bulanIdx+1, 0).getDate();
-            for(let i=1;i<=totalHari;i++){
+            for (let i=1;i<=totalHari;i++) {
                 const dateObj = moment(`${tahun}-${bulanIdx+1}-${i}`, 'YYYY-M-D');
-                const l = dataBulan.find(x =>
-                    moment(x.tanggal).format('YYYY-MM-DD') === dateObj.format('YYYY-MM-DD')
-                );
+                const l = dataBulan.find(x => moment(x.tanggal).format('YYYY-MM-DD') === dateObj.format('YYYY-MM-DD'));
 
                 let totalJam = '';
-                if(l?.total_lembur){
-                    const [h,m=0] = l.total_lembur.includes(':')
-                        ? l.total_lembur.split(':').map(Number)
-                        : [parseFloat(l.total_lembur),0];
-
+                if (l?.total_lembur) {
+                    const [h,m=0] = l.total_lembur.includes(':') ? l.total_lembur.split(':').map(Number) : [parseFloat(l.total_lembur),0];
                     const jam = h + m/60;
                     totalLemburDecimal += jam;
                     totalJam = `${jam % 1 === 0 ? jam : jam.toFixed(1)} Jam`;
@@ -369,14 +356,11 @@ async function generatePDFLemburForAtasan(chat, approval, db, ttdAtasanBase64, t
 <td></td>
 </tr>`;
             }
-        } else { // LMD
-            for(const l of dataBulan){
+        } else {
+            for (const l of dataBulan) {
                 let jam = 0;
-                if(l.total_lembur){
-                    const [h,m=0] = l.total_lembur.includes(':')
-                        ? l.total_lembur.split(':').map(Number)
-                        : [parseFloat(l.total_lembur),0];
-
+                if (l.total_lembur) {
+                    const [h,m=0] = l.total_lembur.includes(':') ? l.total_lembur.split(':').map(Number) : [parseFloat(l.total_lembur),0];
                     jam = h + m/60;
                     totalLemburDecimal += jam;
                 }
@@ -394,9 +378,8 @@ async function generatePDFLemburForAtasan(chat, approval, db, ttdAtasanBase64, t
 
         const totalLembur = `${totalLemburDecimal % 1 === 0 ? totalLemburDecimal : totalLemburDecimal.toFixed(1)} Jam`;
 
-        // Generate HTML
         const templatePath = path.join(__dirname, `../../templates/lembur/${templateName}.html`);
-        if(!fs.existsSync(templatePath)) throw new Error(`Template ${templateName}.html tidak ditemukan`);
+        if (!fs.existsSync(templatePath)) throw new Error(`Template ${templateName}.html tidak ditemukan`);
         let html = fs.readFileSync(templatePath,'utf8');
 
         html = html
