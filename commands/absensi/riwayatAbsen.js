@@ -18,8 +18,7 @@ module.exports = async function handleRiwayat(chat, user, pesan, db) {
             `UPDATE users SET step_riwayat='pilih', riwayat_jenis=NULL WHERE id=?`,
             [user.id]
         );
-        return sendTyping(
-            chat,
+        return sendTyping(chat,
 `Ingin melihat riwayat apa?
 1. Absen
 2. Lembur
@@ -50,7 +49,7 @@ Balas: absen atau lembur`
         if (bulan < 1 || bulan > 12) return sendTyping(chat, 'Bulan harus antara 1–12');
 
         try {
-            // Ambil jenis riwayat langsung dari DB, jangan pakai object user
+            // Ambil jenis riwayat dari DB
             const [userDb] = await query(
                 `SELECT riwayat_jenis FROM users WHERE id=?`,
                 [user.id]
@@ -61,7 +60,7 @@ Balas: absen atau lembur`
 
             const prefix = userDb.riwayat_jenis === 'lembur' ? 'LEMBUR' : 'ABSENSI';
 
-            // Ambil laporan approved terakhir
+            // Ambil laporan approved terakhir yang path mengandung prefix
             const [laporan] = await query(
                 `SELECT file_path
                  FROM approvals
@@ -71,7 +70,7 @@ Balas: absen atau lembur`
                    AND file_path LIKE ?
                  ORDER BY created_at DESC
                  LIMIT 1`,
-                [user.id, `${prefix}%`]
+                [user.id, `%${prefix}%`] // <-- perbaikan LIKE
             );
 
             if (!laporan) {
