@@ -128,18 +128,8 @@ module.exports = {
                 return require('./help')(chat, user.nama_wa);
             }
 
-
             // Approve atasan
-            const [approvalStep] = await query(
-                `SELECT id, step_input
-                 FROM approvals
-                 WHERE approver_wa=? AND step_input IS NOT NULL
-                 ORDER BY created_at DESC
-                 LIMIT 1`,
-                [wa_number]
-            );
-
-            if (approvalStep) {
+            if (['approve', 'revisi', 'status'].includes(lowerMsg)) {
                 return approveAtasan(chat, user, pesan, db);
             }
 
