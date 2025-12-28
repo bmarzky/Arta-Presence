@@ -129,7 +129,7 @@ module.exports = {
             }
 
             // Approve atasan
-            if (['approve', 'revisi', 'status'].includes(lowerMsg)) {
+            if (/^(approve|revisi|status)/i.test(pesan.trim())) {
                 return approveAtasan(chat, user, pesan, db);
             }
 
