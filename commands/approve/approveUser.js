@@ -298,7 +298,7 @@ async function generatePDFLemburwithTTD(user, db, ttdFile = '', templateName = '
         fs.writeFileSync(path.join(exportsDir, `LEMBUR-${user.nama_lengkap}-${templateName}-${bulanNama[bulanIdx]}-${tahun}.html`), html, 'utf8');
     }
 
-    return true;
+    return pdfFile;
 }
 
 
