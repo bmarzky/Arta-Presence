@@ -7,7 +7,6 @@ const greetings = require('../data/greetings');
 const greetingReplies = require('../data/greetingReplies');
 const sendingIntro = {};
 const approveUser = require('./approve/approveUser');
-const { sendApprovalToAtasan } = require('./approve/approveUser'); // sesuaikan path
 const approveAtasan = require('./approve/approveAtasan');
 const { sendTyping } = require('../utils/sendTyping');
 const handleLembur = require('./absensi/lembur'); 
@@ -171,7 +170,7 @@ module.exports = {
 
             // handler /approve untuk user
             if (lowerMsg === '/approve') {
-                return sendApprovalToAtasan(chat, user, db);
+                return approveUser(chat, user, db);
             }
 
             // Absen
