@@ -46,19 +46,19 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         }
 
         // ================= PARSING FORMAT =================
-        const match = rawText.trim().match(/^(approve|revisi)\s+([^\s-]+)-(.+)$/i);
+        const match = rawText.trim().match(/^(approve|revisi)\s+([a-zA-Z]+)-(.+)$/i);
 
         let action, export_type, namaUser, approval;
         if (match) {
-            action = match[1].toLowerCase();        // approve / revisi
-            export_type = match[2].toLowerCase();   // lembur / absensi
-            namaUser = match[3].trim();             // nama lengkap user
+                action = match[1].toLowerCase();
+                export_type = match[2].trim().toLowerCase();
+                namaUser = match[3].trim().toLowerCase();
 
             // cari approval sesuai export_type + nama user
-            approval = approvals.find(a =>
-                a.export_type.toLowerCase() === export_type &&
-                a.user_nama.toLowerCase() === namaUser.toLowerCase()
-            );
+                approval = approvals.find(a =>
+                    a.export_type.toLowerCase() === export_type &&
+                    a.user_nama.toLowerCase() === namaUser
+                );
 
             if (!approval)
                 return sendTyping(chat, `Tidak ditemukan laporan ${export_type}-${namaUser} yang menunggu approval/revisi.`);
