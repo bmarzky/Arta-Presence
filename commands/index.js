@@ -68,7 +68,8 @@ module.exports = {
                         export_type=NULL,
                         template_export=NULL,
                         step_absen=NULL,
-                        step_lembur=NULL
+                        step_lembur=NULL,
+                        step_riwayat=NULL
                     WHERE id=?
                 `, [user.id]);
 
