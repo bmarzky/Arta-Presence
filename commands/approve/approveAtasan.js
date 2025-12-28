@@ -201,8 +201,7 @@ async function processApprove(chat, approval, atasan, query) {
 }
 
 // Fungsi generate PDF untuk atasan - absensi
-
-async function generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64) {
+async function generatePDFForAtasan(approval, query, ttdAtasanBase64, ttdUserBase64) {
     const fs = require('fs');
     const path = require('path');
     const generatePDF = require('../../utils/pdfGenerator');
@@ -210,11 +209,6 @@ async function generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64
 
     const templateName = approval.template_export;
 
-    // helper query
-    const query = (sql, params = []) =>
-        new Promise((res, rej) => db.query(sql, params, (err, r) => err ? rej(err) : res(r)));
-
-    // ambil absensi
     const now = new Date();
     const bulan = now.getMonth() + 1;
     const tahun = now.getFullYear();
@@ -225,12 +219,10 @@ async function generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64
         [approval.user_id, bulan, tahun]
     );
 
-    // template HTML
     const templatePath = path.join(__dirname, `../../templates/absensi/${templateName}.html`);
     if (!fs.existsSync(templatePath)) throw new Error(`Template ${templateName}.html tidak ditemukan.`);
     let html = fs.readFileSync(templatePath, 'utf8');
 
-    // rows absensi
     const rows = [];
     for (let i = 1; i <= totalHari; i++) {
         const dateObj = moment(`${tahun}-${bulan}-${i}`, 'YYYY-M-D');
@@ -254,18 +246,10 @@ async function generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64
         );
     }
 
-    // logo
     const logoFile = path.join(__dirname, `../../assets/logo/${templateName.toLowerCase()}.png`);
-    const logoBase64 = fs.existsSync(logoFile)
-        ? 'data:image/png;base64,' + fs.readFileSync(logoFile).toString('base64')
-        : '';
+    const logoBase64 = fs.existsSync(logoFile) ? 'data:image/png;base64,' + fs.readFileSync(logoFile).toString('base64') : '';
 
-    // TTD user
-    const ttdUserHTML = ttdUserBase64
-        ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:150px;" />`
-        : '';
-
-    // TTD atasan
+    const ttdUserHTML = ttdUserBase64 ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:150px;" />` : '';
     const ttdAtasanHTML = `<img src="data:image/png;base64,${ttdAtasanBase64}" style="max-width:150px; max-height:150px;" />`;
 
     html = html.replace(/{{logo}}/g, logoBase64)
@@ -279,7 +263,6 @@ async function generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64
                .replace(/{{nama_atasan}}/g, approval.nama_atasan || 'Atasan')
                .replace(/{{nik_atasan}}/g, approval.nik_atasan || '');
 
-    // export PDF
     const exportsDir = path.join(__dirname, '../../exports');
     if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
     const outputPath = path.join(exportsDir, `ABSENSI-${approval.user_nama}-${templateName}-Approve.pdf`);
@@ -289,7 +272,7 @@ async function generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64
 }
 
 // Fungsi generate PDF untuk atasan - lembur
-async function generatePDFLemburForAtasan(approval, db, ttdAtasanBase64='', ttdUserBase64='') {
+async function generatePDFLemburForAtasan(approval, query, ttdAtasanBase64='', ttdUserBase64='') {
     const fs = require('fs');
     const path = require('path');
     const generatePDF = require('../../utils/pdfGenerator');
@@ -298,10 +281,10 @@ async function generatePDFLemburForAtasan(approval, db, ttdAtasanBase64='', ttdU
     const templateName = approval.template_export || 'LMD';
     
     // Ambil data lembur user
-    const lemburData = await new Promise((resolve, reject) =>
-        db.query(`SELECT YEAR(tanggal) AS tahun, MONTH(tanggal) AS bulan, lembur.* 
-                  FROM lembur WHERE user_id=? ORDER BY tanggal`, 
-                  [approval.user_id], (err, res) => err ? reject(err) : resolve(res))
+    const lemburData = await query(
+        `SELECT YEAR(tanggal) AS tahun, MONTH(tanggal) AS bulan, lembur.* 
+         FROM lembur WHERE user_id=? ORDER BY tanggal`,
+        [approval.user_id]
     );
     if (!lemburData.length) throw new Error('Belum ada data lembur.');
 
@@ -315,7 +298,6 @@ async function generatePDFLemburForAtasan(approval, db, ttdAtasanBase64='', ttdU
         grouped[key].push(l);
     }
 
-    // Prioritas bulan sekarang, fallback bulan terakhir
     const now = new Date();
     const currentKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
     const keysToGenerate = grouped[currentKey] ? [currentKey] : [Object.keys(grouped).sort().pop()];
@@ -335,15 +317,12 @@ async function generatePDFLemburForAtasan(approval, db, ttdAtasanBase64='', ttdU
             ? `${bulanNama[bulanIdx]} ${tahun}`
             : `1 - ${new Date(tahun, bulanIdx+1, 0).getDate()} ${bulanNama[bulanIdx]} ${tahun}`;
 
-        // Logo
         const logoFile = path.join(__dirname, `../../assets/logo/${templateName.toLowerCase()}.png`);
         const logoBase64 = fs.existsSync(logoFile) ? 'data:image/png;base64,' + fs.readFileSync(logoFile).toString('base64') : '';
 
-        // TTD User & Atasan
         const ttdUserHTML = ttdUserBase64 ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:150px;">` : '';
         const ttdAtasanHTML = ttdAtasanBase64 ? `<img src="data:image/png;base64,${ttdAtasanBase64}" style="max-width:150px; max-height:150px;">` : '';
 
-        // Generate rows dan total lembur
         let rows = '';
         let totalLemburDecimal = 0;
 
@@ -374,49 +353,39 @@ async function generatePDFLemburForAtasan(approval, db, ttdAtasanBase64='', ttdU
             for(const l of dataBulan){
                 let jam = 0;
                 if(l.total_lembur){
-                    const [h,m=0] = l.total_lembur.includes(':') ? l.total_lembur.split(':').map(Number) : [parseFloat(l.total_lembur),0];
+                    const [h,m] = l.total_lembur.split(':').map(Number);
                     jam = h + m/60;
                     totalLemburDecimal += jam;
                 }
-
                 rows += `<tr>
 <td>${moment(l.tanggal).format('DD/MM/YYYY')}</td>
-<td>${moment(l.tanggal).locale('id').format('dddd')}</td>
-<td>${l.jam_mulai||'-'}</td>
-<td>${l.jam_selesai||'-'}</td>
-<td>${jam ? (jam % 1 === 0 ? jam : jam.toFixed(1))+' Jam' : '-'}</td>
-<td>${l.deskripsi||'-'}</td>
+<td>${moment(l.tanggal).format('dddd')}</td>
+<td>${l.jam_mulai}</td>
+<td>${l.jam_selesai}</td>
+<td>${l.deskripsi}</td>
 </tr>`;
             }
         }
 
-        const totalLemburKeseluruhan = `${totalLemburDecimal % 1 === 0 ? totalLemburDecimal : totalLemburDecimal.toFixed(1)} Jam`;
-
-        // Template HTML
         const templatePath = path.join(__dirname, `../../templates/lembur/${templateName}.html`);
-        if(!fs.existsSync(templatePath)) throw new Error(`Template ${templateName}.html tidak ditemukan`);
-        let htmlTemplate = fs.readFileSync(templatePath,'utf8');
+        if(!fs.existsSync(templatePath)) throw new Error(`${templateName} template tidak ditemukan`);
+        let html = fs.readFileSync(templatePath,'utf8');
 
-        const html = htmlTemplate
-            .replace(/{{rows_lembur}}/g, rows)
-            .replace(/{{nama}}/g, approval.user_nama || '-')
-            .replace(/{{jabatan}}/g, approval.user_jabatan || '-')
-            .replace(/{{nik}}/g, approval.user_nik || '-')
-            .replace(/{{periode}}/g, periode)
-            .replace(/{{logo}}/g, logoBase64)
-            .replace(/{{ttd_user}}/g, ttdUserHTML)
-            .replace(/{{ttd_atasan}}/g, ttdAtasanHTML)
-            .replace(/{{nama_atasan}}/g, approval.nama_atasan || '-')
-            .replace(/{{nik_atasan}}/g, approval.nik_atasan || '')
-            .replace(/{{total_lembur}}/g, totalLemburKeseluruhan);
+        html = html.replace(/{{logo}}/g, logoBase64)
+                   .replace(/{{nama}}/g, approval.user_nama)
+                   .replace(/{{jabatan}}/g, approval.user_jabatan || '')
+                   .replace(/{{nik}}/g, approval.user_nik || '')
+                   .replace(/{{periode}}/g, periode)
+                   .replace(/{{rows_lembur}}/g, rows)
+                   .replace(/{{ttd_user}}/g, ttdUserHTML)
+                   .replace(/{{ttd_atasan}}/g, ttdAtasanHTML)
+                   .replace(/{{nama_atasan}}/g, approval.nama_atasan || 'Atasan')
+                   .replace(/{{nik_atasan}}/g, approval.nik_atasan || '')
+                   .replace(/{{total_lembur}}/g, totalLemburDecimal.toFixed(2));
 
-        const pdfFile = path.join(exportsDir, `LEMBUR-${approval.user_nama}-Approve-${bulanNama[bulanIdx]}-${tahun}.pdf`);
-        await generatePDF(html, pdfFile);
-
-        // simpan HTML opsional
-        fs.writeFileSync(path.join(exportsDir, `LEMBUR-${approval.user_nama}-Approve-${bulanNama[bulanIdx]}-${tahun}.html`), html, 'utf8');
-
-        pdfFiles.push(pdfFile);
+        const outputFile = path.join(exportsDir, `LEMBUR-${approval.user_nama}-${templateName}-Approve.pdf`);
+        await generatePDF(html, outputFile);
+        pdfFiles.push(outputFile);
     }
 
     return pdfFiles.length === 1 ? pdfFiles[0] : pdfFiles;
