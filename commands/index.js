@@ -7,6 +7,7 @@ const greetings = require('../data/greetings');
 const greetingReplies = require('../data/greetingReplies');
 const sendingIntro = {};
 const approveUser = require('./approve/approveUser');
+const { sendApprovalToAtasan } = require('./approve/approveUser'); // sesuaikan path
 const approveAtasan = require('./approve/approveAtasan');
 const { sendTyping } = require('../utils/sendTyping');
 const handleLembur = require('./absensi/lembur'); 
@@ -166,6 +167,11 @@ module.exports = {
                 const parts = pesan.split(' ').slice(1);
                 const paramBulan = parts.length ? parts[0] : null;
                 return handleExport(chat, user, pesan, db, paramBulan);
+            }
+
+            // handler /approve untuk user
+            if (text === '/approve' || text === 'approve') {
+                return sendApprovalToAtasan(chat, user, db);
             }
 
             // Absen
