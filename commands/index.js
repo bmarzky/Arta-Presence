@@ -57,6 +57,31 @@ module.exports = {
                 );
             }
 
+            // global cancle
+            if (['batal', 'cancel', 'close', '/cancel'].includes(lowerMsg)) {
+
+                // reset semua state user
+                await query(`
+                    UPDATE users SET
+                        step_input=NULL,
+                        export_type=NULL,
+                        template_export=NULL,
+                        step_absen=NULL,
+                        step_lembur=NULL
+                    WHERE id=?
+                `, [user.id]);
+
+                // reset waiting TTD
+                if (waitingTTD[wa_number]) {
+                    delete waitingTTD[wa_number];
+                }
+
+                return sendTyping(
+                    chat,
+                    'Proses dibatalkan.'
+                );
+            }
+
             // cek media (TTD)
             if (messageMedia && messageMedia.mimetype.startsWith('image/')) {
                 const ext = messageMedia.mimetype.split('/')[1] || 'png';
