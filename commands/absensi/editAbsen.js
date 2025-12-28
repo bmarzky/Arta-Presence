@@ -42,13 +42,17 @@ module.exports = async function handleEditLembur(chat, user, pesan, query) {
     const rawText = pesan.trim();
     const lowerMsg = rawText.toLowerCase();
 
-    if (!sessions[userId]) sessions[userId] = { step: null, data: {} };
-    const session = sessions[userId];
-
-    if (!session.step) {
-        session.step = 'choose_date';
-        return chat.sendMessage('Mau edit lembur tanggal berapa? (format: YYYY-MM-DD)');
+    // =========================
+    // RESET SESSION SETIAP /editLembur
+    // =========================
+    if (lowerMsg === '/editlembur') {
+        sessions[userId] = { step: 'choose_date', data: {} };
+        return chat.sendMessage('Silakan masukkan tanggal lembur yang ingin diedit (format: YYYY-MM-DD):');
     }
+
+    // Pastikan session sudah ada
+    if (!sessions[userId]) sessions[userId] = { step: 'choose_date', data: {} };
+    const session = sessions[userId];
 
     switch(session.step) {
         case 'choose_date': {
