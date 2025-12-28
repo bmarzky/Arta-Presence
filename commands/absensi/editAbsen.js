@@ -46,6 +46,7 @@ module.exports = async function handleEdit(chat, user, pesan, query) {
     // STEP 2: PILIH TANGGAL
     // ===============================
     if (session.step === 'choose_date') {
+
         if (!moment(text, 'YYYY-MM-DD', true).isValid()) {
             return sendTyping(chat, 'Format tanggal salah. Contoh: 2025-12-14');
         }
@@ -58,11 +59,16 @@ module.exports = async function handleEdit(chat, user, pesan, query) {
                 [user.id, text]
             );
 
+            //  TIDAK ADA DATA
             if (!rows.length) {
-                delete editSessions[wa];
-                return sendTyping(chat, `Tidak ada data ${session.type} pada tanggal tersebut.`);
+                delete editSessions[wa]; // reset session
+                return sendTyping(
+                    chat,
+                    `Tidak ada data *${session.type}* pada tanggal ${text}.\nSilakan ketik */edit* untuk memulai ulang.`
+                );
             }
 
+            // DATA ADA
             session.old = rows[0];
             session.step = 'input_new';
 
@@ -84,10 +90,11 @@ module.exports = async function handleEdit(chat, user, pesan, query) {
 
         } catch (err) {
             console.error(err);
-            delete editSessions[wa];
-            return sendTyping(chat, 'Terjadi kesalahan.');
+            delete editSessions[wa]; // reset juga kalau error
+            return sendTyping(chat, 'Terjadi kesalahan saat mengambil data.');
         }
     }
+
 
     // ===============================
     // STEP 3: INPUT DATA BARU
