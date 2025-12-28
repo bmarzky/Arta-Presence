@@ -142,25 +142,21 @@ async function processApprove(chat, approval, atasan, query) {
     const path = require('path');
     const fs = require('fs');
 
-    // Normalisasi template
     const templateRaw = approval.template_export || 'LMD';
     const templateName = templateRaw.toUpperCase();
     const templateLogo = templateRaw.toLowerCase();
 
-    // Logo
     let logoBase64 = '';
     let logoPath = path.join(__dirname, '../../assets/logo', `${templateLogo}.png`);
     if (!fs.existsSync(logoPath)) logoPath = path.join(__dirname, '../../assets/logo/default.png');
     if (fs.existsSync(logoPath)) logoBase64 = fs.readFileSync(logoPath, 'base64');
 
-    // TTD Atasan
     let ttdAtasanBase64 = '';
     const ttdPng = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.png`);
     const ttdJpg = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.jpg`);
     if (fs.existsSync(ttdPng)) ttdAtasanBase64 = fs.readFileSync(ttdPng, 'base64');
     else if (fs.existsSync(ttdJpg)) ttdAtasanBase64 = fs.readFileSync(ttdJpg, 'base64');
 
-    // Step TTD Atasan
     if (!ttdAtasanBase64 && approval.step_input !== 'ttd_atasan') {
         await sendTyping(chat, 'Silakan kirim foto TTD kamu untuk approve laporan ini.');
         await query(`UPDATE approvals SET step_input='ttd_atasan' WHERE id=?`, [approval.id]);
@@ -171,14 +167,12 @@ async function processApprove(chat, approval, atasan, query) {
         await query(`UPDATE approvals SET step_input=NULL WHERE id=?`, [approval.id]);
     }
 
-    // TTD User
     let ttdUserBase64 = '';
     const ttdUserPng = path.join(__dirname, '../../assets/ttd', `${approval.user_wa}.png`);
     const ttdUserJpg = path.join(__dirname, '../../assets/ttd', `${approval.user_wa}.jpg`);
     if (fs.existsSync(ttdUserPng)) ttdUserBase64 = fs.readFileSync(ttdUserPng, 'base64');
     else if (fs.existsSync(ttdUserJpg)) ttdUserBase64 = fs.readFileSync(ttdUserJpg, 'base64');
 
-    // Generate PDF
     let outputPath;
     if (approval.export_type === 'lembur') {
         outputPath = await generatePDFLemburForAtasan(approval, query, ttdAtasanBase64, ttdUserBase64);
@@ -186,10 +180,8 @@ async function processApprove(chat, approval, atasan, query) {
         outputPath = await generatePDFForAtasan(approval, query, ttdAtasanBase64, ttdUserBase64);
     }
 
-    // Update status
     await query(`UPDATE approvals SET status='approved', file_path=? WHERE id=?`, [Array.isArray(outputPath) ? outputPath.join(',') : outputPath, approval.id]);
 
-    // Kirim file ke user
     if (Array.isArray(outputPath)) {
         for (const file of outputPath) {
             await chat.client.sendMessage(approval.user_wa + '@c.us', MessageMedia.fromFilePath(file));
