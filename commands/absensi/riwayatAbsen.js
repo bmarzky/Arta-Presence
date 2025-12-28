@@ -1,9 +1,11 @@
+const path = require('path');
+const fs = require('fs');
 const { sendTyping } = require('../../utils/sendTyping');
+const { MessageMedia } = require('whatsapp-web.js');
 
-module.exports = async function handleRiwayatAbsen(chat, user, pesan, db) {
+module.exports = async function handleRiwayat(chat, user, pesan, db) {
     const text = pesan.trim().toLowerCase();
 
-    // helper query PROMISE (WAJIB)
     const query = (sql, params = []) =>
         new Promise((res, rej) =>
             db.query(sql, params, (err, rows) =>
@@ -38,20 +40,13 @@ Balas: absen atau lembur`
             return sendTyping(chat, 'Balas dengan: absen atau lembur');
         }
 
-        // sementara lembur belum
-        if (text === 'lembur') {
-            await query(
-                `UPDATE users SET step_riwayat=NULL WHERE id=?`,
-                [user.id]
-            );
-
-            return sendTyping(chat, 'Riwayat lembur menyusul 🙏');
-        }
-
         await query(
             `UPDATE users SET step_riwayat='periode' WHERE id=?`,
             [user.id]
         );
+
+        // simpan jenis ke memory user object (cukup runtime)
+        user.riwayat_jenis = text;
 
         return sendTyping(
             chat,
@@ -60,7 +55,7 @@ Balas: absen atau lembur`
     }
 
     /* =========================
-       STEP 2 — INPUT PERIODE
+       STEP 2 — INPUT BULAN & TAHUN
     ========================== */
     if (user.step_riwayat === 'periode') {
 
@@ -76,37 +71,64 @@ Balas: absen atau lembur`
             return sendTyping(chat, 'Bulan harus antara 1–12');
         }
 
+        const jenis = user.riwayat_jenis === 'lembur'
+            ? 'LEMBUR'
+            : 'ABSENSI';
+
         /* =========================
-           QUERY ABSENSI
+           AMBIL FILE PDF DARI APPROVALS
         ========================== */
-        const data = await query(
-            `SELECT *
-             FROM absensi
+        const [laporan] = await query(
+            `SELECT file_path
+             FROM approvals
              WHERE user_id=?
-               AND MONTH(tanggal)=?
-               AND YEAR(tanggal)=?
-             ORDER BY tanggal ASC`,
-            [user.id, bulan, tahun]
+               AND source='export'
+               AND status='approved'
+               AND file_path LIKE ?
+               AND MONTH(created_at)=?
+               AND YEAR(created_at)=?
+             ORDER BY created_at DESC
+             LIMIT 1`,
+            [
+                user.id,
+                `${jenis}-%`,
+                bulan,
+                tahun
+            ]
         );
 
-        // RESET STATE (WAJIB)
+        // reset state
         await query(
             `UPDATE users SET step_riwayat=NULL WHERE id=?`,
             [user.id]
         );
+        delete user.riwayat_jenis;
 
-        if (!data.length) {
+        if (!laporan) {
             return sendTyping(
                 chat,
-                'Tidak ada data absen pada periode tersebut.'
+                `Tidak ditemukan laporan ${jenis.toLowerCase()} untuk ${bulan}/${tahun}.`
             );
         }
 
-        return sendTyping(
-            chat,
-            `📄 Riwayat absen ${bulan}/${tahun} ditemukan.\n` +
-            `Total data: ${data.length}\n\n` +
-            `📌 (Export PDF menyusul)`
+        const filePath = path.join(
+            __dirname,
+            '../../exports',
+            laporan.file_path
         );
+
+        if (!fs.existsSync(filePath)) {
+            return sendTyping(
+                chat,
+                'File laporan ditemukan di database, tapi file fisik tidak ada.'
+            );
+        }
+
+        await sendTyping(chat, '📄 Mengirim laporan...');
+        await chat.sendMessage(
+            MessageMedia.fromFilePath(filePath)
+        );
+
+        return;
     }
 };
