@@ -181,9 +181,9 @@ async function processApprove(chat, approval, atasan, query) {
     // Generate PDF
     let outputPath;
     if (approval.export_type === 'lembur') {
-        outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64);
+        outputPath = await generatePDFLemburForAtasan(approval, query, ttdAtasanBase64, ttdUserBase64);
     } else {
-        outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64);
+        outputPath = await generatePDFForAtasan(approval, query, ttdAtasanBase64, ttdUserBase64);
     }
 
     // Update status
