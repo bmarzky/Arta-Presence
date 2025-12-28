@@ -52,7 +52,7 @@ function startWhatsAppBot() {
   });
 
   client.on('ready', () => {
-    console.log('Arta is online. All services running.');
+    console.log('Arta is online.');
   });
 
   // Message handdler

@@ -271,8 +271,15 @@ async function generatePDFLembur(chat, user, db){
         const approverNama = approver?.nama_lengkap || '-';
         const approverNik  = approver?.nik || '-';
 
+        // Ambil data + info bulan
         const lemburData = await query(
-            `SELECT * FROM lembur WHERE user_id=? ORDER BY tanggal`,
+            `SELECT 
+                YEAR(tanggal) AS tahun,
+                MONTH(tanggal) AS bulan,
+                *
+             FROM lembur
+             WHERE user_id=?
+             ORDER BY tanggal`,
             [user.id]
         );
 
@@ -284,35 +291,53 @@ async function generatePDFLembur(chat, user, db){
             'Juli','Agustus','September','Oktober','November','Desember'
         ];
 
-        const firstTanggal = lemburData.length ? new Date(lemburData[0].tanggal) : new Date();
-        let periode = templateName === 'LMD'
-            ? `${bulanNama[firstTanggal.getMonth()]} ${firstTanggal.getFullYear()}`
-            : `1 - ${new Date(firstTanggal.getFullYear(), firstTanggal.getMonth()+1, 0).getDate()} ${bulanNama[firstTanggal.getMonth()]} ${firstTanggal.getFullYear()}`;
+        // 🔥 GROUP DATA PER BULAN
+        const grouped = {};
+        for(const l of lemburData){
+            const key = `${l.tahun}-${l.bulan}`;
+            if(!grouped[key]) grouped[key] = [];
+            grouped[key].push(l);
+        }
 
-        let rows = '';
-        let totalLemburDecimal = 0;
+        const exportsDir = path.join(__dirname,'../exports');
+        if(!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir,{recursive:true});
 
-        if(templateName === 'KSPS'){
-            // buat tabel dari tanggal 1 sampai akhir bulan
-            const totalHari = new Date(firstTanggal.getFullYear(), firstTanggal.getMonth()+1, 0).getDate();
-            for(let i=1;i<=totalHari;i++){
-                const dateObj = moment(`${firstTanggal.getFullYear()}-${firstTanggal.getMonth()+1}-${i}`, 'YYYY-M-D');
-                const l = lemburData.find(l => moment(l.tanggal).format('YYYY-MM-DD') === dateObj.format('YYYY-MM-DD'));
+        // 🔥 LOOP SETIAP BULAN → 1 PDF
+        for(const key of Object.keys(grouped)){
+            const dataBulan = grouped[key];
+            const sample = dataBulan[0];
 
-                let totalJam = '';
-                if(l?.total_lembur){
-                    let jamDecimal = 0;
-                    if(l.total_lembur.includes(':')){
-                        const [h,m] = l.total_lembur.split(':').map(Number);
-                        jamDecimal = h + m/60;
-                    } else {
-                        jamDecimal = parseFloat(l.total_lembur);
+            const bulanIdx = sample.bulan - 1;
+            const tahun = sample.tahun;
+
+            const periode = templateName === 'LMD'
+                ? `${bulanNama[bulanIdx]} ${tahun}`
+                : `1 - ${new Date(tahun, bulanIdx+1, 0).getDate()} ${bulanNama[bulanIdx]} ${tahun}`;
+
+            let rows = '';
+            let totalLemburDecimal = 0;
+
+            if(templateName === 'KSPS'){
+                const totalHari = new Date(tahun, bulanIdx+1, 0).getDate();
+                for(let i=1;i<=totalHari;i++){
+                    const dateObj = moment(`${tahun}-${bulanIdx+1}-${i}`, 'YYYY-M-D');
+                    const l = dataBulan.find(x =>
+                        moment(x.tanggal).format('YYYY-MM-DD') === dateObj.format('YYYY-MM-DD')
+                    );
+
+                    let totalJam = '';
+                    if(l?.total_lembur){
+                        const [h,m=0] = l.total_lembur.includes(':')
+                            ? l.total_lembur.split(':').map(Number)
+                            : [parseFloat(l.total_lembur),0];
+
+                        const jam = h + m/60;
+                        totalLemburDecimal += jam;
+                        totalJam = `${jam % 1 === 0 ? jam : jam.toFixed(1)} Jam`;
                     }
-                    totalLemburDecimal += jamDecimal;
-                    totalJam = `${Number.isInteger(jamDecimal) ? jamDecimal : jamDecimal.toFixed(1)} Jam`;
-                }
 
-                rows += `<tr>
+                    rows += `
+<tr>
     <td>${i}</td>
     <td>${l?.jam_mulai || ''}</td>
     <td>${l?.jam_selesai || ''}</td>
@@ -320,96 +345,78 @@ async function generatePDFLembur(chat, user, db){
     <td>${l?.deskripsi || ''}</td>
     <td></td>
 </tr>`;
-            }
-        } else { // LMD
-            for(const l of lemburData){
-                let jamDecimal = 0;
-                if(l.total_lembur){
-                    if(l.total_lembur.includes(':')){
-                        const [h,m] = l.total_lembur.split(':').map(Number);
-                        jamDecimal = h + m/60;
-                    } else {
-                        jamDecimal = parseFloat(l.total_lembur);
-                    }
-                    totalLemburDecimal += jamDecimal;
-                    l.total_lembur = `${Number.isInteger(jamDecimal) ? jamDecimal : jamDecimal.toFixed(1)} Jam`;
                 }
+            } else {
+                for(const l of dataBulan){
+                    let jam = 0;
+                    if(l.total_lembur){
+                        const [h,m=0] = l.total_lembur.includes(':')
+                            ? l.total_lembur.split(':').map(Number)
+                            : [parseFloat(l.total_lembur),0];
 
-                rows += `<tr>
+                        jam = h + m/60;
+                        totalLemburDecimal += jam;
+                    }
+
+                    rows += `
+<tr>
     <td>${moment(l.tanggal).format('DD/MM/YYYY')}</td>
     <td>${moment(l.tanggal).locale('id').format('dddd')}</td>
     <td>${l.jam_mulai || '-'}</td>
     <td>${l.jam_selesai || '-'}</td>
-    <td>${l.total_lembur || '-'}</td>
+    <td>${jam ? (jam % 1 === 0 ? jam : jam.toFixed(1))+' Jam' : '-'}</td>
     <td>${l.deskripsi || '-'}</td>
 </tr>`;
+                }
             }
+
+            const totalLembur = `${totalLemburDecimal % 1 === 0 ? totalLemburDecimal : totalLemburDecimal.toFixed(1)} Jam`;
+
+            const templatePath = path.join(__dirname, `../templates/lembur/${templateName}.html`);
+            let html = fs.readFileSync(templatePath,'utf8');
+
+            html = html
+                .replace(/{{rows_lembur}}/g, rows)
+                .replace(/{{periode}}/g, periode)
+                .replace(/{{nama}}/g, user.nama_lengkap || '-')
+                .replace(/{{jabatan}}/g, user.jabatan || '-')
+                .replace(/{{nik}}/g, user.nik || '-')
+                .replace(/{{nama_atasan}}/g, approverNama)
+                .replace(/{{nik_atasan}}/g, approverNik)
+                .replace(/{{total_lembur}}/g, totalLembur);
+
+            const pdfFile = path.join(
+                exportsDir,
+                `LEMBUR-${user.nama_lengkap}-${templateName}-${bulanNama[bulanIdx]}-${tahun}.pdf`
+            );
+
+            await generatePDF(html, pdfFile);
+            await chat.sendMessage(MessageMedia.fromFilePath(pdfFile));
+
+            await query(
+                `INSERT INTO approvals
+                (user_id, approver_wa, file_path, template_export, status, source,
+                 created_at, ttd_user_at, nama_atasan, nik_atasan, user_approved)
+                VALUES (?, ?, ?, ?, 'draft', 'export', NOW(), NOW(), ?, ?, 0)`,
+                [
+                    user.id,
+                    approverWA,
+                    path.basename(pdfFile),
+                    templateName,
+                    approverNama,
+                    approverNik
+                ]
+            );
         }
 
-        const totalLemburKeseluruhan = `${Number.isInteger(totalLemburDecimal) ? totalLemburDecimal : totalLemburDecimal.toFixed(1)} Jam`;
-
-        const logoFile = path.join(__dirname, `../assets/logo/${templateName.toLowerCase()}.png`);
-        const logoBase64 = fs.existsSync(logoFile)
-            ? 'data:image/png;base64,' + fs.readFileSync(logoFile).toString('base64')
-            : '';
-
-        const ttdPng = path.join(ttdFolder,`${user.wa_number}.png`);
-        const ttdJpg = path.join(ttdFolder,`${user.wa_number}.jpg`);
-        let ttdUserBase64 = '';
-
-        if(fs.existsSync(ttdPng)) ttdUserBase64 = fs.readFileSync(ttdPng,'base64');
-        else if(fs.existsSync(ttdJpg)) ttdUserBase64 = fs.readFileSync(ttdJpg,'base64');
-
-        const ttdUserHTML = ttdUserBase64
-            ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:150px;" />`
-            : '';
-
-        const templatePath = path.join(__dirname, `../templates/lembur/${templateName}.html`);
-        let html = fs.readFileSync(templatePath,'utf8');
-
-        html = html
-            .replace(/{{logo}}/g, logoBase64)
-            .replace(/{{rows_lembur}}/g, rows)
-            .replace(/{{nama}}/g, user.nama_lengkap || '-')
-            .replace(/{{jabatan}}/g, user.jabatan || '-')
-            .replace(/{{nik}}/g, user.nik || '-')
-            .replace(/{{periode}}/g, periode)
-            .replace(/{{ttd_user}}/g, ttdUserHTML)
-            .replace(/{{nama_atasan}}/g, approverNama)
-            .replace(/{{nik_atasan}}/g, approverNik)
-            .replace(/{{total_lembur}}/g, totalLemburKeseluruhan)
-            .replace(/{{ttd_atasan}}/g, '');
-
-        const exportsDir = path.join(__dirname,'../exports');
-        if(!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir,{recursive:true});
-
-        const pdfFile = path.join(exportsDir, `LEMBUR-${user.nama_lengkap}-${templateName}.pdf`);
-
-        await generatePDF(html, pdfFile);
-        await chat.sendMessage(MessageMedia.fromFilePath(pdfFile));
-
-        await query(
-            `INSERT INTO approvals 
-            (user_id, approver_wa, file_path, template_export, status, source,
-            created_at, ttd_user_at, nama_atasan, nik_atasan, user_approved)
-            VALUES (?, ?, ?, ?, 'draft', 'export', NOW(), NOW(), ?, ?, 0)`,
-            [
-                user.id,
-                approverWA,
-                path.basename(pdfFile),
-                templateName,
-                approverNama,
-                approverNik
-            ]
-        );
-
-        await sendTyping(chat,'Laporan lembur berhasil dibuat.');
+        await sendTyping(chat,'Laporan lembur berhasil dibuat per bulan.');
 
     } catch(err){
-        console.error('PDF LEMBUR ERROR:', err);
+        console.error(err);
         return sendTyping(chat,'Terjadi kesalahan saat membuat PDF lembur.');
     }
 }
+
 
 module.exports = {
     handleExport,
