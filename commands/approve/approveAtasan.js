@@ -48,6 +48,28 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             return sendTyping(chat, msg);
         }
 
+        // Alasan revisi
+        if (approval.step_input === 'alasan_revisi') {
+            if (approval.status !== 'revised')
+                return sendTyping(chat, 'Status laporan tidak valid untuk revisi.');
+
+            if (rawText.trim().length < 3)
+                return sendTyping(chat, 'Silakan ketik *alasan revisi* yang jelas.');
+
+            await query(`UPDATE approvals SET revisi_catatan=?, step_input=NULL WHERE id=?`,
+                        [rawText.trim(), approval.id]);
+
+            await chat.client.sendMessage(
+                userWA,
+                `*LAPORAN PERLU REVISI*\n\n` +
+                `Approval: *${atasan.nama_lengkap}*\n\n` +
+                `*Catatan revisi:*\n${rawText.trim()}\n\n` +
+                `Silakan perbaiki dan lakukan */export* ulang.`
+            );
+
+            return sendTyping(chat, 'Revisi berhasil dikirim.');
+        }
+
         // parsing format
         const match = rawText.trim().match(/^(approve|revisi)\s+([^-]+)-(.+)$/i);
 
@@ -72,28 +94,6 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             return sendTyping(chat, 'Format salah. Contoh:\napprove lembur-Bima Rizki\nrevisi absensi-Asep');
         }
 
-        // ====== REVISI (alasan_revisi) ======
-        if (approval.step_input === 'alasan_revisi') {
-            if (approval.status !== 'revised')
-                return sendTyping(chat, 'Status laporan tidak valid untuk revisi.');
-
-            if (rawText.trim().length < 3)
-                return sendTyping(chat, 'Silakan ketik *alasan revisi* yang jelas.');
-
-            await query(`UPDATE approvals SET revisi_catatan=?, step_input=NULL WHERE id=?`,
-                        [rawText.trim(), approval.id]);
-
-            await chat.client.sendMessage(
-                userWA,
-                `*LAPORAN PERLU REVISI*\n\n` +
-                `Approval: *${atasan.nama_lengkap}*\n\n` +
-                `*Catatan revisi:*\n${rawText.trim()}\n\n` +
-                `Silakan perbaiki dan lakukan */export* ulang.`
-            );
-
-            return sendTyping(chat, 'Revisi berhasil dikirim.');
-        }
-
         // ====== MULAI REVISI ======
         if (action === 'revisi') {
             if (approval.status !== 'pending')
@@ -106,7 +106,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         // ====== APPROVE ======
         if (action === 'approve') {
             if (approval.status !== 'pending')
-                return sendTyping(chat, 'Laporan ini tidak bisa di-approve karena sudah direvisi.');
+                return sendTyping(chat, 'Laporan ini sedang direvisi atau sudah diproses.');
 
             // Normalisasi template
             const templateRaw = approval.template_export || 'LMD';

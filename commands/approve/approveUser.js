@@ -345,7 +345,6 @@ async function generatePDFLemburwithTTD(user, db, templateName = 'LMD', namaAtas
             .replace(/{{nama_atasan}}/g, namaAtasan)
             .replace(/{{nik_atasan}}/g, nikAtasan)
             .replace(/{{total_lembur}}/g, totalLembur)
-            .replace(/{{ttd_atasan}}/g, ''); // diisi saat approve
 
         const pdfFile = path.join(exportsDir, `LEMBUR-${user.nama_lengkap}-${templateName}-${bulanNama[bulanIdx]}-${tahun}.pdf`);
         await generatePDF(html, pdfFile);
