@@ -35,18 +35,34 @@ module.exports = async function approveUser(chat, user, db) {
         if (!approval || !approval.file_path)
             return sendTyping(chat, 'Kamu belum menyiapkan laporan.');
 
-        // Ambil approver dari DB jika kosong
-        let approverWA = approval.approver_wa;
-        if (!approverWA) {
-            const [approver] = await query(`SELECT * FROM users WHERE jabatan='Head' LIMIT 1`);
-            if (!approver) 
-                return sendTyping(chat, "User dengan jabatan Head belum ada, tidak bisa melakukan approval");
-            
-            approverWA = approver.wa;
-            approval.nama_atasan = approver.nama_lengkap;
-            approval.nik_atasan = approver.nik;
-        }
-        if (!approverWA.includes('@')) approverWA += '@c.us';
+// Ambil approver dari DB jika kosong
+let approverWA = approval.approver_wa;
+let nama_atasan = approval.nama_atasan || '';
+let nik_atasan = approval.nik_atasan || '';
+
+if (!approverWA) {
+    const [approver] = await query(`SELECT * FROM users WHERE jabatan='Head' LIMIT 1`);
+    if (!approver) {
+        return sendTyping(chat, "User dengan jabatan Head belum ada, tidak bisa melakukan approval");
+    }
+    
+    approverWA = approver.wa;
+    nama_atasan = approver.nama_lengkap;
+    nik_atasan  = approver.nik;
+
+    await query(
+        `UPDATE approvals SET approver_wa=?, nama_atasan=?, nik_atasan=? WHERE id=?`,
+        [approverWA, nama_atasan, nik_atasan, approval.id]
+    );
+}
+
+// pastikan WA format
+if (!approverWA.includes('@')) approverWA += '@c.us';
+
+// assign default jika masih kosong
+nama_atasan = nama_atasan || 'Atasan';
+nik_atasan = nik_atasan || '';
+
         
         // cek approval
         if (approval.status === 'draft') {
@@ -70,10 +86,6 @@ module.exports = async function approveUser(chat, user, db) {
 
         if (!ttdFile)
             return sendTyping(chat, `Kamu belum mengirim tanda tangan.`);
-
-        // Ambil data atasan untuk dimasukkan ke PDF
-        const nama_atasan = approval.nama_atasan || 'Atasan';
-        const nik_atasan = approval.nik_atasan || '';
 
         // generate ulang PDF dari DB + template
         let updatedFilePath;

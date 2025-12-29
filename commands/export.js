@@ -137,14 +137,6 @@ async function generatePDFandSend(chat, user, db, paramBulan){
         new Promise((res, rej) => db.query(sql, params, (err,r)=>err?rej(err):res(r)));
 
     try {
-        const [approver] = await query(
-            `SELECT * FROM users WHERE jabatan='Head' LIMIT 1`
-        );
-
-        const approverWA   = approver?.wa_number || null;
-        const approverNama = approver?.nama_lengkap || '-';
-        const approverNik  = approver?.nik || '-';
-
         const templateName = user.template_export || 'LMD';
         const templateSafe = templateName.toLowerCase();
 
@@ -218,25 +210,6 @@ async function generatePDFandSend(chat, user, db, paramBulan){
 
         await generatePDF(html,pdfFile);
         await chat.sendMessage(MessageMedia.fromFilePath(pdfFile));
-
-        // Simpan ke approvals hanya jika approverWA ada
-        if(approverWA){
-            await query(
-                `INSERT INTO approvals
-                (user_id, approver_wa, file_path, template_export, status, source,
-                created_at, ttd_user_at, nama_atasan, nik_atasan, user_approved)
-                VALUES (?, ?, ?, ?, 'draft', 'export', NOW(), NOW(), ?, ?, 0)`,
-                [
-                    user.id,
-                    approverWA,
-                    path.basename(pdfFile),
-                    templateName,
-                    approverNama,
-                    approverNik
-                ]
-            );
-        }
-
         await sendTyping(chat,'Laporan absensi berhasil dibuat.');
 
     } catch(err){
@@ -254,14 +227,6 @@ async function generatePDFLembur(chat, user, db){
 
     try {
         const templateName = user.template_export || 'LMD';
-
-        const [approver] = await query(
-            `SELECT * FROM users WHERE jabatan='Head' LIMIT 1`
-        );
-
-        const approverWA   = approver?.wa_number || null;
-        const approverNama = approver?.nama_lengkap || '-';
-        const approverNik  = approver?.nik || '-';
 
         // Ambil data + info bulan
         const lemburData = await query(
@@ -406,25 +371,7 @@ async function generatePDFLembur(chat, user, db){
 
             await generatePDF(html, pdfFile);
             await chat.sendMessage(MessageMedia.fromFilePath(pdfFile));
-
-            if (approverWA) {
-                await query(
-                    `INSERT INTO approvals
-                    (user_id, approver_wa, file_path, template_export, status, source,
-                    created_at, ttd_user_at, nama_atasan, nik_atasan, user_approved)
-                    VALUES (?, ?, ?, ?, 'draft', 'export', NOW(), NOW(), ?, ?, 0)`,
-                    [
-                        user.id,
-                        approverWA,
-                        path.basename(pdfFile),
-                        templateName,
-                        approverNama,
-                        approverNik
-                    ]
-                );
-            }
         }
-
 
         await sendTyping(chat,'Laporan lembur berhasil dibuat.');
 
