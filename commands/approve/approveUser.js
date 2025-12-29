@@ -57,6 +57,22 @@ if (!approverWA) {
     );
 }
 
+// === CEK TTD USER ===
+const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
+const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
+let ttdFile = '';
+
+if (fs.existsSync(ttdPng)) ttdFile = ttdPng;
+else if (fs.existsSync(ttdJpg)) ttdFile = ttdJpg;
+
+if (!ttdFile) {
+    waitingTTD[wa_number] = { user: true };
+    return sendTyping(
+        chat,
+        'Silakan kirim foto tanda tangan kamu untuk melanjutkan approval.'
+    );
+}
+
 // pastikan WA format
 if (!approverWA || typeof approverWA !== 'string') {
     return sendTyping(chat, 'Nomor WhatsApp atasan belum tersedia.');
@@ -83,23 +99,6 @@ nik_atasan = nik_atasan || '';
             return sendTyping(chat, 'Laporan bulan ini sudah disetujui.');
         if (approval.status !== 'pending')
             return sendTyping(chat, 'Laporan tidak dalam status pending approval.');
-
-        // cek TTD user
-        const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
-        const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
-        let ttdFile = '';
-        if (fs.existsSync(ttdPng)) ttdFile = ttdPng;
-        else if (fs.existsSync(ttdJpg)) ttdFile = ttdJpg;
-
-        if (!ttdFile) {
-
-            waitingTTD[wa_number] = { user: true };
-
-            return sendTyping(
-                chat,
-                'Silakan kirim foto tanda tangan kamu untuk melanjutkan approval.'
-            );
-        }
 
         // generate ulang PDF dari DB + template
         let updatedFilePath;
