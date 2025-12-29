@@ -135,9 +135,20 @@ module.exports = {
                 return require('./help')(chat, user.nama_wa);
             }
 
-            // Approve atasan
-            if (/^(approve|revisi|status)/i.test(pesan.trim())) {
-                return approveAtasan(chat, user, pesan, db);
+            // --- Approve Atasan (approve/revisi/status/alasan_revisi) ---
+            const isAtasan = user.jabatan === 'Head West Java Operation';
+            if (isAtasan) {
+                const [pendingApprovalAtasan] = await query(
+                    `SELECT * FROM approvals 
+                     WHERE approver_wa=? 
+                     AND (status IN ('pending','revised') OR step_input='alasan_revisi') 
+                     LIMIT 1`,
+                    [wa_number]
+                );
+
+                if (pendingApprovalAtasan) {
+                    return approveAtasan(chat, user, pesan, db);
+                }
             }
 
             // Export step
