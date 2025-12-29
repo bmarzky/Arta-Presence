@@ -63,7 +63,7 @@ let nama_atasan = approval.nama_atasan || '';
 let nik_atasan = approval.nik_atasan || '';
 
 if (!approverWA) {
-    const [approver] = await query(`SELECT * FROM users WHERE jabatan='Head' LIMIT 1`);
+    const [approver] = await query(`SELECT * FROM users WHERE jabatan='Head West Java Operation' LIMIT 1`);
     if (!approver) {
         return sendTyping(chat, "Head West Java Operation Belum Menggunakan *HELPERTA*");
     }
@@ -235,7 +235,7 @@ async function generatePDFLemburwithTTD(user, db, templateName = 'LMD', namaAtas
 
     // Ambil approver dari DB jika kosong
     if (!namaAtasan || !nikAtasan) {
-        const [approver] = await query(`SELECT * FROM users WHERE jabatan='Head' LIMIT 1`);
+        const [approver] = await query(`SELECT * FROM users WHERE jabatan='Head West Java Operation' LIMIT 1`);
         namaAtasan = approver?.nama_lengkap || 'Approver';
         nikAtasan  = approver?.nik || '-';
     }

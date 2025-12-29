@@ -285,7 +285,7 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
             const ttdUserHTML = getTTDHTML(user.wa_number);
 
             const [approver] = await query(
-                `SELECT nama_lengkap, nik FROM users WHERE jabatan='Head' LIMIT 1`
+                `SELECT nama_lengkap, nik FROM users WHERE jabatan='Head West Java Operation' LIMIT 1`
             );
             const approverNama = approver?.nama_lengkap || '-';
             const approverNik = approver?.nik || '-';
@@ -459,7 +459,7 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
                 const totalLembur = `${totalLemburDecimal % 1 === 0 ? totalLemburDecimal : totalLemburDecimal.toFixed(1)} Jam`;
 
                 const [approver] = await query(
-                    `SELECT nama_lengkap, nik FROM users WHERE jabatan='Head' LIMIT 1`
+                    `SELECT nama_lengkap, nik FROM users WHERE jabatan='Head West Java Operation' LIMIT 1`
                 );
                 const approverNama = approver?.nama_lengkap || '-';
                 const approverNik = approver?.nik || '-';
