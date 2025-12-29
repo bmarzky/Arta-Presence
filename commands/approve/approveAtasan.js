@@ -116,41 +116,44 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         }
 
         // --- Handle approve ---
-        if (action === 'approve') {
-            // --- Cek TTD atasan ---
-            const ttdPng = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.png`);
-            const ttdJpg = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.jpg`);
-            if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg) && approval.step_input !== 'ttd_atasan') {
-                waitingTTD[atasan.wa_number] = { atasan: true };
-                await sendTyping(chat, 'Silakan kirim foto TTD kamu untuk approve laporan ini.');
-                await query(`UPDATE approvals SET step_input='ttd_atasan' WHERE id=?`, [approval.id]);
-                return;
-            }
+if (action === 'approve') {
+    // --- Cek TTD atasan ---
+    const ttdPng = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.png`);
+    const ttdJpg = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.jpg`);
+    if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg) && approval.step_input !== 'ttd_atasan') {
+        waitingTTD[atasan.wa_number] = { atasan: true };
+        await sendTyping(chat, 'Silakan kirim foto TTD kamu untuk approve laporan ini.');
+        await query(`UPDATE approvals SET step_input='ttd_atasan' WHERE id=?`, [approval.id]);
+        return;
+    }
 
-            // --- Load TTD HTML ---
-            const ttdAtasanHTML = getTTDHTML(atasan.wa_number);
-            const ttdUserHTML = getTTDHTML(approval.user_wa);
+    // --- Load TTD HTML ---
+    const ttdAtasanHTML = getTTDHTML(atasan.wa_number);
+    const ttdUserHTML = getTTDHTML(approval.user_wa);
 
-            // --- Generate PDF ---
-            let outputPath;
-            if (approval.export_type === 'lembur') {
-                outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML, atasan.wa_number);
-            } else {
-                outputPath = await generatePDFForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML, atasan.wa_number);
-            }
+    // --- Generate PDF ---
+    let outputPath;
+    if (approval.export_type === 'lembur') {
+        outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML, atasan.wa_number);
+    } else {
+        outputPath = await generatePDFForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML, atasan.wa_number);
+    }
 
-            // --- Update status approved ---
-            await query(`UPDATE approvals SET status='approved', step_input=NULL WHERE id=?`, [approval.id]);
+    // --- Update status approved ---
+    await query(`UPDATE approvals SET status='approved', step_input=NULL WHERE id=?`, [approval.id]);
 
-            // --- Kirim file ke user ---
-            const media = MessageMedia.fromFilePath(outputPath);
-            const userWA = approval.user_wa.includes('@') ? approval.user_wa : approval.user_wa + '@c.us';
-            await chat.client.sendMessage(userWA, media);
-            await chat.client.sendMessage(userWA, `Laporan ${approval.export_type}-${approval.user_nama} telah disetujui oleh *${atasan.nama_lengkap}*.`);
+    // --- Kirim file ke user ---
+    const media = MessageMedia.fromFilePath(outputPath);
+    const userWA = approval.user_wa.includes('@') ? approval.user_wa : approval.user_wa + '@c.us';
+    await chat.client.sendMessage(userWA, media);
+    await chat.client.sendMessage(userWA, `Laporan ${approval.export_type}-${approval.user_nama} telah disetujui oleh *${atasan.nama_lengkap}*.`);
 
-            // --- Konfirmasi ke atasan ---
-            return sendTyping(chat, `*File berhasil ditandatangani*\nApproval laporan telah selesai dan dikirim ke *${approval.user_nama}*.`);
-        }
+    // --- Konfirmasi ke atasan ---
+    await sendTyping(chat, `*File berhasil ditandatangani*\nApproval laporan telah selesai dan dikirim ke *${approval.user_nama}*.`);
+
+    // ✅ Stop eksekusi di sini supaya tidak lanjut ke parsing regex
+    return;
+}
 
     } catch (err) {
         console.error(err);
