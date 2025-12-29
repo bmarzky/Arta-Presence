@@ -29,7 +29,6 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             return sendTyping(chat, 'Jabatan anda bukan *Head West Java Operation*, tidak memiliki akses.');
     }
 
-
     try {
         // --- Data Atasan ---
         const [atasan] = await query(`SELECT * FROM users WHERE wa_number=? LIMIT 1`, [user.wa_number]);
@@ -119,34 +118,26 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         // --- Handle approve ---
         if (action === 'approve') {
             // --- Cek TTD atasan ---
-            let ttdAtasanBase64 = '';
             const ttdPng = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.png`);
             const ttdJpg = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.jpg`);
-            if (fs.existsSync(ttdPng)) ttdAtasanBase64 = fs.readFileSync(ttdPng, 'base64');
-            else if (fs.existsSync(ttdJpg)) ttdAtasanBase64 = fs.readFileSync(ttdJpg, 'base64');
-
-            if (!ttdAtasanBase64 && approval.step_input !== 'ttd_atasan') {
+            if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg) && approval.step_input !== 'ttd_atasan') {
                 waitingTTD[atasan.wa_number] = { atasan: true };
                 await sendTyping(chat, 'Silakan kirim foto TTD kamu untuk approve laporan ini.');
                 await query(`UPDATE approvals SET step_input='ttd_atasan' WHERE id=?`, [approval.id]);
                 return;
             }
 
-            // --- Load TTD user ---
-            let ttdUserBase64 = '';
-            const ttdUserPng = path.join(__dirname, '../../assets/ttd', `${approval.user_wa}.png`);
-            const ttdUserJpg = path.join(__dirname, '../../assets/ttd', `${approval.user_wa}.jpg`);
-            if (fs.existsSync(ttdUserPng)) ttdUserBase64 = fs.readFileSync(ttdUserPng, 'base64');
-            else if (fs.existsSync(ttdUserJpg)) ttdUserBase64 = fs.readFileSync(ttdUserJpg, 'base64');
+            // --- Load TTD HTML ---
+            const ttdAtasanHTML = getTTDHTML(atasan.wa_number);
+            const ttdUserHTML = getTTDHTML(approval.user_wa);
 
             // --- Generate PDF ---
             let outputPath;
             if (approval.export_type === 'lembur') {
-                outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64, atasan.wa_number);
+                outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML, atasan.wa_number);
             } else {
-                outputPath = await generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64, atasan.wa_number);
+                outputPath = await generatePDFForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML, atasan.wa_number);
             }
-
 
             // --- Update status approved ---
             await query(`UPDATE approvals SET status='approved', step_input=NULL WHERE id=?`, [approval.id]);
@@ -248,7 +239,7 @@ async function generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64
 }
 
 // Fungsi generate PDF untuk atasan - lembur
-async function generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64, waAtasan) {
+async function generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML, waAtasan) {
     const fs = require('fs');
     const path = require('path');
     const generatePDF = require('../../utils/pdfGenerator');
