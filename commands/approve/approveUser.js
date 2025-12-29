@@ -150,7 +150,9 @@ if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
         await chat.client.sendMessage(approverWA, media);
         await chat.client.sendMessage(
             approverWA,
-            `Silakan ketik:\n• *approve*\n• *revisi*`
+            `Silakan ketik salah satu opsi berikut:\n\n` +
+            `• *approve* - {Tipe Laporan}-{nama}\n` +
+            `• *revisi* - {Tipe Laporan}-{nama}`
         );
 
         return sendTyping(chat, `*${nama_user}*, laporan berhasil dikirim ke *${nama_atasan}* untuk proses approval.`);
