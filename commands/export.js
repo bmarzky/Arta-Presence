@@ -34,6 +34,26 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
         const required = ['nama_lengkap', 'jabatan', 'nik'];
         const missing = required.filter(f => !user[f]);
 
+        // user lengkap
+        if (
+            missing.length === 0 &&
+            !user.step_input &&
+            text.startsWith('/export')
+        ) {
+            await query(
+                `UPDATE users 
+                SET step_input='choose_export_type' 
+                WHERE id=?`,
+                [user.id]
+            );
+
+            return sendTyping(
+                chat,
+                `Halo *${nama_wa}*, mau export *Absensi* atau *Lembur*?`
+            );
+        }
+
+
         //  Flow data user
         if (missing.length > 0 || user.step_input?.startsWith('input') || user.step_input === 'confirm_nama') {
 
