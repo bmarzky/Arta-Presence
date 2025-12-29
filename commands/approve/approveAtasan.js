@@ -29,7 +29,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             return sendTyping(chat, 'Jabatan anda bukan *Head West Java Operation*, tidak memiliki akses.');
     }
 
-    try {
+        try {
         // --- Data Atasan ---
         const [atasan] = await query(`SELECT * FROM users WHERE wa_number=? LIMIT 1`, [user.wa_number]);
         if (!atasan) return sendTyping(chat, 'Data atasan tidak ditemukan.');
@@ -99,11 +99,12 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         if (!approval)
             return sendTyping(chat, `Tidak ditemukan laporan ${export_type}-${namaUser} yang menunggu approval/revisi.`);
 
+        // --- Fallback status ---
+        if (approval.status === 'revised') return sendTyping(chat, 'Laporan sudah dikembalikan untuk di revisi.');
+        if (approval.status === 'approved') return sendTyping(chat, 'Laporan sudah disetujui.');
+
         // --- Handle revisi ---
         if (action === 'revisi') {
-            if (approval.status !== 'pending')
-                return sendTyping(chat, 'Laporan sudah direvisi atau tidak bisa direvisi lagi.');
-
             await query(`UPDATE approvals SET status='revised', step_input='alasan_revisi' WHERE id=?`, [approval.id]);
             return sendTyping(chat, `Silakan ketik *alasan revisi* untuk ${export_type}-${namaUser}.`);
         }
