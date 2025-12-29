@@ -355,7 +355,7 @@ async function generatePDFLembur(chat, user, db){
             const totalLembur = `${totalLemburDecimal % 1 === 0 ? totalLemburDecimal : totalLemburDecimal.toFixed(1)} Jam`;
 
             const [approver] = await query(
-                `SELECT nama_lengkap, nik FROM users WHERE role='approver' LIMIT 1`
+                `SELECT nama_lengkap, nik FROM users WHERE jabatan='Head' LIMIT 1`
             );
             const approverNama = approver?.nama_lengkap || '-';
             const approverNik = approver?.nik || '-';
