@@ -43,10 +43,10 @@ let nik_atasan = approval.nik_atasan || '';
 if (!approverWA) {
     const [approver] = await query(`SELECT * FROM users WHERE jabatan='Head' LIMIT 1`);
     if (!approver) {
-        return sendTyping(chat, "Head West Java Operation Belum Menggunakan ditemukan");
+        return sendTyping(chat, "Head West Java Operation Belum Menggunakan *HELPERTA*");
     }
     
-    approverWA = approver.wa;
+    approverWA = approver.wa_number;
     nama_atasan = approver.nama_lengkap;
     nik_atasan  = approver.nik;
 
@@ -57,7 +57,13 @@ if (!approverWA) {
 }
 
 // pastikan WA format
-if (!approverWA.includes('@')) approverWA += '@c.us';
+if (!approverWA || typeof approverWA !== 'string') {
+    return sendTyping(chat, 'Nomor WhatsApp atasan belum tersedia.');
+}
+
+if (!approverWA.includes('@')) {
+    approverWA += '@c.us';
+}
 
 // assign default jika masih kosong
 nama_atasan = nama_atasan || 'Atasan';
@@ -178,7 +184,7 @@ async function generatePDFwithTTD(user, db, ttdFile, templateName, namaAtasan='A
                .replace(/{{nik}}/g, user.nik)
                .replace(/{{periode}}/g, `${1}-${totalHari} ${moment().format('MMMM YYYY')}`)
                .replace(/{{rows_absensi}}/g, rows.join(''))
-               .replace(/{{ttd_user}}/g, ttdHTML)
+               .replace(/{{ttd_user}}/g, ttdUserHTML)
                .replace(/{{nama_atasan}}/g, namaAtasan)
                .replace(/{{nik_atasan}}/g, nikAtasan);
 
