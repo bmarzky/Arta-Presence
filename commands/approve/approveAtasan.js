@@ -67,10 +67,18 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         }
 
         // Alasan revisi
-        const [revisiApproval] = await query(`SELECT * FROM approvals WHERE step_input='alasan_revisi' AND approver_wa=? LIMIT 1`, [user.wa_number]);
-        if (!revisiApproval) return sendTyping(chat, 'Tidak ada revisi yang menunggu input alasan.');
+        if (action === 'revisi') {
+            if (approval.status !== 'pending')
+                return sendTyping(chat, 'Laporan sudah direvisi atau tidak bisa direvisi lagi.');
 
+            await query(`UPDATE approvals SET status='revised', step_input='alasan_revisi' WHERE id=?`, [approval.id]);
+            return sendTyping(chat, `Silakan ketik *alasan revisi* untuk ${export_type}-${namaUser}.`);
+        }
 
+        const [revisiApproval] = await query(
+            `SELECT * FROM approvals WHERE step_input='alasan_revisi' AND approver_wa=? LIMIT 1`,
+            [user.wa_number]
+        );
         if (revisiApproval) {
             if (rawText.trim().length < 3)
                 return sendTyping(chat, 'Silakan ketik *alasan revisi* yang jelas.');
@@ -80,20 +88,19 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 [rawText.trim(), revisiApproval.id]
             );
 
-            const userWA = revisiApproval.user_wa.includes('@')
-                ? revisiApproval.user_wa
-                : revisiApproval.user_wa + '@c.us';
+            const userWA = revisiApproval.user_wa.includes('@') ? revisiApproval.user_wa : revisiApproval.user_wa + '@c.us';
 
             await chat.client.sendMessage(
                 userWA,
-                `*LAPORAN PERLU REVISI*\n\n` +
-                `Approval: *${atasan.nama_lengkap}*\n\n` +
+                `*LAPORAN PERLU REVISI*\n\nApproval: *${atasan.nama_lengkap}*\n\n` +
                 `*Catatan revisi:*\n${rawText.trim()}\n\n` +
                 `Silakan perbaiki dan lakukan */export* ulang.`
             );
 
             return sendTyping(chat, `Revisi berhasil dikirim ke *${revisiApproval.user_nama}*.`);
         }
+
+
         // parsing format
         const match = rawText.trim().match(/^(approve|revisi)\s+([^-]+)-(.+)$/i);
 
@@ -118,20 +125,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             return sendTyping(chat, 'Format salah. Contoh:\napprove lembur-Bima Rizki\nrevisi absensi-Asep');
         }
 
-        // ====== MULAI REVISI ======
-        if (action === 'revisi') {
-            if (approval.status !== 'pending')
-                return sendTyping(chat, 'Laporan sudah direvisi atau tidak bisa direvisi lagi.');
-
-            // set status dan step_input
-            await query(`UPDATE approvals SET status='revised', step_input='alasan_revisi' WHERE id=?`, [approval.id]);
-
-            // ambil ulang approval yang baru saja diupdate
-            const [updatedApproval] = await query(`SELECT * FROM approvals WHERE id=?`, [approval.id]);
-
-            return sendTyping(chat, `Silakan ketik *alasan revisi* untuk ${export_type}-${namaUser}.`);
-        }
-        // ====== APPROVE ======
+        // approve
         if (action === 'approve') {
             if (approval.status !== 'pending')
                 return sendTyping(chat, 'Laporan ini sedang direvisi atau sudah diproses.');
