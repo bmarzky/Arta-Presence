@@ -230,17 +230,17 @@ async function generatePDFandSend(chat, user, db, paramBulan){
         await chat.sendMessage(MessageMedia.fromFilePath(pdfFile));
 
         await query(
-            `INSERT INTO approvals 
+            `INSERT INTO approvals
             (user_id, approver_wa, file_path, template_export, status, source,
             created_at, ttd_user_at, nama_atasan, nik_atasan, user_approved)
             VALUES (?, ?, ?, ?, 'draft', 'export', NOW(), NOW(), ?, ?, 0)`,
             [
-            user.id,
-            approverWA || '-',
-            path.basename(pdfFile),
-            templateName,
-            approverNama || '-',
-            approverNik || '-'
+                user.id,
+                approverWA || '-',
+                path.basename(pdfFile),
+                templateName,
+                approverNama || '-',
+                approverNik || '-'
             ]
         );
 
