@@ -165,11 +165,14 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             return sendTyping(chat, `Approval berhasil dikirim ke *${approval.user_nama}*.`);
         }
 
+        // alasan revisi
         const [revisiApproval] = await query(
             `SELECT * FROM approvals WHERE step_input='alasan_revisi' AND approver_wa=? LIMIT 1`,
             [user.wa_number]
         );
         if (revisiApproval) {
+            const userWA = revisiApproval.user_wa.includes('@') ? revisiApproval.user_wa : revisiApproval.user_wa + '@c.us';
+
             if (rawText.trim().length < 3)
                 return sendTyping(chat, 'Silakan ketik *alasan revisi* yang jelas.');
 
@@ -177,8 +180,6 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 `UPDATE approvals SET revisi_catatan=?, step_input=NULL WHERE id=?`,
                 [rawText.trim(), revisiApproval.id]
             );
-
-            const userWA = revisiApproval.user_wa.includes('@') ? revisiApproval.user_wa : revisiApproval.user_wa + '@c.us';
 
             await chat.client.sendMessage(
                 userWA,
