@@ -177,6 +177,12 @@ async function generatePDFwithTTD(user, db, ttdFile, templateName, namaAtasan='A
     // ttd
     const ttdUserHTML = getTTDHTML(user.wa_number);
 
+    // === RESOLVE DATA ATASAN JIKA BELUM ADA ===
+    if (!namaAtasan || !nikAtasan) {
+        const [approver] = await query(
+            `SELECT nama_lengkap, nik FROM users WHERE jabatan='Head' LIMIT 1`
+        );
+    }
 
     html = html.replace(/{{logo}}/g, logoBase64)
                .replace(/{{nama}}/g, user.nama_lengkap)
@@ -302,6 +308,13 @@ async function generatePDFLemburwithTTD(user, db, ttdFile = '', templateName = '
         // Template HTML
         const templatePath = path.join(__dirname, `../../templates/lembur/${templateName}.html`);
         let htmlTemplate = fs.readFileSync(templatePath,'utf8');
+
+        // === RESOLVE DATA ATASAN JIKA BELUM ADA ===
+        if (!namaAtasan || !nikAtasan) {
+            const [approver] = await query(
+                `SELECT nama_lengkap, nik FROM users WHERE jabatan='Head' LIMIT 1`
+            );
+        }
 
         const html = htmlTemplate
             .replace(/{{rows_lembur}}/g, rows)
