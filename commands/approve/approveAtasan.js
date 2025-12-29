@@ -29,7 +29,8 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             return sendTyping(chat, 'Jabatan anda bukan *Head West Java Operation*, tidak memiliki akses.');
     }
 
-        try {
+
+    try {
         // --- Data Atasan ---
         const [atasan] = await query(`SELECT * FROM users WHERE wa_number=? LIMIT 1`, [user.wa_number]);
         if (!atasan) return sendTyping(chat, 'Data atasan tidak ditemukan.');
@@ -64,7 +65,6 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         const revisiApproval = pendingApprovals.find(a => a.step_input === 'alasan_revisi');
         if (revisiApproval) {
             const userWA = revisiApproval.user_wa.includes('@') ? revisiApproval.user_wa : revisiApproval.user_wa + '@c.us';
-
             if (rawText.trim().length < 3)
                 return sendTyping(chat, 'Silakan ketik *alasan revisi* yang jelas.');
 
@@ -91,17 +91,25 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         const export_type = match[2].trim().toLowerCase();
         const namaUser = match[3].trim().toLowerCase();
 
-        const approval = pendingApprovals.find(a =>
-            a.export_type.toLowerCase() === export_type &&
-            a.user_nama.toLowerCase() === namaUser
-        );
+        // --- Ambil approval terbaru yang pending ---
+        const approval = pendingApprovals
+            .filter(a =>
+                a.export_type.toLowerCase() === export_type &&
+                a.user_nama.toLowerCase() === namaUser &&
+                a.status === 'pending'
+            )
+            .sort((a, b) => b.id - a.id)[0];
 
-        if (!approval)
-            return sendTyping(chat, `Tidak ditemukan laporan ${export_type}-${namaUser} yang menunggu approval/revisi.`);
-
-        // --- Fallback status ---
-        if (approval.status === 'revised') return sendTyping(chat, 'Laporan sudah dikembalikan untuk di revisi.');
-        if (approval.status === 'approved') return sendTyping(chat, 'Laporan sudah disetujui.');
+        if (!approval) {
+            // Cek fallback untuk laporan sebelumnya
+            const oldApproval = pendingApprovals.find(a =>
+                a.export_type.toLowerCase() === export_type &&
+                a.user_nama.toLowerCase() === namaUser
+            );
+            if (!oldApproval) return sendTyping(chat, `Tidak ditemukan laporan ${export_type}-${namaUser}.`);
+            if (oldApproval.status === 'revised') return sendTyping(chat, 'Laporan sudah dikembalikan untuk di revisi.');
+            if (oldApproval.status === 'approved') return sendTyping(chat, 'Laporan sudah disetujui.');
+        }
 
         // --- Handle revisi ---
         if (action === 'revisi') {
@@ -129,7 +137,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 await query(`UPDATE approvals SET step_input=NULL WHERE id=?`, [approval.id]);
             }
 
-            // --- TTD User ---
+            // --- ttd User ---
             let ttdUserBase64 = '';
             const ttdUserPng = path.join(__dirname, '../../assets/ttd', `${approval.user_wa}.png`);
             const ttdUserJpg = path.join(__dirname, '../../assets/ttd', `${approval.user_wa}.jpg`);
