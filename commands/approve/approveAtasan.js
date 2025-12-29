@@ -5,7 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const moment = require('moment');
 const generatePDF = require('../../utils/pdfGenerator');
-const { getLogoBase64, getTTDHTML } = require('../utils/getAssets');
+const { getLogoBase64, getTTDHTML } = require('../../utils/getAssets');
 
 
 module.exports = async function approveAtasan(chat, user, pesan, db) {
