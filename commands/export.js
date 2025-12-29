@@ -189,7 +189,7 @@ async function generatePDFandSend(chat, user, db, paramBulan){
         const ttdUserHTML = getTTDHTML(user.wa_number);
 
         const [approver] = await query(
-            `SELECT nama_lengkap, nik FROM users WHERE role='approver' LIMIT 1`
+            `SELECT nama_lengkap, nik FROM users WHERE jabatan='Head' LIMIT 1`
         );
         const approverNama = approver?.nama_lengkap || '-';
         const approverNik = approver?.nik || '-';
