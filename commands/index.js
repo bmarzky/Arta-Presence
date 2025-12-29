@@ -12,6 +12,7 @@ const { sendTyping } = require('../utils/sendTyping');
 const handleLembur = require('./absensi/lembur'); 
 const handleEdit = require('./absensi/editAbsen');
 const handleRiwayatAbsen = require('./absensi/riwayatAbsen');
+const waitingTTD = require('../utils/waitingTTD');
 
 const ttdFolder = path.join(__dirname, '../assets/ttd/');
 
@@ -26,6 +27,10 @@ const waitingTTD = {};
 const typeAndDelay = async (chat, ms = 800, random = 400) => {
     await chat.sendStateTyping();
     await new Promise(r => setTimeout(r, ms + Math.random() * random));
+};
+
+const isUserDataComplete = (user) => {
+    return !!(user.nama_lengkap && user.jabatan && user.nik);
 };
 
 module.exports = {
@@ -136,7 +141,23 @@ module.exports = {
             // Export step
             if (lowerMsg.startsWith('/export') || user.step_input) {
 
-                // CEK LAPORAN MASIH PENDING APPROVAL
+            // user WAJIB punya data lengkap
+            if (!isUserDataComplete(user)) {
+                // reset export state yang nyasar
+                if (['choose_export_type', 'choose_template', 'start_export'].includes(user.step_input)) {
+                    await query(
+                        `UPDATE users 
+                        SET step_input=NULL,
+                            export_type=NULL,
+                            template_export=NULL
+                        WHERE id=?`,
+                        [user.id]
+                    );
+                    user.step_input = null;
+                }
+            }
+
+                // Cek laporan yang pending
                 const [pendingApproval] = await query(
                     `SELECT file_path, user_approved
                     FROM approvals
@@ -146,9 +167,10 @@ module.exports = {
                     [user.id]
                 );
 
-                if (pendingApproval && pendingApproval.status === 'pending' && lowerMsg.startsWith('/export')) {
-                    const isLembur  = pendingApproval.file_path?.startsWith('LEMBUR-');
-                    const isAbsensi = pendingApproval.file_path?.startsWith('ABSENSI-');
+                if (pendingApproval && lowerMsg.startsWith('/export')) {
+                    const filename = path.basename(pendingApproval.file_path || '');
+                    const isLembur  = filename.startsWith('LEMBUR-');
+                    const isAbsensi = filename.startsWith('ABSENSI-');
 
                     return sendTyping(
                         chat,

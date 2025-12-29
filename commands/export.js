@@ -6,7 +6,6 @@ const { MessageMedia } = require('whatsapp-web.js');
 const { sendTyping } = require('../utils/sendTyping');
 const generatePDF = require('../utils/pdfGenerator');
 const { getLogoBase64, getTTDHTML } = require('../utils/getAssets');
-const ttdFolder = path.join(__dirname, '../assets/ttd/');
 
 const formatTanggalLMD = (date) => {
     const d = new Date(date);
@@ -29,22 +28,8 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
 
         user = { ...user, ...dbUser };
 
-        const nama_wa = user.pushname || user.nama_wa || 'Arta';
+        const nama_wa = user.nama_wa || 'Arta';
         const text = pesan.toLowerCase().trim();
-
-        // Command
-
-        if (text === '/export') {
-            await query(`
-                UPDATE users 
-                SET step_input='start_export',
-                    template_export=NULL,
-                    export_type=NULL
-                WHERE id=?
-            `, [user.id]);
-
-            user.step_input = 'start_export';
-        }
 
         const required = ['nama_lengkap', 'jabatan', 'nik'];
         const missing = required.filter(f => !user[f]);
@@ -116,14 +101,14 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
             if (user.step_input === 'input_nik') {
                 await query(
                     `UPDATE users 
-                    SET nik=?, step_input='start_export' 
+                    SET nik=?, step_input='choose_export_type' 
                     WHERE id=?`,
                     [pesan.trim(), user.id]
                 );
 
                 return sendTyping(
                     chat,
-                    `Terima kasih 😊\nHalo *${user.nama_lengkap || nama_wa}*, mau export *Absensi* atau *Lembur*?`
+                    `Halo *${nama_wa}*, mau export *Absensi* atau *Lembur*?`
                 );
             }
 
@@ -150,20 +135,6 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
                     `Maaf saya belum memiliki data anda.\nSilahkan isi *${label[nextField]}*`
                 );
             }
-        }
-
-
-        // Step: start export
-        if (user.step_input === 'start_export') {
-            await query(
-                `UPDATE users SET step_input='choose_export_type' WHERE id=?`,
-                [user.id]
-            );
-
-            return sendTyping(
-                chat,
-                `Halo *${nama_wa}*, mau export *Absensi* atau *Lembur*?`
-            );
         }
 
         // Step: pilih tipe export
@@ -244,8 +215,6 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
 
         try {
             const templateName = user.template_export || 'LMD';
-            const templateSafe = templateName.toLowerCase();
-
             const bulanNama = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
             const now = new Date();
             let bulan = now.getMonth();

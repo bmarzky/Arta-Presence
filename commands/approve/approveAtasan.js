@@ -6,6 +6,7 @@ const fs = require('fs');
 const moment = require('moment');
 const generatePDF = require('../../utils/pdfGenerator');
 const { getLogoBase64, getTTDHTML } = require('../../utils/getAssets');
+const waitingTTD = require('../../utils/waitingTTD');
 
 
 module.exports = async function approveAtasan(chat, user, pesan, db) {
@@ -126,10 +127,14 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             else if (fs.existsSync(ttdJpg)) ttdAtasanBase64 = fs.readFileSync(ttdJpg, 'base64');
 
             if (!ttdAtasanBase64 && approval.step_input !== 'ttd_atasan') {
+
+                waitingTTD[atasan.wa_number] = { atasan: true };
+
                 await sendTyping(chat, 'Silakan kirim foto TTD kamu untuk approve laporan ini.');
                 await query(`UPDATE approvals SET step_input='ttd_atasan' WHERE id=?`, [approval.id]);
                 return;
             }
+
 
             if (ttdAtasanBase64 && approval.step_input === 'ttd_atasan') {
                 await query(`UPDATE approvals SET step_input=NULL WHERE id=?`, [approval.id]);

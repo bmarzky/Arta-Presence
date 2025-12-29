@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const generatePDF = require('../../utils/pdfGenerator');
 const { getLogoBase64, getTTDHTML } = require('../../utils/getAssets');
+const waitingTTD = require('../../utils/waitingTTD');
 const moment = require('moment');
 
 // folder TTD
@@ -90,8 +91,15 @@ nik_atasan = nik_atasan || '';
         if (fs.existsSync(ttdPng)) ttdFile = ttdPng;
         else if (fs.existsSync(ttdJpg)) ttdFile = ttdJpg;
 
-        if (!ttdFile)
-            return sendTyping(chat, `Kamu belum mengirim tanda tangan.`);
+        if (!ttdFile) {
+
+            waitingTTD[wa_number] = { user: true };
+
+            return sendTyping(
+                chat,
+                'Silakan kirim foto tanda tangan kamu untuk melanjutkan approval.'
+            );
+        }
 
         // generate ulang PDF dari DB + template
         let updatedFilePath;
