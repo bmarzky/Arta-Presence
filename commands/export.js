@@ -215,14 +215,13 @@ async function generatePDFandSend(chat, user, db, paramBulan){
 
         await generatePDF(html,pdfFile);
         await chat.sendMessage(MessageMedia.fromFilePath(pdfFile));
-        await sendTyping(chat,'Laporan absensi berhasil dibuat.');
-
         // Insert draft
         await query(
             `INSERT INTO approvals (user_id, source, status, file_path, template_export, created_at)
             VALUES (?, 'export', 'draft', ?, ?, NOW())`,
             [user.id, pdfFile, templateName]
         );
+        await sendTyping(chat,'Laporan absensi berhasil dibuat.');
 
     } catch(err){
         console.error(err);
@@ -390,15 +389,14 @@ async function generatePDFLembur(chat, user, db){
             await generatePDF(html, pdfFile);
             await chat.sendMessage(MessageMedia.fromFilePath(pdfFile));
         }
-
-        await sendTyping(chat,'Laporan lembur berhasil dibuat.');
-
         // Insert draft
         await query(
             `INSERT INTO approvals (user_id, source, status, file_path, template_export, created_at)
             VALUES (?, 'export', 'draft', ?, ?, NOW())`,
             [user.id, pdfFile, templateName]
         );
+
+        await sendTyping(chat,'Laporan lembur berhasil dibuat.');
 
     } catch(err){
         console.error(err);
