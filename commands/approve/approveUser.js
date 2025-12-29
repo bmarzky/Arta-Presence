@@ -35,6 +35,27 @@ module.exports = async function approveUser(chat, user, db) {
 
         if (!approval || !approval.file_path)
             return sendTyping(chat, 'Kamu belum menyiapkan laporan.');
+        // export type dari file path
+        if (approval.file_path) {
+            const filename = path.basename(approval.file_path);
+
+            let fixedType = approval.export_type;
+
+            if (filename.startsWith('LEMBUR-')) {
+                fixedType = 'lembur';
+            } else if (filename.startsWith('ABSENSI-')) {
+                fixedType = 'absensi';
+            }
+
+            if (fixedType !== approval.export_type) {
+                approval.export_type = fixedType;
+                await query(
+                    `UPDATE approvals SET export_type=? WHERE id=?`,
+                    [fixedType, approval.id]
+                );
+            }
+        }
+
 
 // Ambil approver dari DB jika kosong
 let approverWA = approval.approver_wa;
@@ -79,7 +100,7 @@ if (!approverWA.includes('@')) {
     approverWA += '@c.us';
 }
 
-// === CEK TTD USER ===
+// cek ttd users
 const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
 const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
 
@@ -117,7 +138,7 @@ if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
 
         const jenis_laporan =
         approval.export_type === 'lembur' ? 'Lembur' : 'Absensi';
-        
+
         const media = MessageMedia.fromFilePath(Array.isArray(updatedFilePath) ? updatedFilePath[0] : updatedFilePath);
         const greeting = getGreeting() || '';
 
