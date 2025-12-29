@@ -43,7 +43,7 @@ let nik_atasan = approval.nik_atasan || '';
 if (!approverWA) {
     const [approver] = await query(`SELECT * FROM users WHERE jabatan='Head' LIMIT 1`);
     if (!approver) {
-        return sendTyping(chat, "User dengan jabatan Head belum ada, tidak bisa melakukan approval");
+        return sendTyping(chat, "Head West Java Operation Belum Menggunakan ditemukan");
     }
     
     approverWA = approver.wa;
