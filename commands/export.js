@@ -131,7 +131,6 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
 }
 
 // Generate pdf absensi
-
 async function generatePDFandSend(chat, user, db, paramBulan){
     const query = (sql, params=[]) =>
         new Promise((res, rej) => db.query(sql, params, (err,r)=>err?rej(err):res(r)));
@@ -188,6 +187,12 @@ async function generatePDFandSend(chat, user, db, paramBulan){
         const logoBase64 = getLogoBase64(templateName);
         // ttd
         const ttdUserHTML = getTTDHTML(user.wa_number);
+
+        const [approver] = await query(
+            `SELECT nama_lengkap, nik FROM users WHERE role='approver' LIMIT 1`
+        );
+        const approverNama = approver?.nama_lengkap || '-';
+        const approverNik = approver?.nik || '-';
 
         const templatePath = path.join(__dirname, `../templates/absensi/${templateName}.html`);
         let html = fs.readFileSync(templatePath,'utf8');
@@ -348,6 +353,12 @@ async function generatePDFLembur(chat, user, db){
             }
 
             const totalLembur = `${totalLemburDecimal % 1 === 0 ? totalLemburDecimal : totalLemburDecimal.toFixed(1)} Jam`;
+
+            const [approver] = await query(
+                `SELECT nama_lengkap, nik FROM users WHERE role='approver' LIMIT 1`
+            );
+            const approverNama = approver?.nama_lengkap || '-';
+            const approverNik = approver?.nik || '-';
 
             const templatePath = path.join(__dirname, `../templates/lembur/${templateName}.html`);
             let html = fs.readFileSync(templatePath,'utf8');
