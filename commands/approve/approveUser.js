@@ -57,6 +57,20 @@ if (!approverWA) {
     );
 }
 
+        // cek approval
+        if (approval.status === 'draft') {
+            await query(`UPDATE approvals SET status='pending' WHERE id=?`, [approval.id]);
+            approval.status = 'pending';
+        }
+
+        if (approval.status === 'revised')
+            return sendTyping(chat, 'Laporan perlu revisi. Silakan export ulang.');
+        if (approval.status === 'approved')
+            return sendTyping(chat, 'Laporan bulan ini sudah disetujui.');
+        if (approval.status !== 'pending')
+            return sendTyping(chat, 'Laporan tidak dalam status pending approval.');
+
+
 // === CEK TTD USER ===
 const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
 const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
@@ -86,29 +100,15 @@ if (!approverWA.includes('@')) {
 nama_atasan = nama_atasan || 'Atasan';
 nik_atasan = nik_atasan || '';
 
-        
-        // cek approval
-        if (approval.status === 'draft') {
-            await query(`UPDATE approvals SET status='pending' WHERE id=?`, [approval.id]);
-            approval.status = 'pending';
-        }
-
-        if (approval.status === 'revised')
-            return sendTyping(chat, 'Laporan perlu revisi. Silakan export ulang.');
-        if (approval.status === 'approved')
-            return sendTyping(chat, 'Laporan bulan ini sudah disetujui.');
-        if (approval.status !== 'pending')
-            return sendTyping(chat, 'Laporan tidak dalam status pending approval.');
-
         // generate ulang PDF dari DB + template
         let updatedFilePath;
         if (user.export_type === 'lembur') {
             updatedFilePath = await generatePDFLemburwithTTD(
-                user, db, ttdFile, approval.template_export, approval.nama_atasan, approval.nik_atasan
+                user, db, approval.template_export, approval.nama_atasan, approval.nik_atasan
             );
         } else {
             updatedFilePath = await generatePDFwithTTD(
-                user, db, ttdFile, approval.template_export, approval.nama_atasan, approval.nik_atasan
+                user, db, approval.template_export, approval.nama_atasan, approval.nik_atasan
             );
         }
 
@@ -136,7 +136,7 @@ nik_atasan = nik_atasan || '';
 };
 
 // pdf absensi
-async function generatePDFwithTTD(user, db, ttdFile, templateName, namaAtasan='Atasan', nikAtasan='') {
+async function generatePDFwithTTD(user, db, templateName, namaAtasan='Atasan', nikAtasan='') {
     const query = (sql, params = []) =>
         new Promise((res, rej) => db.query(sql, params, (err, r) => err ? rej(err) : res(r)));
 
@@ -183,14 +183,6 @@ async function generatePDFwithTTD(user, db, ttdFile, templateName, namaAtasan='A
 
     // ttd
     const ttdUserHTML = getTTDHTML(user.wa_number);
-
-    // === RESOLVE DATA ATASAN JIKA BELUM ADA ===
-    if (!namaAtasan || !nikAtasan) {
-        const [approver] = await query(
-            `SELECT nama_lengkap, nik FROM users WHERE jabatan='Head' LIMIT 1`
-        );
-    }
-
     html = html.replace(/{{logo}}/g, logoBase64)
                .replace(/{{nama}}/g, user.nama_lengkap)
                .replace(/{{jabatan}}/g, user.jabatan)
@@ -211,7 +203,7 @@ async function generatePDFwithTTD(user, db, ttdFile, templateName, namaAtasan='A
 }
 
 // pdf lembur
-async function generatePDFLemburwithTTD(user, db, ttdFile = '', templateName = 'LMD', namaAtasan = '', nikAtasan = '') {
+async function generatePDFLemburwithTTD(user, db, templateName = 'LMD', namaAtasan = '', nikAtasan = '') {
     const query = (sql, params = []) =>
         new Promise((res, rej) => db.query(sql, params, (err, r) => err ? rej(err) : res(r)));
 
@@ -315,13 +307,6 @@ async function generatePDFLemburwithTTD(user, db, ttdFile = '', templateName = '
         // Template HTML
         const templatePath = path.join(__dirname, `../../templates/lembur/${templateName}.html`);
         let htmlTemplate = fs.readFileSync(templatePath,'utf8');
-
-        // === RESOLVE DATA ATASAN JIKA BELUM ADA ===
-        if (!namaAtasan || !nikAtasan) {
-            const [approver] = await query(
-                `SELECT nama_lengkap, nik FROM users WHERE jabatan='Head' LIMIT 1`
-            );
-        }
 
         const html = htmlTemplate
             .replace(/{{rows_lembur}}/g, rows)
