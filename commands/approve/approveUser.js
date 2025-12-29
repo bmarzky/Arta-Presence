@@ -78,18 +78,34 @@ if (!approverWA) {
     );
 }
 
-        // cek approval
-        if (approval.status === 'draft') {
-            await query(`UPDATE approvals SET status='pending' WHERE id=?`, [approval.id]);
-            approval.status = 'pending';
-        }
+        // Ambil approval untuk bulan & tipe saat ini
+        const now = new Date();
+        const [currentApproval] = await query(
+        `SELECT * FROM approvals
+        WHERE user_id=? 
+            AND export_type=? 
+            AND MONTH(created_at)=? 
+            AND YEAR(created_at)=?
+        ORDER BY created_at DESC
+        LIMIT 1`,
+        [user_id, approval.export_type, now.getMonth() + 1, now.getFullYear()]
+        );
 
-        if (approval.status === 'revised')
-            return sendTyping(chat, 'Laporan perlu revisi. Silakan export ulang.');
-        if (approval.status === 'approved')
-            return sendTyping(chat, 'Laporan bulan ini sudah disetujui.');
-        if (approval.status !== 'pending')
-            return sendTyping(chat, 'Laporan tidak dalam status pending approval.');
+        if (currentApproval) {
+            if (currentApproval.status === 'pending') {
+                return sendTyping(chat, `Laporan bulan ini sudah dikirim ke *${nama_atasan}* untuk proses approval.`);
+            }
+            if (currentApproval.status === 'approved') {
+                return sendTyping(chat, 'Laporan bulan ini sudah disetujui.');
+            }
+            if (currentApproval.status === 'revised') {
+                return sendTyping(chat, 'Laporan perlu revisi. Silakan export ulang.');
+            }
+            if (currentApproval.status === 'draft') {
+                await query(`UPDATE approvals SET status='pending' WHERE id=?`, [currentApproval.id]);
+                currentApproval.status = 'pending';
+            }
+        }
 
 // pastikan WA format
 if (!approverWA || typeof approverWA !== 'string') {
