@@ -98,6 +98,9 @@ module.exports = {
                 if (waitingTTD[wa_number]?.user) {
                     const [dbUser] = await query(`SELECT * FROM users WHERE wa_number=?`, [wa_number]);
                     delete waitingTTD[wa_number];
+                    await chat.sendMessage(
+                        '*File berhasil ditandatangani*\nLaporan akan dikirim ke atasan untuk proses approval.'
+                    );
                     return await approveUser(chat, dbUser, db);
                 }
 
@@ -105,6 +108,9 @@ module.exports = {
                 if (waitingTTD[wa_number]?.atasan) {
                     const [dbAtasan] = await query(`SELECT * FROM users WHERE wa_number=?`, [wa_number]);
                     delete waitingTTD[wa_number];
+                    await chat.sendMessage(
+                        '*File berhasil ditandatangani*\nApproval laporan telah selesai.'
+                    );
                     // langsung jalankan approveAtasan tanpa harus ketik approve lagi
                     return await approveAtasan(chat, dbAtasan, 'approve', db);
                 }

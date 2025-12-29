@@ -70,23 +70,6 @@ if (!approverWA) {
         if (approval.status !== 'pending')
             return sendTyping(chat, 'Laporan tidak dalam status pending approval.');
 
-
-// === CEK TTD USER ===
-const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
-const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
-let ttdFile = '';
-
-if (fs.existsSync(ttdPng)) ttdFile = ttdPng;
-else if (fs.existsSync(ttdJpg)) ttdFile = ttdJpg;
-
-if (!ttdFile) {
-    waitingTTD[wa_number] = { user: true };
-    return sendTyping(
-        chat,
-        'Silakan kirim foto tanda tangan kamu untuk melanjutkan approval.'
-    );
-}
-
 // pastikan WA format
 if (!approverWA || typeof approverWA !== 'string') {
     return sendTyping(chat, 'Nomor WhatsApp atasan belum tersedia.');
@@ -96,13 +79,25 @@ if (!approverWA.includes('@')) {
     approverWA += '@c.us';
 }
 
-// assign default jika masih kosong
-nama_atasan = nama_atasan || 'Atasan';
-nik_atasan = nik_atasan || '';
+// === CEK TTD USER ===
+const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
+const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
 
-        // generate ulang PDF dari DB + template
-        let updatedFilePath;
-        if (user.export_type === 'lembur') {
+if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
+    waitingTTD[wa_number] = { user: true };
+    return sendTyping(
+        chat,
+        'Silakan kirim foto tanda tangan kamu untuk melanjutkan approval.'
+    );
+}
+
+        // assign default jika masih kosong
+        nama_atasan = nama_atasan || 'Atasan';
+        nik_atasan = nik_atasan || '';
+
+                // generate ulang PDF dari DB + template
+                let updatedFilePath;
+        if (exportType === 'lembur') {
             updatedFilePath = await generatePDFLemburwithTTD(
                 user, db, approval.template_export, approval.nama_atasan, approval.nik_atasan
             );
@@ -112,9 +107,9 @@ nik_atasan = nik_atasan || '';
             );
         }
 
+        const jenis_laporan = exportType === 'lembur' ? 'Lembur' : 'Absensi';
         const media = MessageMedia.fromFilePath(Array.isArray(updatedFilePath) ? updatedFilePath[0] : updatedFilePath);
         const greeting = getGreeting() || '';
-        const jenis_laporan = approval.export_type === 'lembur' ? 'Lembur' : 'Absensi';
 
         await chat.client.sendMessage(
             approverWA,
