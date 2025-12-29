@@ -21,9 +21,6 @@ if (!fs.existsSync(ttdFolder)) {
     fs.mkdirSync(ttdFolder, { recursive: true });
 }
 
-// state untuk menunggu TTD per user/atasan
-const waitingTTD = {};
-
 const typeAndDelay = async (chat, ms = 800, random = 400) => {
     await chat.sendStateTyping();
     await new Promise(r => setTimeout(r, ms + Math.random() * random));
