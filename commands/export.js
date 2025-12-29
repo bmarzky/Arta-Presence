@@ -426,7 +426,7 @@ async function generatePDFLembur(chat, user, db){
         }
 
 
-        await sendTyping(chat,'Laporan lembur berhasil dibuat per bulan.');
+        await sendTyping(chat,'Laporan lembur berhasil dibuat.');
 
     } catch(err){
         console.error(err);

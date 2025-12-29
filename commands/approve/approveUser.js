@@ -73,16 +73,19 @@ module.exports = async function approveUser(chat, user, db) {
             );
         }
 
-        // kirim ke atasan
+        // Ambil approver dari DB jika kosong
         let approverWA = approval.approver_wa;
         if (!approverWA) {
             const [approver] = await query(`SELECT * FROM users WHERE jabatan='Head' LIMIT 1`);
-            if (!approver) return sendTyping(chat, "User dengan jabatan Head belum ada, tidak bisa melakukan approval");
+            if (!approver) 
+                return sendTyping(chat, "User dengan jabatan Head belum ada, tidak bisa melakukan approval");
+            
             approverWA = approver.wa;
             approval.nama_atasan = approver.nama_lengkap;
             approval.nik_atasan = approver.nik;
         }
         if (!approverWA.includes('@')) approverWA += '@c.us';
+
 
         const media = MessageMedia.fromFilePath(Array.isArray(updatedFilePath) ? updatedFilePath[0] : updatedFilePath);
         const greeting = getGreeting() || '';
