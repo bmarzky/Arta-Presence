@@ -63,17 +63,27 @@ module.exports = async function approveUser(chat, user, db) {
         // generate ulang PDF dari DB + template
         let updatedFilePath;
         if (user.export_type === 'lembur') {
-            updatedFilePath = await generatePDFLemburwithTTD(user, db, ttdFile, approval.template_export, nama_atasan, nik_atasan);
+            updatedFilePath = await generatePDFLemburwithTTD(
+                user, db, ttdFile, approval.template_export, approval.nama_atasan, approval.nik_atasan
+            );
         } else {
-            updatedFilePath = await generatePDFwithTTD(user, db, ttdFile, approval.template_export, nama_atasan, nik_atasan);
+            updatedFilePath = await generatePDFwithTTD(
+                user, db, ttdFile, approval.template_export, approval.nama_atasan, approval.nik_atasan
+            );
         }
 
         // kirim ke atasan
         let approverWA = approval.approver_wa;
-        if (!approverWA) return sendTyping(chat, 'Nomor approver belum disetel.');
+        if (!approverWA) {
+            const [approver] = await query(`SELECT * FROM users WHERE jabatan='Head' LIMIT 1`);
+            if (!approver) return sendTyping(chat, "User dengan jabatan Head belum ada, tidak bisa melakukan approval");
+            approverWA = approver.wa;
+            approval.nama_atasan = approver.nama_lengkap;
+            approval.nik_atasan = approver.nik;
+        }
         if (!approverWA.includes('@')) approverWA += '@c.us';
 
-        const media = MessageMedia.fromFilePath(updatedFilePath);
+        const media = MessageMedia.fromFilePath(Array.isArray(updatedFilePath) ? updatedFilePath[0] : updatedFilePath);
         const greeting = getGreeting() || '';
         const jenis_laporan = approval.export_type === 'lembur' ? 'Lembur' : 'Absensi';
 
@@ -176,7 +186,7 @@ async function generatePDFLemburwithTTD(user, db, ttdFile = '', templateName = '
     // Ambil approver dari DB jika kosong
     if (!namaAtasan || !nikAtasan) {
         const [approver] = await query(`SELECT * FROM users WHERE jabatan='Head' LIMIT 1`);
-        namaAtasan = approver?.nama_lengkap || 'Atasan';
+        namaAtasan = approver?.nama_lengkap || 'Approver';
         nikAtasan  = approver?.nik || '-';
     }
 
