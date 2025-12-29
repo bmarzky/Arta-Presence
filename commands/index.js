@@ -92,7 +92,6 @@ module.exports = {
                 const filename = `${wa_number}.${ext}`;
                 const filePath = path.join(ttdFolder, filename);
                 fs.writeFileSync(filePath, messageMedia.data, { encoding: 'base64' });
-                await chat.sendMessage('Laporan Approved');
 
                 // Jika user menunggu TTD untuk approve
                 if (waitingTTD[wa_number]?.user) {

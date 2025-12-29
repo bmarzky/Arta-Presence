@@ -97,17 +97,27 @@ if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
 
                 // generate ulang PDF dari DB + template
                 let updatedFilePath;
-        if (exportType === 'lembur') {
-            updatedFilePath = await generatePDFLemburwithTTD(
-                user, db, approval.template_export, approval.nama_atasan, approval.nik_atasan
-            );
-        } else {
-            updatedFilePath = await generatePDFwithTTD(
-                user, db, approval.template_export, approval.nama_atasan, approval.nik_atasan
-            );
-        }
+                if (approval.export_type === 'lembur') {
+                    updatedFilePath = await generatePDFLemburwithTTD(
+                        user,
+                        db,
+                        approval.template_export,
+                        approval.nama_atasan,
+                        approval.nik_atasan
+                    );
+                } else {
+                    updatedFilePath = await generatePDFwithTTD(
+                        user,
+                        db,
+                        approval.template_export,
+                        approval.nama_atasan,
+                        approval.nik_atasan
+                    );
+                }
 
-        const jenis_laporan = exportType === 'lembur' ? 'Lembur' : 'Absensi';
+        const jenis_laporan =
+        approval.export_type === 'lembur' ? 'Lembur' : 'Absensi';
+        
         const media = MessageMedia.fromFilePath(Array.isArray(updatedFilePath) ? updatedFilePath[0] : updatedFilePath);
         const greeting = getGreeting() || '';
 
