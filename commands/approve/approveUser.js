@@ -161,7 +161,7 @@ if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
 };
 
 // pdf absensi
-async function generatePDFwithTTD(user, db, templateName, namaAtasan='Atasan', nikAtasan='') {
+async function generatePDFwithTTD(user, db, templateName, namaAtasan, nikAtasan) {
     const query = (sql, params = []) =>
         new Promise((res, rej) => db.query(sql, params, (err, r) => err ? rej(err) : res(r)));
 
