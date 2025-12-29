@@ -49,15 +49,20 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         }
 
         // Alasan revisi
-        if (approval.step_input === 'alasan_revisi') {
-            if (approval.status !== 'revised')
-                return sendTyping(chat, 'Status laporan tidak valid untuk revisi.');
+        const revisiApproval = approvals.find(a => a.step_input === 'alasan_revisi');
 
+        if (revisiApproval) {
             if (rawText.trim().length < 3)
                 return sendTyping(chat, 'Silakan ketik *alasan revisi* yang jelas.');
 
-            await query(`UPDATE approvals SET revisi_catatan=?, step_input=NULL WHERE id=?`,
-                        [rawText.trim(), approval.id]);
+            await query(
+                `UPDATE approvals SET revisi_catatan=?, step_input=NULL WHERE id=?`,
+                [rawText.trim(), revisiApproval.id]
+            );
+
+            const userWA = revisiApproval.user_wa.includes('@')
+                ? revisiApproval.user_wa
+                : revisiApproval.user_wa + '@c.us';
 
             await chat.client.sendMessage(
                 userWA,

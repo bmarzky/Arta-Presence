@@ -127,12 +127,11 @@ if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
                         approval.nik_atasan
                     );
                 } else {
-                    updatedFilePath = await generatePDFwithTTD(
+                    await generatePDFwithTTD(
                         user,
                         db,
-                        approval.template_export,
-                        approval.nama_atasan,
-                        approval.nik_atasan
+                        templateName,
+                        atasan.wa_number
                     );
                 }
 
@@ -165,6 +164,15 @@ if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
 async function generatePDFwithTTD(user, db, templateName, namaAtasan='Atasan', nikAtasan='') {
     const query = (sql, params = []) =>
         new Promise((res, rej) => db.query(sql, params, (err, r) => err ? rej(err) : res(r)));
+
+    // ambil data atasan
+    const [atasan] = await query(
+        `SELECT nama_lengkap, nik FROM users WHERE wa_number=? LIMIT 1`,
+        [approverWA]
+    );
+
+    const namaAtasan = atasan?.nama_lengkap;
+    const nikAtasan  = atasan?.nik;
 
     // ambil absensi
     const now = new Date();
