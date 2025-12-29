@@ -5,7 +5,7 @@ const getGreeting = require('../../data/greetingTime');
 const fs = require('fs');
 const path = require('path');
 const generatePDF = require('../../utils/pdfGenerator');
-const { getLogoBase64, getTTDHTML } = require('../utils/getAssets');
+const { getLogoBase64, getTTDHTML } = require('../../utils/getAssets');
 const moment = require('moment');
 
 // folder TTD
