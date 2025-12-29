@@ -34,8 +34,6 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         }
     }
 
-
-
     try {
         // Data Atasan
         const [atasan] = await query(`SELECT * FROM users WHERE wa_number=? LIMIT 1`, [user.wa_number]);
@@ -69,7 +67,9 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         }
 
         // Alasan revisi
-        const revisiApproval = approvals.find(a => a.step_input === 'alasan_revisi');
+        const [revisiApproval] = await query(`SELECT * FROM approvals WHERE step_input='alasan_revisi' AND approver_wa=? LIMIT 1`, [user.wa_number]);
+        if (!revisiApproval) return sendTyping(chat, 'Tidak ada revisi yang menunggu input alasan.');
+
 
         if (revisiApproval) {
             if (rawText.trim().length < 3)
@@ -92,9 +92,8 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 `Silakan perbaiki dan lakukan */export* ulang.`
             );
 
-            return sendTyping(chat, 'Revisi berhasil dikirim.');
+            return sendTyping(chat, `Revisi berhasil dikirim ke *${revisiApproval.user_nama}*.`);
         }
-
         // parsing format
         const match = rawText.trim().match(/^(approve|revisi)\s+([^-]+)-(.+)$/i);
 
@@ -124,10 +123,14 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             if (approval.status !== 'pending')
                 return sendTyping(chat, 'Laporan sudah direvisi atau tidak bisa direvisi lagi.');
 
+            // set status dan step_input
             await query(`UPDATE approvals SET status='revised', step_input='alasan_revisi' WHERE id=?`, [approval.id]);
+
+            // ambil ulang approval yang baru saja diupdate
+            const [updatedApproval] = await query(`SELECT * FROM approvals WHERE id=?`, [approval.id]);
+
             return sendTyping(chat, `Silakan ketik *alasan revisi* untuk ${export_type}-${namaUser}.`);
         }
-
         // ====== APPROVE ======
         if (action === 'approve') {
             if (approval.status !== 'pending')
