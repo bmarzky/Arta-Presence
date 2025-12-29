@@ -15,25 +15,19 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             db.query(sql, params, (err, res) => err ? reject(err) : resolve(res))
         );
 
-        // --- Normalisasi pesan ---
-        const rawText = pesan || '';
-        const text = rawText.trim();
-        const command = text.split(' ')[0].toLowerCase(); // ambil kata pertama
+    const rawText = pesan || '';
+    const text = rawText.trim().toLowerCase();
 
-        // --- Guard akses ---
-        const restrictedCommands = ['approve', 'revisi', 'status'];
-        if (restrictedCommands.includes(command)) {
-            if (!user?.jabatan) {
-                return sendTyping(chat, 'Data jabatan kamu tidak ditemukan.');
-            }
+    // --- Guard akses ---
+    const restrictedCommands = ['approve', 'revisi', 'status'];
+    if (restrictedCommands.includes(text.split(' ')[0])) {
+        if (!user?.jabatan)
+            return sendTyping(chat, 'Data jabatan kamu tidak ditemukan.');
 
-            const allowedRoles = ['Head West Java Operation'];
-            if (!allowedRoles.includes(user.jabatan)) {
-                return sendTyping(chat,
-                    'Jabatan anda bukan *Head West Java Operation*, tidak memiliki akses untuk command ini.'
-                );
-            }
-        }
+        const allowedRoles = ['Head West Java Operation'];
+        if (!allowedRoles.includes(user.jabatan))
+            return sendTyping(chat, 'Jabatan anda bukan *Head West Java Operation*, tidak memiliki akses.');
+    }
 
 
     try {
