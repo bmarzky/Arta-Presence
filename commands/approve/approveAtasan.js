@@ -11,36 +11,31 @@ const waitingTTD = require('../../utils/waitingTTD');
 
 module.exports = async function approveAtasan(chat, user, pesan, db) {
     const query = (sql, params = []) =>
-        new Promise((resolve, reject) => db.query(sql, params, (err, res) => err ? reject(err) : resolve(res)));
+        new Promise((resolve, reject) =>
+            db.query(sql, params, (err, res) => err ? reject(err) : resolve(res))
+        );
 
     const rawText = pesan || '';
     const text = rawText.trim().toLowerCase();
 
-    // Guard akses
+    // --- Guard akses ---
     const restrictedCommands = ['approve', 'revisi', 'status'];
-
-    if (restrictedCommands.includes(text.toLowerCase())) {
-        if (!user?.jabatan) {
+    if (restrictedCommands.includes(text.split(' ')[0])) {
+        if (!user?.jabatan)
             return sendTyping(chat, 'Data jabatan kamu tidak ditemukan.');
-        }
 
         const allowedRoles = ['Head West Java Operation'];
-
-        if (!allowedRoles.includes(user.jabatan)) {
-            return sendTyping(
-                chat,
-                'Jabatan anda bukan *Head West Java Operation*, anda tidak memiliki akses untuk command ini.'
-            );
-        }
+        if (!allowedRoles.includes(user.jabatan))
+            return sendTyping(chat, 'Jabatan anda bukan *Head West Java Operation*, tidak memiliki akses.');
     }
 
     try {
-        // Data Atasan
+        // --- Data Atasan ---
         const [atasan] = await query(`SELECT * FROM users WHERE wa_number=? LIMIT 1`, [user.wa_number]);
         if (!atasan) return sendTyping(chat, 'Data atasan tidak ditemukan.');
 
-        // Daftar approval pending/revised
-        const approvals = await query(`
+        // --- Semua laporan pending/revised atau step_input='alasan_revisi' ---
+        const pendingApprovals = await query(`
             SELECT a.*,
                    u.wa_number AS user_wa,
                    u.nama_lengkap AS user_nama,
@@ -51,125 +46,22 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             FROM approvals a
             JOIN users u ON u.id = a.user_id
             WHERE a.approver_wa=? 
-              AND a.status IN ('pending','revised')
+              AND (a.status IN ('pending','revised') OR a.step_input='alasan_revisi')
             ORDER BY a.created_at ASC
         `, [user.wa_number]);
 
-        if (!approvals.length) return sendTyping(chat, 'Tidak ada laporan yang menunggu approval.');
+        if (!pendingApprovals.length) return sendTyping(chat, 'Tidak ada laporan yang menunggu approval.');
 
-        // Jika user ingin melihat status
+        // --- Jika hanya ingin lihat status ---
         if (text === 'status') {
-            let msg = '*Daftar Laporan Pending / Revisi:*\n\n';
-            approvals.forEach((a, i) => {
-                msg += `${i+1}. ${a.user_nama} (${a.export_type}) - Status: ${a.status}\n`;
-            });
-            return sendTyping(chat, msg);
+            const msg = pendingApprovals.map((a, i) =>
+                `${i+1}. ${a.user_nama} (${a.export_type}) - Status: ${a.status}`
+            ).join('\n');
+            return sendTyping(chat, `*Daftar Laporan Pending / Revisi:*\n\n${msg}`);
         }
 
-        // parsing format
-        const match = rawText.trim().match(/^(approve|revisi)\s+([^-]+)-(.+)$/i);
-
-        let action, export_type, namaUser, approval;
-        if (match) {
-                    action = match[1].toLowerCase();
-                    export_type = match[2].trim().toLowerCase();
-                    namaUser = match[3].trim().toLowerCase();
-
-            // cari approval sesuai export_type + nama user
-                    approval = approvals.find(a =>
-                        a.export_type.toLowerCase() === export_type &&
-                        a.user_nama.toLowerCase() === namaUser
-                    );
-
-            if (!approval)
-                return sendTyping(chat, `Tidak ditemukan laporan ${export_type}-${namaUser} yang menunggu approval/revisi.`);
-
-        // Alasan revisi
-        if (action === 'revisi') {
-            if (approval.status !== 'pending')
-                return sendTyping(chat, 'Laporan sudah direvisi atau tidak bisa direvisi lagi.');
-
-            await query(`UPDATE approvals SET status='revised', step_input='alasan_revisi' WHERE id=?`, [approval.id]);
-            return sendTyping(chat, `Silakan ketik *alasan revisi* untuk ${export_type}-${namaUser}.`);
-        }
-
-            // update userWA sesuai approval terpilih
-            var userWA = approval.user_wa.includes('@') ? approval.user_wa : approval.user_wa + '@c.us';
-        } else {
-            return sendTyping(chat, 'Format salah. Contoh:\napprove lembur-Bima Rizki\nrevisi absensi-Asep');
-        }
-
-        // approve
-        if (action === 'approve') {
-            if (approval.status !== 'pending')
-                return sendTyping(chat, 'Laporan ini sedang direvisi atau sudah diproses.');
-
-            // Normalisasi template
-            const templateRaw = approval.template_export || 'LMD';
-            const templateName = templateRaw.toUpperCase();
-            const templateLogo = templateRaw.toLowerCase();
-
-            // Logo
-            let logoBase64 = '';
-            let logoPath = path.join(__dirname, '../../assets/logo', `${templateLogo}.png`);
-            if (!fs.existsSync(logoPath)) logoPath = path.join(__dirname, '../../assets/logo/default.png');
-            if (fs.existsSync(logoPath)) logoBase64 = fs.readFileSync(logoPath, 'base64');
-
-            // TTD atasan
-            let ttdAtasanBase64 = '';
-            const ttdPng = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.png`);
-            const ttdJpg = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.jpg`);
-            if (fs.existsSync(ttdPng)) ttdAtasanBase64 = fs.readFileSync(ttdPng, 'base64');
-            else if (fs.existsSync(ttdJpg)) ttdAtasanBase64 = fs.readFileSync(ttdJpg, 'base64');
-
-            if (!ttdAtasanBase64 && approval.step_input !== 'ttd_atasan') {
-
-                waitingTTD[atasan.wa_number] = { atasan: true };
-
-                await sendTyping(chat, 'Silakan kirim foto TTD kamu untuk approve laporan ini.');
-                await query(`UPDATE approvals SET step_input='ttd_atasan' WHERE id=?`, [approval.id]);
-                return;
-            }
-
-
-            if (ttdAtasanBase64 && approval.step_input === 'ttd_atasan') {
-                await query(`UPDATE approvals SET step_input=NULL WHERE id=?`, [approval.id]);
-            }
-
-            // TTD User
-            let ttdUserBase64 = '';
-            const ttdUserPng = path.join(__dirname, '../../assets/ttd', `${approval.user_wa}.png`);
-            const ttdUserJpg = path.join(__dirname, '../../assets/ttd', `${approval.user_wa}.jpg`);
-            if (fs.existsSync(ttdUserPng)) ttdUserBase64 = fs.readFileSync(ttdUserPng, 'base64');
-            else if (fs.existsSync(ttdUserJpg)) ttdUserBase64 = fs.readFileSync(ttdUserJpg, 'base64');
-
-            // Generate PDF
-            let outputPath;
-            if (approval.export_type === 'lembur') {
-                outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64, atasan.wa_number);
-            } else {
-                outputPath = await generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64, atasan.wa_number);
-            }
-
-            // Update status approved
-            await query(`UPDATE approvals SET status='approved', file_path=? WHERE id=?`, [outputPath, approval.id]);
-
-            await chat.client.sendMessage(userWA, MessageMedia.fromFilePath(outputPath));
-            await chat.client.sendMessage(userWA,
-                `*Laporan ${approval.export_type.toUpperCase()} Berhasil Di-Approve*\n\n` +
-                `Halo *${approval.user_nama}*,\n` +
-                `Laporan kamu telah *DISETUJUI* oleh *${atasan.nama_lengkap}*.\n\n` +
-                `Terima kasih.`
-            );
-
-            return sendTyping(chat, `Approval berhasil dikirim ke *${approval.user_nama}*.`);
-        }
-
-        // alasan revisi
-        const [revisiApproval] = await query(
-            `SELECT * FROM approvals WHERE step_input='alasan_revisi' AND approver_wa=? LIMIT 1`,
-            [user.wa_number]
-        );
+        // --- Tangani step_input='alasan_revisi' ---
+        const revisiApproval = pendingApprovals.find(a => a.step_input === 'alasan_revisi');
         if (revisiApproval) {
             const userWA = revisiApproval.user_wa.includes('@') ? revisiApproval.user_wa : revisiApproval.user_wa + '@c.us';
 
@@ -184,11 +76,76 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             await chat.client.sendMessage(
                 userWA,
                 `*LAPORAN PERLU REVISI*\n\nApproval: *${atasan.nama_lengkap}*\n\n` +
-                `*Catatan revisi:*\n${rawText.trim()}\n\n` +
-                `Silakan perbaiki dan lakukan */export* ulang.`
+                `*Catatan revisi:*\n${rawText.trim()}\n\nSilakan perbaiki dan lakukan */export* ulang.`
             );
 
             return sendTyping(chat, `Revisi berhasil dikirim ke *${revisiApproval.user_nama}*.`);
+        }
+
+        // --- Parsing format approve/revisi ---
+        const match = rawText.trim().match(/^(approve|revisi)\s+([^-]+)-(.+)$/i);
+        if (!match)
+            return sendTyping(chat, 'Format salah. Contoh:\napprove lembur-Bima Rizki\nrevisi absensi-Asep\nstatus');
+
+        const action = match[1].toLowerCase();
+        const export_type = match[2].trim().toLowerCase();
+        const namaUser = match[3].trim().toLowerCase();
+
+        const approval = pendingApprovals.find(a =>
+            a.export_type.toLowerCase() === export_type &&
+            a.user_nama.toLowerCase() === namaUser
+        );
+
+        if (!approval)
+            return sendTyping(chat, `Tidak ditemukan laporan ${export_type}-${namaUser} yang menunggu approval/revisi.`);
+
+        // --- Handle revisi ---
+        if (action === 'revisi') {
+            if (approval.status !== 'pending')
+                return sendTyping(chat, 'Laporan sudah direvisi atau tidak bisa direvisi lagi.');
+
+            await query(`UPDATE approvals SET status='revised', step_input='alasan_revisi' WHERE id=?`, [approval.id]);
+            return sendTyping(chat, `Silakan ketik *alasan revisi* untuk ${export_type}-${namaUser}.`);
+        }
+
+        // --- Handle approve ---
+        if (action === 'approve') {
+            // --- Cek TTD atasan ---
+            let ttdAtasanBase64 = '';
+            const ttdPng = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.png`);
+            const ttdJpg = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.jpg`);
+            if (fs.existsSync(ttdPng)) ttdAtasanBase64 = fs.readFileSync(ttdPng, 'base64');
+            else if (fs.existsSync(ttdJpg)) ttdAtasanBase64 = fs.readFileSync(ttdJpg, 'base64');
+
+            if (!ttdAtasanBase64 && approval.step_input !== 'ttd_atasan') {
+                waitingTTD[atasan.wa_number] = { atasan: true };
+                await sendTyping(chat, 'Silakan kirim foto TTD kamu untuk approve laporan ini.');
+                await query(`UPDATE approvals SET step_input='ttd_atasan' WHERE id=?`, [approval.id]);
+                return;
+            }
+
+            if (ttdAtasanBase64 && approval.step_input === 'ttd_atasan') {
+                await query(`UPDATE approvals SET step_input=NULL WHERE id=?`, [approval.id]);
+            }
+
+            // --- TTD User ---
+            let ttdUserBase64 = '';
+            const ttdUserPng = path.join(__dirname, '../../assets/ttd', `${approval.user_wa}.png`);
+            const ttdUserJpg = path.join(__dirname, '../../assets/ttd', `${approval.user_wa}.jpg`);
+            if (fs.existsSync(ttdUserPng)) ttdUserBase64 = fs.readFileSync(ttdUserPng, 'base64');
+            else if (fs.existsSync(ttdUserJpg)) ttdUserBase64 = fs.readFileSync(ttdUserJpg, 'base64');
+
+            // --- Generate PDF ---
+            let outputPath;
+            if (approval.export_type === 'lembur') {
+                outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64, atasan.wa_number);
+            } else {
+                outputPath = await generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64, atasan.wa_number);
+            }
+
+            // --- Set status approved ---
+            await query(`UPDATE approvals SET status='approved', step_input=NULL WHERE id=?`, [approval.id]);
+            return sendTyping(chat, `Laporan ${export_type}-${namaUser} berhasil diapprove.`);
         }
 
     } catch (err) {
@@ -196,7 +153,6 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         return sendTyping(chat, 'Terjadi error pada sistem approval.');
     }
 };
-
 
 // Fungsi generate PDF untuk atasan - absensi
 async function generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64, waAtasan) {
