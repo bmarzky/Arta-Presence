@@ -229,6 +229,10 @@ async function generatePDFandSend(chat, user, db, paramBulan){
         await generatePDF(html,pdfFile);
         await chat.sendMessage(MessageMedia.fromFilePath(pdfFile));
 
+        const safeApproverWA   = approverWA ? approverWA : '-';
+        const safeApproverNama = approverNama ? approverNama : '-';
+        const safeApproverNik  = approverNik ? approverNik : '-';
+
         await query(
             `INSERT INTO approvals
             (user_id, approver_wa, file_path, template_export, status, source,
@@ -236,11 +240,11 @@ async function generatePDFandSend(chat, user, db, paramBulan){
             VALUES (?, ?, ?, ?, 'draft', 'export', NOW(), NOW(), ?, ?, 0)`,
             [
                 user.id,
-                approverWA || '-',
+                safeApproverWA,
                 path.basename(pdfFile),
                 templateName,
-                approverNama || '-',
-                approverNik || '-'
+                safeApproverNama,
+                safeApproverNik
             ]
         );
 
