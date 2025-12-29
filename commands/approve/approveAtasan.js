@@ -16,6 +16,16 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     const rawText = pesan || '';
     const text = rawText.trim().toLowerCase();
 
+    // Guard akses
+    if (!user?.jabatan) return;
+
+    // hanya jabatan head
+    const allowedRoles = ['Head'];
+
+    if (!allowedRoles.includes(user.jabatan)) {
+        return;
+    }
+
     try {
         // Data Atasan
         const [atasan] = await query(`SELECT * FROM users WHERE wa_number=? LIMIT 1`, [user.wa_number]);
