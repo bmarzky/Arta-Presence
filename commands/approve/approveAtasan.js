@@ -142,10 +142,11 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             // --- Generate PDF ---
             let outputPath;
             if (approval.export_type === 'lembur') {
-                outputPath = await require('../../utils/pdfGenerator').generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64, atasan.wa_number);
+                outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64, atasan.wa_number);
             } else {
-                outputPath = await require('../../utils/pdfGenerator').generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64, atasan.wa_number);
+                outputPath = await generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64, atasan.wa_number);
             }
+
 
             // --- Update status approved ---
             await query(`UPDATE approvals SET status='approved', step_input=NULL WHERE id=?`, [approval.id]);
