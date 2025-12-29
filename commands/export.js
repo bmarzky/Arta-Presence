@@ -223,11 +223,13 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
             );
         
             await sendTyping(chat,'Laporan absensi berhasil dibuat.');
-
+        
         } catch(err){
             console.error(err);
             return sendTyping(chat,'Terjadi kesalahan saat membuat PDF absensi.');
         }
+
+    }
 
     // Generate pdf lembur
     async function generatePDFLembur(chat, user, db){
@@ -403,7 +405,6 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
             return sendTyping(chat,'Terjadi kesalahan saat membuat PDF lembur.');
         }
     }
-}
 
 module.exports = {
     handleExport,
