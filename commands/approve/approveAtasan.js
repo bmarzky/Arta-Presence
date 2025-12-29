@@ -35,7 +35,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         const [atasan] = await query(`SELECT * FROM users WHERE wa_number=? LIMIT 1`, [user.wa_number]);
         if (!atasan) return sendTyping(chat, 'Data atasan tidak ditemukan.');
 
-        // --- Semua laporan pending/revised atau step_input='alasan_revisi' ---
+        // --- Semua laporan pending/revised ---
         const pendingApprovals = await query(`
             SELECT a.*,
                    u.wa_number AS user_wa,
@@ -53,7 +53,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
         if (!pendingApprovals.length) return sendTyping(chat, 'Tidak ada laporan yang menunggu approval.');
 
-        // --- Jika hanya ingin lihat status ---
+        // --- Status ---
         if (text === 'status') {
             const msg = pendingApprovals.map((a, i) =>
                 `${i+1}. ${a.user_nama} (${a.export_type}) - Status: ${a.status}`
@@ -61,7 +61,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             return sendTyping(chat, `*Daftar Laporan Pending / Revisi:*\n\n${msg}`);
         }
 
-        // --- Tangani step_input='alasan_revisi' ---
+        // --- Tangani revisi ---
         const revisiApproval = pendingApprovals.find(a => a.step_input === 'alasan_revisi');
         if (revisiApproval) {
             const userWA = revisiApproval.user_wa.includes('@') ? revisiApproval.user_wa : revisiApproval.user_wa + '@c.us';
@@ -82,7 +82,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             return sendTyping(chat, `Revisi berhasil dikirim ke *${revisiApproval.user_nama}*.`);
         }
 
-        // --- Parsing format approve/revisi ---
+        // --- Parsing approve/revisi ---
         const match = rawText.trim().match(/^(approve|revisi)\s+([^-]+)-(.+)$/i);
         if (!match)
             return sendTyping(chat, 'Format salah. Contoh:\napprove lembur-Bima Rizki\nrevisi absensi-Asep\nstatus');
@@ -101,7 +101,6 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             .sort((a, b) => b.id - a.id)[0];
 
         if (!approval) {
-            // Cek fallback untuk laporan sebelumnya
             const oldApproval = pendingApprovals.find(a =>
                 a.export_type.toLowerCase() === export_type &&
                 a.user_nama.toLowerCase() === namaUser
@@ -133,11 +132,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 return;
             }
 
-            if (ttdAtasanBase64 && approval.step_input === 'ttd_atasan') {
-                await query(`UPDATE approvals SET step_input=NULL WHERE id=?`, [approval.id]);
-            }
-
-            // --- ttd User ---
+            // --- Load TTD user ---
             let ttdUserBase64 = '';
             const ttdUserPng = path.join(__dirname, '../../assets/ttd', `${approval.user_wa}.png`);
             const ttdUserJpg = path.join(__dirname, '../../assets/ttd', `${approval.user_wa}.jpg`);
@@ -147,14 +142,22 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             // --- Generate PDF ---
             let outputPath;
             if (approval.export_type === 'lembur') {
-                outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64, atasan.wa_number);
+                outputPath = await require('../../utils/pdfGenerator').generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64, atasan.wa_number);
             } else {
-                outputPath = await generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64, atasan.wa_number);
+                outputPath = await require('../../utils/pdfGenerator').generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64, atasan.wa_number);
             }
 
-            // --- Set status approved ---
+            // --- Update status approved ---
             await query(`UPDATE approvals SET status='approved', step_input=NULL WHERE id=?`, [approval.id]);
-            return sendTyping(chat, `Laporan ${export_type}-${namaUser} berhasil diapprove.`);
+
+            // --- Kirim file ke user ---
+            const media = MessageMedia.fromFilePath(outputPath);
+            const userWA = approval.user_wa.includes('@') ? approval.user_wa : approval.user_wa + '@c.us';
+            await chat.client.sendMessage(userWA, media);
+            await chat.client.sendMessage(userWA, `Laporan ${approval.export_type}-${approval.user_nama} telah disetujui oleh *${atasan.nama_lengkap}*.`);
+
+            // --- Konfirmasi ke atasan ---
+            return sendTyping(chat, `*File berhasil ditandatangani*\nApproval laporan telah selesai dan dikirim ke *${approval.user_nama}*.`);
         }
 
     } catch (err) {
