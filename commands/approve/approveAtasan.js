@@ -5,6 +5,8 @@ const path = require('path');
 const fs = require('fs');
 const moment = require('moment');
 const generatePDF = require('../../utils/pdfGenerator');
+const { getLogoBase64, getTTDHTML } = require('../utils/getAssets');
+
 
 module.exports = async function approveAtasan(chat, user, pesan, db) {
     const query = (sql, params = []) =>
@@ -143,9 +145,9 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             // Generate PDF
             let outputPath;
             if (approval.export_type === 'lembur') {
-                outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64);
+                outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64, atasan.wa_number);
             } else {
-                outputPath = await generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64);
+                outputPath = await generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64, atasan.wa_number);
             }
 
             // Update status approved
@@ -170,7 +172,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
 
 // Fungsi generate PDF untuk atasan - absensi
-async function generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64) {
+async function generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64, waAtasan) {
     const fs = require('fs');
     const path = require('path');
     const generatePDF = require('../../utils/pdfGenerator');
@@ -223,18 +225,11 @@ async function generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64
     }
 
     // logo
-    const logoFile = path.join(__dirname, `../../assets/logo/${templateName.toLowerCase()}.png`);
-    const logoBase64 = fs.existsSync(logoFile)
-        ? 'data:image/png;base64,' + fs.readFileSync(logoFile).toString('base64')
-        : '';
-
-    // TTD user
-    const ttdUserHTML = ttdUserBase64
-        ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:150px;" />`
-        : '';
-
-    // TTD atasan
-    const ttdAtasanHTML = `<img src="data:image/png;base64,${ttdAtasanBase64}" style="max-width:150px; max-height:150px;" />`;
+    const logoBase64 = getLogoBase64(templateName);
+    // ttd user
+    const ttdUserHTML = getTTDHTML(approval.user_wa);
+    // ttd atasan
+    const ttdAtasanHTML = getTTDHTML(waAtasan);
 
     html = html.replace(/{{logo}}/g, logoBase64)
                .replace(/{{nama}}/g, approval.user_nama)
@@ -257,7 +252,7 @@ async function generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64
 }
 
 // Fungsi generate PDF untuk atasan - lembur
-async function generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64) {
+async function generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64, waAtasan) {
     const fs = require('fs');
     const path = require('path');
     const generatePDF = require('../../utils/pdfGenerator');
@@ -357,13 +352,12 @@ async function generatePDFLemburForAtasan(approval, db, ttdAtasanBase64, ttdUser
 
         const totalLemburKeseluruhan = `${Number.isInteger(totalLemburDecimal) ? totalLemburDecimal : totalLemburDecimal.toFixed(1)} Jam`;
 
-        // Logo
-        const logoFile = path.join(__dirname, `../../assets/logo/${templateName.toLowerCase()}.png`);
-        const logoBase64 = fs.existsSync(logoFile) ? 'data:image/png;base64,' + fs.readFileSync(logoFile).toString('base64') : '';
-
-        // TTD User & Atasan
-        const ttdUserHTML = ttdUserBase64 ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:150px;" />` : '';
-        const ttdAtasanHTML = ttdAtasanBase64 ? `<img src="data:image/png;base64,${ttdAtasanBase64}" style="max-width:150px; max-height:150px;" />` : '';
+    // logo
+    const logoBase64 = getLogoBase64(templateName);
+    // ttd user
+    const ttdUserHTML = getTTDHTML(approval.user_wa);
+    // ttd atasan
+    const ttdAtasanHTML = getTTDHTML(waAtasan);
 
         // Template HTML
         const templatePath = path.join(__dirname, `../../templates/lembur/${templateName}.html`);

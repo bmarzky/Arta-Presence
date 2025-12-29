@@ -5,7 +5,7 @@ const moment = require('moment');
 const { MessageMedia } = require('whatsapp-web.js');
 const { sendTyping } = require('../utils/sendTyping');
 const generatePDF = require('../utils/pdfGenerator');
-
+const { getLogoBase64, getTTDHTML } = require('../utils/getAssets');
 const ttdFolder = path.join(__dirname, '../assets/ttd/');
 
 const formatTanggalLMD = (date) => {
@@ -192,20 +192,10 @@ async function generatePDFandSend(chat, user, db, paramBulan){
             );
         }
 
-        const logoFile = path.join(__dirname, `../assets/logo/${templateSafe}.png`);
-        const logoBase64 = fs.existsSync(logoFile)
-            ? 'data:image/png;base64,'+fs.readFileSync(logoFile).toString('base64')
-            : '';
-
-        const ttdPng = path.join(ttdFolder,`${user.wa_number}.png`);
-        const ttdJpg = path.join(ttdFolder,`${user.wa_number}.jpg`);
-        let ttdUserBase64='';
-        if(fs.existsSync(ttdPng)) ttdUserBase64=fs.readFileSync(ttdPng,'base64');
-        else if(fs.existsSync(ttdJpg)) ttdUserBase64=fs.readFileSync(ttdJpg,'base64');
-
-        const ttdUserHTML = ttdUserBase64
-            ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px;max-height:150px;">`
-            : '';
+        // logo
+        const logoBase64 = getLogoBase64(templateName);
+        // ttd
+        const ttdUserHTML = getTTDHTML(user.wa_number);
 
         const templatePath = path.join(__dirname, `../templates/absensi/${templateName}.html`);
         let html = fs.readFileSync(templatePath,'utf8');
@@ -229,24 +219,23 @@ async function generatePDFandSend(chat, user, db, paramBulan){
         await generatePDF(html,pdfFile);
         await chat.sendMessage(MessageMedia.fromFilePath(pdfFile));
 
-        const safeApproverWA   = approverWA ? approverWA : '-';
-        const safeApproverNama = approverNama ? approverNama : '-';
-        const safeApproverNik  = approverNik ? approverNik : '-';
-
-        await query(
-            `INSERT INTO approvals
-            (user_id, approver_wa, file_path, template_export, status, source,
-            created_at, ttd_user_at, nama_atasan, nik_atasan, user_approved)
-            VALUES (?, ?, ?, ?, 'draft', 'export', NOW(), NOW(), ?, ?, 0)`,
-            [
-                user.id,
-                safeApproverWA,
-                path.basename(pdfFile),
-                templateName,
-                safeApproverNama,
-                safeApproverNik
-            ]
-        );
+        // Simpan ke approvals hanya jika approverWA ada
+        if(approverWA){
+            await query(
+                `INSERT INTO approvals
+                (user_id, approver_wa, file_path, template_export, status, source,
+                created_at, ttd_user_at, nama_atasan, nik_atasan, user_approved)
+                VALUES (?, ?, ?, ?, 'draft', 'export', NOW(), NOW(), ?, ?, 0)`,
+                [
+                    user.id,
+                    approverWA,
+                    path.basename(pdfFile),
+                    templateName,
+                    approverNama,
+                    approverNik
+                ]
+            );
+        }
 
         await sendTyping(chat,'Laporan absensi berhasil dibuat.');
 
@@ -295,22 +284,9 @@ async function generatePDFLembur(chat, user, db){
         ];
 
         // logo
-        const logoFile = path.join(__dirname, `../assets/logo/${templateName.toLowerCase()}.png`);
-        const logoBase64 = fs.existsSync(logoFile)
-            ? 'data:image/png;base64,' + fs.readFileSync(logoFile).toString('base64')
-            : '';
-
-        // ttd user
-        const ttdPng = path.join(ttdFolder, `${user.wa_number}.png`);
-        const ttdJpg = path.join(ttdFolder, `${user.wa_number}.jpg`);
-        let ttdUserBase64 = '';
-
-        if (fs.existsSync(ttdPng)) ttdUserBase64 = fs.readFileSync(ttdPng, 'base64');
-        else if (fs.existsSync(ttdJpg)) ttdUserBase64 = fs.readFileSync(ttdJpg, 'base64');
-
-        const ttdUserHTML = ttdUserBase64
-            ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px;max-height:150px;">`
-            : '';
+        const logoBase64 = getLogoBase64(templateName);
+        // ttd
+        const ttdUserHTML = getTTDHTML(user.wa_number);
     
         // Group data by bulan
         const grouped = {};
@@ -431,21 +407,24 @@ async function generatePDFLembur(chat, user, db){
             await generatePDF(html, pdfFile);
             await chat.sendMessage(MessageMedia.fromFilePath(pdfFile));
 
-            await query(
-                `INSERT INTO approvals
-                (user_id, approver_wa, file_path, template_export, status, source,
-                 created_at, ttd_user_at, nama_atasan, nik_atasan, user_approved)
-                VALUES (?, ?, ?, ?, 'draft', 'export', NOW(), NOW(), ?, ?, 0)`,
-                [
-                    user.id,
-                    approverWA,
-                    path.basename(pdfFile),
-                    templateName,
-                    approverNama,
-                    approverNik
-                ]
-            );
+            if (approverWA) {
+                await query(
+                    `INSERT INTO approvals
+                    (user_id, approver_wa, file_path, template_export, status, source,
+                    created_at, ttd_user_at, nama_atasan, nik_atasan, user_approved)
+                    VALUES (?, ?, ?, ?, 'draft', 'export', NOW(), NOW(), ?, ?, 0)`,
+                    [
+                        user.id,
+                        approverWA,
+                        path.basename(pdfFile),
+                        templateName,
+                        approverNama,
+                        approverNik
+                    ]
+                );
+            }
         }
+
 
         await sendTyping(chat,'Laporan lembur berhasil dibuat per bulan.');
 

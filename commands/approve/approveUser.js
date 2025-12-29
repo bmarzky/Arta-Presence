@@ -5,6 +5,7 @@ const getGreeting = require('../../data/greetingTime');
 const fs = require('fs');
 const path = require('path');
 const generatePDF = require('../../utils/pdfGenerator');
+const { getLogoBase64, getTTDHTML } = require('../utils/getAssets');
 const moment = require('moment');
 
 // folder TTD
@@ -150,14 +151,11 @@ async function generatePDFwithTTD(user, db, ttdFile, templateName, namaAtasan='A
     }
 
     // logo
-    const logoFile = path.join(__dirname, `../../assets/logo/${templateName.toLowerCase()}.png`);
-    const logoBase64 = fs.existsSync(logoFile)
-        ? 'data:image/png;base64,' + fs.readFileSync(logoFile).toString('base64')
-        : '';
+    const logoBase64 = getLogoBase64(templateName);
 
-    // TTD user
-    const ttdBase64 = fs.readFileSync(ttdFile).toString('base64');
-    const ttdHTML = `<img src="data:image/png;base64,${ttdBase64}" style="max-width:150px; max-height:150px;" />`;
+    // ttd
+    const ttdUserHTML = getTTDHTML(user.wa_number);
+
 
     html = html.replace(/{{logo}}/g, logoBase64)
                .replace(/{{nama}}/g, user.nama_lengkap)
@@ -226,22 +224,10 @@ async function generatePDFLemburwithTTD(user, db, ttdFile = '', templateName = '
             : `1 - ${new Date(tahun, bulanIdx+1, 0).getDate()} ${bulanNama[bulanIdx]} ${tahun}`;
 
         // Logo
-        const logoFile = path.join(__dirname, `../../assets/logo/${templateName.toLowerCase()}.png`);
-        const logoBase64 = fs.existsSync(logoFile)
-            ? 'data:image/png;base64,' + fs.readFileSync(logoFile).toString('base64')
-            : '';
+        const logoBase64 = getLogoBase64(templateName);
 
-        // TTD user fallback PNG/JPG
-        let ttdUserBase64 = '';
-        if(ttdFile && fs.existsSync(ttdFile)){
-            ttdUserBase64 = fs.readFileSync(ttdFile).toString('base64');
-        } else {
-            const ttdPng = path.join(__dirname, '../../assets/ttd', `${user.wa_number}.png`);
-            const ttdJpg = path.join(__dirname, '../../assets/ttd', `${user.wa_number}.jpg`);
-            if(fs.existsSync(ttdPng)) ttdUserBase64 = fs.readFileSync(ttdPng).toString('base64');
-            else if(fs.existsSync(ttdJpg)) ttdUserBase64 = fs.readFileSync(ttdJpg).toString('base64');
-        }
-        const ttdUserHTML = ttdUserBase64 ? `<img src="data:image/png;base64,${ttdUserBase64}" style="max-width:150px; max-height:150px;">` : '';
+        //ttd
+        const ttdUserHTML = getTTDHTML(user.wa_number);
 
         // Generate rows
         let rows = '';
