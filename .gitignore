@@ -19,6 +19,9 @@ exports/
 .DS_Store
 Thumbs.db
 
+# assets/ttd
+assets/logo/
+
 # Temp files
 *.tmp
 *.log
