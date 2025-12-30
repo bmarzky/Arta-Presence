@@ -117,24 +117,35 @@
   </table>
 
   <!-- TANDA TANGAN -->
-  <table class="signature">
-    <tr>
-      <td>Menyetujui,</td>
-      <td>Dibuat oleh,</td>
-    </tr>
-    <tr>
-      <td class="space">{{ttd_atasan}}</td>
-      <td class="space">{{ttd_user}}</td>
-    </tr>
-    <tr>
-      <td class="bold"><u>{{nama_atasan}}</u></td>
-      <td class="bold"><u>{{nama}}</u></td>
-    </tr>
-    <tr>
-      <td>NIK : {{nik_atasan}}</td>
-      <td>NIK : {{nik}}</td>
-    </tr>
-  </table>
+<table style="width:100%; margin-top:50px; border-collapse: collapse;">
+  <tr>
+    <!-- Kolom Atasan -->
+    <td style="width:50%; text-align:center; vertical-align:top; position:relative;">
+      <div>Menyetujui,</div>
+      <div style="margin-top:60px; position:relative; display:inline-block;">
+        <!-- TTD sedikit overlay ke nama -->
+        {{{ttd_atasan}}}
+        <div style="position:absolute; bottom:-20px; width:100%; text-align:center;">
+          <strong>{{nama_atasan}}</strong><br>
+          NIK : {{nik_atasan}}
+        </div>
+      </div>
+    </td>
+
+    <!-- Kolom User -->
+    <td style="width:50%; text-align:center; vertical-align:top; position:relative;">
+      <div>Dibuat oleh,</div>
+      <div style="margin-top:60px; position:relative; display:inline-block;">
+        <!-- TTD sedikit overlay ke nama -->
+        {{{ttd_user}}}
+        <div style="position:absolute; bottom:-20px; width:100%; text-align:center;">
+          <strong>{{nama}}</strong><br>
+          NIK : {{nik}}
+        </div>
+      </div>
+    </td>
+  </tr>
+</table>
 
 </body>
 </html>
