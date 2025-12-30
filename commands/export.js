@@ -287,8 +287,8 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
             const [approver] = await query(
                 `SELECT nama_lengkap, nik FROM users WHERE jabatan='Head West Java Operation' LIMIT 1`
             );
-            const approverNama = approver?.nama_lengkap || '-';
-            const approverNik = approver?.nik || '-';
+            const approverNama = approver?.nama_lengkap || '';
+            const approverNik = approver?.nik || '';
 
             const templatePath = path.join(__dirname, `../templates/absensi/${templateName}.html`);
             let html = fs.readFileSync(templatePath,'utf8');
