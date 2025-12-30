@@ -301,6 +301,7 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
                 .replace(/{{periode}}/g,periode)
                 .replace(/{{rows_absensi}}/g,rows.join(''))
                 .replace(/{{ttd_user}}/g,ttdUserHTML)
+                .replace(/{{ttd_atasan}}/g,'')
                 .replace(/{{nama_atasan}}/g,approverNama)
                 .replace(/{{nik_atasan}}/g,approverNik);
 
@@ -477,7 +478,9 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
                     .replace(/{{ttd_user}}/g, ttdUserHTML)
                     .replace(/{{nama_atasan}}/g, approverNama)
                     .replace(/{{nik_atasan}}/g, approverNik)
-                    .replace(/{{total_lembur}}/g, totalLembur);
+                    .replace(/{{total_lembur}}/g, totalLembur)
+                    .replace(/{{ttd_atasan}}/g, '')
+                    ;
 
                 const pdfFile = path.join(
                     exportsDir,
