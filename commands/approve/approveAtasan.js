@@ -21,13 +21,14 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     // guard akses
     const restrictedCommands = ['approve', 'revisi', 'status'];
     if (restrictedCommands.includes(text.split(' ')[0])) {
-        if (!user?.jabatan)
-            return sendTyping(chat, 'Data jabatan kamu tidak ditemukan.');
+    if (!user?.jabatan)
+        return sendTyping(chat, 'Data jabatan kamu tidak ditemukan.');
 
-        const allowedRoles = ['Head West Java Operation'];
-        if (!allowedRoles.includes(user.jabatan))
-            return sendTyping(chat, 'Jabatan anda bukan *Head West Java Operation*, tidak memiliki akses.');
+    const allowedRoles = ['Head West Java Operation'];
+    if (!allowedRoles.includes(user.jabatan)) {
+        return sendTyping(chat, '⚠ Jabatan anda bukan *Head West Java Operation*, akses terbatas.');
     }
+        }
 
     try {
         // data atasan
@@ -157,15 +158,12 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 return;
             }
 
-            const ttdAtasanHTML = getTTDHTML(atasan.wa_number);
-            const ttdUserHTML = getTTDHTML(approval.user_wa);
-
             // Generate PDF
             let outputPath;
             if (approval.export_type === 'lembur') {
                 outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML, atasan.wa_number);
             } else {
-                outputPath = await generatePDFForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML, atasan.wa_number);
+                outputPath = await generatePDFForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML);
             }
 
             // Update status approved
@@ -188,7 +186,8 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 };
 
 // Fungsi generate PDF - absensi
-async function generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64, waAtasan) {
+async function generatePDFForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML)
+ {
     const fs = require('fs');
     const path = require('path');
     const generatePDF = require('../../utils/pdfGenerator');
@@ -242,10 +241,6 @@ async function generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64
 
     // logo
     const logoBase64 = getLogoBase64(templateName);
-    // ttd user
-    const ttdUserHTML = getTTDHTML(approval.user_wa);
-    // ttd atasan
-    const ttdAtasanHTML = getTTDHTML(waAtasan);
 
     html = html.replace(/{{logo}}/g, logoBase64)
                .replace(/{{nama}}/g, approval.user_nama)
@@ -370,10 +365,6 @@ async function generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHT
 
     // logo
     const logoBase64 = getLogoBase64(templateName);
-    // ttd user
-    const ttdUserHTML = getTTDHTML(approval.user_wa);
-    // ttd atasan
-    const ttdAtasanHTML = getTTDHTML(waAtasan);
 
         // Template HTML
         const templatePath = path.join(__dirname, `../../templates/lembur/${templateName}.html`);
