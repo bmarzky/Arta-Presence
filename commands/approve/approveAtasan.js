@@ -18,18 +18,6 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     const rawText = pesan || '';
     const text = rawText.trim().toLowerCase();
 
-    // guard akses
-    const restrictedCommands = ['approve', 'revisi', 'status'];
-    if (restrictedCommands.includes(text.split(' ')[0])) {
-    if (!user?.jabatan)
-        return sendTyping(chat, 'Data jabatan kamu tidak ditemukan.');
-
-    const allowedRoles = ['Head West Java Operation'];
-    if (!allowedRoles.includes(user.jabatan)) {
-        return sendTyping(chat, '⚠ Jabatan anda bukan *Head West Java Operation*, akses terbatas.');
-    }
-        }
-
     try {
         // data atasan
         const [atasan] = await query(`SELECT * FROM users WHERE wa_number=? LIMIT 1`, [user.wa_number]);
