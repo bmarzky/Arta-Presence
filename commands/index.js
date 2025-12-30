@@ -48,7 +48,7 @@ module.exports = {
             if (restrictedCommands.includes(command)) {
                 if (!user.jabatan) return sendTyping(chat, 'Data jabatan kamu tidak ditemukan.');
                 if (user.jabatan !== 'Head West Java Operation') 
-                    return sendTyping(chat, 'Jabatan anda bukan *Head West Java Operation*,\n\n akses terbatas untuk approvals.');
+                    return sendTyping(chat, 'Jabatan anda bukan *Head West Java Operation*,\n akses terbatas untuk approvals.');
 
                 return approveAtasan(chat, user, pesan, db);
             }
