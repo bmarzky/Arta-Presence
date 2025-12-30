@@ -36,9 +36,14 @@ module.exports = {
         try {
             // Ambil user atau buat baru
             let [user] = await query("SELECT * FROM users WHERE wa_number=?", [wa_number]);
+
             if (!user) {
                 await query("INSERT INTO users (wa_number, nama_wa, intro) VALUES (?, ?, 0)", [wa_number, nama_wa]);
                 [user] = await query("SELECT * FROM users WHERE wa_number=?", [wa_number]);
+            } else if (user.nama_wa !== nama_wa) {
+
+                await query("UPDATE users SET nama_wa=? WHERE id=?", [nama_wa, user.id]);
+                user.nama_wa = nama_wa;
             }
 
             const command = pesan.split(' ')[0].toLowerCase();
