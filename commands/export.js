@@ -265,9 +265,9 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
                     ? `<tr style="background-color:${libur?'#f15a5a':'#FFF'}">
                         <td>${formatTanggalLMD(d)}</td>
                         <td>${hariIndonesia(d)}</td>
-                        <td>${r?.jam_masuk||'-'}</td>
-                        <td>${r?.jam_pulang||'-'}</td>
-                        <td>${r?.deskripsi||'-'}</td>
+                        <td>${r?.jam_masuk||''}</td>
+                        <td>${r?.jam_pulang||''}</td>
+                        <td>${r?.deskripsi||''}</td>
                     </tr>`
                     : `<tr style="background-color:${libur?'#f0f0f0':'#FFF'}">
                         <td>${i}</td>
@@ -295,9 +295,9 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
 
             html = html
                 .replace(/{{logo}}/g,logoBase64)
-                .replace(/{{nama}}/g,user.nama_lengkap||'-')
-                .replace(/{{jabatan}}/g,user.jabatan||'-')
-                .replace(/{{nik}}/g,user.nik||'-')
+                .replace(/{{nama}}/g,user.nama_lengkap||'')
+                .replace(/{{jabatan}}/g,user.jabatan||'')
+                .replace(/{{nik}}/g,user.nik||'')
                 .replace(/{{periode}}/g,periode)
                 .replace(/{{rows_absensi}}/g,rows.join(''))
                 .replace(/{{ttd_user}}/g,ttdUserHTML)
@@ -448,10 +448,10 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
                             <tr>
                                 <td>${moment(l.tanggal).format('DD/MM/YYYY')}</td>
                                 <td>${moment(l.tanggal).locale('id').format('dddd')}</td>
-                                <td>${l.jam_mulai || '-'}</td>
-                                <td>${l.jam_selesai || '-'}</td>
+                                <td>${l.jam_mulai || ''}</td>
+                                <td>${l.jam_selesai || ''}</td>
                                 <td>${jam ? (jam % 1 === 0 ? jam : jam.toFixed(1))+' Jam' : '-'}</td>
-                                <td>${l.deskripsi || '-'}</td>
+                                <td>${l.deskripsi || ''}</td>
                             </tr>`;
                     }
                 }
@@ -461,8 +461,8 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
                 const [approver] = await query(
                     `SELECT nama_lengkap, nik FROM users WHERE jabatan='Head West Java Operation' LIMIT 1`
                 );
-                const approverNama = approver?.nama_lengkap || '-';
-                const approverNik = approver?.nik || '-';
+                const approverNama = approver?.nama_lengkap || '';
+                const approverNik = approver?.nik || '';
 
                 const templatePath = path.join(__dirname, `../templates/lembur/${templateName}.html`);
                 let html = fs.readFileSync(templatePath,'utf8');
@@ -471,9 +471,9 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
                     .replace(/{{logo}}/g, logoBase64)
                     .replace(/{{rows_lembur}}/g, rows)
                     .replace(/{{periode}}/g, periode)
-                    .replace(/{{nama}}/g, user.nama_lengkap || '-')
-                    .replace(/{{jabatan}}/g, user.jabatan || '-')
-                    .replace(/{{nik}}/g, user.nik || '-')
+                    .replace(/{{nama}}/g, user.nama_lengkap || '')
+                    .replace(/{{jabatan}}/g, user.jabatan || '')
+                    .replace(/{{nik}}/g, user.nik || '')
                     .replace(/{{ttd_user}}/g, ttdUserHTML)
                     .replace(/{{nama_atasan}}/g, approverNama)
                     .replace(/{{nik_atasan}}/g, approverNik)
