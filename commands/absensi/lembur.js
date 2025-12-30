@@ -52,7 +52,7 @@ function parseFlexibleTime(input) {
     return null;
 }
 
-// Hitung total jam lembur sebagai string HH:MM
+// Hitung total jam lembur
 function calculateTotalJam(jamMulai, jamSelesai) {
     const [hMulaiH, hMulaiM] = jamMulai.split(':').map(Number);
     const [hSelesaiH, hSelesaiM] = jamSelesai.split(':').map(Number);

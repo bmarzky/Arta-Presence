@@ -52,7 +52,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
         if (!pendingApprovals.length) return sendTyping(chat, 'Tidak ada laporan yang menunggu approval.');
 
-        // Handle waitingTTD 
+        // Handle tunggu ttd
         if (waitingTTD[user.wa_number]?.atasan) {
             const approval = pendingApprovals
                 .filter(a => a.step_input === 'ttd_atasan')
@@ -63,7 +63,6 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             const ttdAtasanHTML = getTTDHTML(atasan.wa_number);
             const ttdUserHTML = getTTDHTML(approval.user_wa);
 
-            // Generate PDF
             let outputPath;
             if (approval.export_type === 'lembur') {
                 outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML, atasan.wa_number);
@@ -74,7 +73,6 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             // Update status approved
             await query(`UPDATE approvals SET status='approved', step_input=NULL WHERE id=?`, [approval.id]);
 
-            // Kirim file ke user
             const media = MessageMedia.fromFilePath(outputPath);
             const userWA = approval.user_wa.includes('@') ? approval.user_wa : approval.user_wa + '@c.us';
             await chat.client.sendMessage(userWA, media);
@@ -189,7 +187,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
     }
 };
 
-// Fungsi generate PDF untuk atasan - absensi
+// Fungsi generate PDF - absensi
 async function generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64, waAtasan) {
     const fs = require('fs');
     const path = require('path');
@@ -269,7 +267,7 @@ async function generatePDFForAtasan(approval, db, ttdAtasanBase64, ttdUserBase64
     return outputPath;
 }
 
-// Fungsi generate PDF untuk atasan - lembur
+// Fungsi generate PDF - lembur
 async function generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML, waAtasan) {
     const fs = require('fs');
     const path = require('path');
@@ -384,14 +382,14 @@ async function generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHT
 
         const html = htmlTemplate
             .replace(/{{rows_lembur}}/g, rows)
-            .replace(/{{nama}}/g, approval.user_nama || '-')
-            .replace(/{{jabatan}}/g, approval.user_jabatan || '-')
-            .replace(/{{nik}}/g, approval.user_nik || '-')
+            .replace(/{{nama}}/g, approval.user_nama || '')
+            .replace(/{{jabatan}}/g, approval.user_jabatan || '')
+            .replace(/{{nik}}/g, approval.user_nik || '')
             .replace(/{{periode}}/g, periode)
             .replace(/{{logo}}/g, logoBase64)
             .replace(/{{ttd_user}}/g, ttdUserHTML)
             .replace(/{{ttd_atasan}}/g, ttdAtasanHTML)
-            .replace(/{{nama_atasan}}/g, approval.nama_atasan || '-')
+            .replace(/{{nama_atasan}}/g, approval.nama_atasan || '')
             .replace(/{{nik_atasan}}/g, approval.nik_atasan || '')
             .replace(/{{total_lembur}}/g, totalLemburKeseluruhan);
 

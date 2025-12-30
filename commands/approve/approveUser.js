@@ -167,8 +167,8 @@ if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
         await chat.client.sendMessage(
             approverWA,
             `Silakan ketik salah satu opsi berikut:\n\n` +
-            `• *approve* - {Tipe Laporan}-{nama}\n` +
-            `• *revisi* - {Tipe Laporan}-{nama}`
+            `• *approve* {Tipe Laporan}-{nama}\n` +
+            `• *revisi*  {Tipe Laporan}-{nama}`
         );
 
         return sendTyping(chat, `*${nama_user}*, laporan berhasil dikirim ke *${nama_atasan}* untuk proses approval.`);
@@ -251,7 +251,6 @@ async function generatePDFLemburwithTTD(user, db, templateName = 'LMD', namaAtas
     const query = (sql, params = []) =>
         new Promise((res, rej) => db.query(sql, params, (err, r) => err ? rej(err) : res(r)));
 
-    // Ambil approver dari DB jika kosong
     if (!namaAtasan || !nikAtasan) {
         const [approver] = await query(`SELECT * FROM users WHERE jabatan='Head West Java Operation' LIMIT 1`);
         namaAtasan = approver?.nama_lengkap || 'Approver';
@@ -280,7 +279,7 @@ async function generatePDFLemburwithTTD(user, db, templateName = 'LMD', namaAtas
     const exportsDir = path.join(__dirname,'../../exports');
     if(!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir,{recursive:true});
 
-    // deklarasi array untuk menyimpan semua PDF
+    // menyimpan semua PDF
     const pdfFiles = [];
 
     for(const key of keysToGenerate){
