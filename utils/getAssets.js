@@ -10,7 +10,7 @@ function getLogoBase64(templateName){
     return fs.existsSync(file) ? 'data:image/png;base64,' + fs.readFileSync(file).toString('base64') : '';
 }
 
-function getTTDHTML(waNumber, size = 250){
+function getTTDHTML(waNumber, size = 90){
     const png = path.join(ttdFolder, `${waNumber}.png`);
     const jpg = path.join(ttdFolder, `${waNumber}.jpg`);
     let base64 = '';
