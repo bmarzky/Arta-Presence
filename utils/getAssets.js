@@ -16,7 +16,7 @@ function getTTDHTML(waNumber, maxSize = 150){
     let base64 = '';
     if(fs.existsSync(png)) base64 = fs.readFileSync(png,'base64');
     else if(fs.existsSync(jpg)) base64 = fs.readFileSync(jpg,'base64');
-    return base64 ? `<img src="data:image/png;base64,${base64}" style="max-width:${maxSize}px;max-height:${maxSize}px;">` : '';
+    return base64 ? `<img src="data:image/png;base64,${base64}" style="max-width:${maxSize}px; max-height:${maxSize}px; display:block; margin:auto;">` : '';
 }
 
 module.exports = { getLogoBase64, getTTDHTML };
