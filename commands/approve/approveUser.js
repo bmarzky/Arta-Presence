@@ -26,6 +26,7 @@ module.exports = async function approveUser(chat, user, db) {
     if (!user_id)
         return sendTyping(chat, 'ID user tidak tersedia.');
 
+
     try {
         // Ambil approval terakhir
         const [approval] = await query(
@@ -91,21 +92,42 @@ if (!approverWA) {
         [user_id, approval.export_type, now.getMonth() + 1, now.getFullYear()]
         );
 
+        const approvalToSend = currentApproval || approval;
+
         if (currentApproval) {
-            if (currentApproval.status === 'pending') {
-                return sendTyping(chat, `Laporan bulan ini sudah dikirim ke *${nama_atasan}* untuk proses approval.`);
-            }
-            if (currentApproval.status === 'approved') {
+            // validasi status
+            if (approvalToSend.status === 'approved') {
                 return sendTyping(chat, 'Laporan bulan ini sudah disetujui.');
             }
-            if (currentApproval.status === 'revised') {
+
+            if (approvalToSend.status === 'revised') {
                 return sendTyping(chat, 'Laporan perlu revisi. Silakan export ulang.');
             }
-            if (currentApproval.status === 'draft') {
-                await query(`UPDATE approvals SET status='pending' WHERE id=?`, [currentApproval.id]);
-                currentApproval.status = 'pending';
+
+            // hanya draft yang boleh naik ke pending
+            if (approvalToSend.status === 'draft') {
+                await query(
+                    `UPDATE approvals SET status='pending' WHERE id=?`,
+                    [approvalToSend.id]
+                );
+                approvalToSend.status = 'pending';
+            }
+
+            if (approvalToSend.status !== 'pending') {
+                return sendTyping(chat, 'Laporan ini sedang diproses.');
             }
         }
+
+const lock = await query(
+    `UPDATE approvals 
+     SET status='processing'
+     WHERE id=? AND status='pending'`,
+    [approvalToSend.id]
+);
+
+if (lock.affectedRows === 0) {
+    return sendTyping(chat, 'Laporan ini sedang diproses.');
+}
 
 // pastikan WA format
 if (!approverWA || typeof approverWA !== 'string') {
@@ -134,11 +156,11 @@ if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
 
                 // generate ulang PDF dari DB + template
                 let updatedFilePath;
-                if (approval.export_type === 'lembur') {
+                if (approvalToSend.export_type === 'lembur') {
                     updatedFilePath = await generatePDFLemburwithTTD(
                         user,
                         db,
-                        approval.template_export,
+                        approvalToSend.template_export,
                         nama_atasan,
                         nik_atasan
                     );
@@ -146,14 +168,15 @@ if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
                     updatedFilePath = await generatePDFwithTTD(
                         user,
                         db,
-                        approval.template_export,
+                        approvalToSend.template_export,
                         nama_atasan,
                         nik_atasan
                     );
                 }
 
-        const jenis_laporan =
-        approval.export_type === 'lembur' ? 'Lembur' : 'Absensi';
+const jenis_laporan =
+    approvalToSend.export_type === 'lembur' ? 'Lembur' : 'Absensi';
+
 
         const media = MessageMedia.fromFilePath(Array.isArray(updatedFilePath) ? updatedFilePath[0] : updatedFilePath);
         const greeting = getGreeting() || '';
@@ -173,7 +196,10 @@ if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
 
         return sendTyping(chat, `*${nama_user}*, laporan berhasil dikirim ke *${nama_atasan}* untuk proses approval.`);
 
-    } catch (err) {
+    } 
+    
+    
+    catch (err) {        
         console.error('Gagal kirim approval:', err);
         return sendTyping(chat, 'Terjadi kesalahan saat mengirim approval.');
     }
@@ -240,7 +266,16 @@ async function generatePDFwithTTD(user, db, templateName, namaAtasan = 'Atasan',
     // export PDF
     const exportsDir = path.join(__dirname, '../../exports');
     if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
-    const output = path.join(exportsDir, `ABSENSI-${user.nama_lengkap}-${templateName}.pdf`);
+    const bulanNama = moment().format('MMMM');
+    const safeName = user.nama_lengkap
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g,'-')
+        .replace(/^-+|-+$/g,'');
+
+        const output = path.join(
+            exportsDir,
+            `ABSENSI-${safeName}-${templateName}-${bulanNama}-${tahun}.pdf`
+        );
 
     await generatePDF(html, output);
     return output;
@@ -363,13 +398,21 @@ async function generatePDFLemburwithTTD(user, db, templateName = 'LMD', namaAtas
             .replace(/{{nik_atasan}}/g, nikAtasan)
             .replace(/{{total_lembur}}/g, totalLembur)
 
-        const pdfFile = path.join(exportsDir, `LEMBUR-${user.nama_lengkap}-${templateName}-${bulanNama[bulanIdx]}-${tahun}.pdf`);
-        await generatePDF(html, pdfFile);
+        const safeName = user.nama_lengkap
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g,'-')
+            .replace(/^-+|-+$/g,'');
+
+        const pdfFile = path.join(
+            exportsDir,
+            `LEMBUR-${safeName}-${templateName}-${bulanNama[bulanIdx]}-${tahun}.pdf`
+        );
 
         // Simpan HTML sementara (opsional)
-        fs.writeFileSync(path.join(exportsDir, `LEMBUR-${user.nama_lengkap}-${templateName}-${bulanNama[bulanIdx]}-${tahun}.html`), html, 'utf8');
+        fs.writeFileSync(path.join(exportsDir, `LEMBUR-${safeName}-${templateName}-${bulanNama[bulanIdx]}-${tahun}.html`), html, 'utf8');
 
-        pdfFiles.push(pdfFile); // simpan PDF yang di-generate
+        await generatePDF(html, pdfFile);
+        pdfFiles.push(pdfFile);; // simpan PDF yang di-generate
     }
 
     // kembalikan array PDF jika lebih dari 1, atau string PDF terakhir
