@@ -94,12 +94,20 @@ module.exports = {
             }
 
             // Intro
-            if (user.intro === 0 && !sendingIntro[wa_number]) {
+            if (user.intro === 0) {
+                if (sendingIntro[wa_number]) return;
+
                 sendingIntro[wa_number] = true;
+
                 await typeAndDelay(chat);
-                await chat.sendMessage(`Halo *${nama_wa}* Saya *Arta Presence*, bot absensi otomatis *Lintasarta*.\n\nsilakan gunakan perintah */help* untuk melihat daftar perintah.`);
+                await chat.sendMessage(
+                    `Halo *${nama_wa}* Saya *Arta Presence*, bot absensi otomatis *Lintasarta*.\n\n` +
+                    `Silakan gunakan perintah */help* untuk melihat daftar perintah.`
+                );
+
                 await query("UPDATE users SET intro=1 WHERE id=?", [user.id]);
-                sendingIntro[wa_number] = false;
+
+                delete sendingIntro[wa_number];
                 return;
             }
 
