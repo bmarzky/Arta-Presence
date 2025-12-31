@@ -30,19 +30,19 @@ Balas: absen atau lembur`
     // STEP 1 — PILIH JENIS
     if (user.step_riwayat === 'pilih') {
         if (!['absen', 'lembur'].includes(text)) {
-            return sendTyping(chat, 'Balas dengan: absen atau lembur');
+            return sendTyping(chat, 'Balas dengan: *absen* atau *lembur*');
         }
         await query(
             `UPDATE users SET step_riwayat='periode', riwayat_jenis=? WHERE id=?`,
             [text, user.id]
         );
-        return sendTyping(chat, 'Silakan ketik bulan dan tahun laporan.\nContoh: 12 2025');
+        return sendTyping(chat, 'Silakan ketik bulan dan tahun laporan.');
     }
 
     // STEP 2 — INPUT BULAN & TAHUN
     if (user.step_riwayat === 'periode') {
         const match = rawText.match(/^(\d{1,2})\s+(\d{4})$/);
-        if (!match) return sendTyping(chat, 'Format salah.\nContoh: 12 2025');
+        if (!match) return sendTyping(chat, 'Format salah !\nContoh: 12 2025');
 
         const bulan = Number(match[1]);
         const tahun = Number(match[2]);
