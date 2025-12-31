@@ -137,6 +137,8 @@ module.exports = {
                 case 'info':
                     const reply = await getResponse(pesan);
                     return sendTyping(chat, reply, 1000);
+                case 'unknown':
+                    return sendTyping(chat, 'Maaf, aku belum mengerti maksudmu. Coba gunakan /help untuk daftar perintah.', 1000);
                 default:
                     const fallback = await getResponse(pesan);
                     return sendTyping(chat, fallback, 1000);
