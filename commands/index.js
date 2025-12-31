@@ -14,8 +14,8 @@ const handleEdit = require('./absensi/editAbsen');
 const handleRiwayatAbsen = require('./absensi/riwayatAbsen');
 const waitingTTD = require('../utils/waitingTTD');
 const { predictIntent, getResponse } = require('../NLP/fallback');
-const ttdFolder = path.join(__dirname, '../assets/ttd/');
 
+const ttdFolder = path.join(__dirname, '../assets/ttd/');
 if (!fs.existsSync(ttdFolder)) fs.mkdirSync(ttdFolder, { recursive: true });
 
 const typeAndDelay = async (chat, ms = 800, random = 400) => {
@@ -36,12 +36,10 @@ module.exports = {
         try {
             // Ambil user atau buat baru
             let [user] = await query("SELECT * FROM users WHERE wa_number=?", [wa_number]);
-
             if (!user) {
                 await query("INSERT INTO users (wa_number, nama_wa, intro) VALUES (?, ?, 0)", [wa_number, nama_wa]);
                 [user] = await query("SELECT * FROM users WHERE wa_number=?", [wa_number]);
             } else if (user.nama_wa !== nama_wa) {
-
                 await query("UPDATE users SET nama_wa=? WHERE id=?", [nama_wa, user.id]);
                 user.nama_wa = nama_wa;
             }
@@ -53,7 +51,7 @@ module.exports = {
             if (restrictedCommands.includes(command)) {
                 if (!user.jabatan) return sendTyping(chat, 'Data jabatan kamu tidak ditemukan.');
                 if (user.jabatan !== 'Head West Java Operation') 
-                    return sendTyping(chat, 'Jabatan anda bukan *Head West Java Operation*,\n akses terbatas untuk approvals.');
+                    return sendTyping(chat, 'Jabatan anda bukan *Head West Java Operation*,\nakses terbatas untuk approvals.');
 
                 return approveAtasan(chat, user, pesan, db);
             }
@@ -66,7 +64,6 @@ module.exports = {
                     WHERE id=?`, [user.id]);
 
                 if (waitingTTD[wa_number]) delete waitingTTD[wa_number];
-
                 return sendTyping(chat, 'Proses dibatalkan.');
             }
 
@@ -96,7 +93,6 @@ module.exports = {
             // Intro
             if (user.intro === 0) {
                 if (sendingIntro[wa_number]) return;
-
                 sendingIntro[wa_number] = true;
 
                 await typeAndDelay(chat);
@@ -106,7 +102,6 @@ module.exports = {
                 );
 
                 await query("UPDATE users SET intro=1 WHERE id=?", [user.id]);
-
                 delete sendingIntro[wa_number];
                 return;
             }
@@ -114,42 +109,14 @@ module.exports = {
             // Help
             if (lowerMsg === '/help') return require('./help')(chat, user.nama_wa);
 
-            // Export
-            if (lowerMsg.startsWith('/export') || user.step_input) {
-                if (!isUserDataComplete(user) && ['choose_export_type', 'choose_template', 'start_export'].includes(user.step_input)) {
-                    await query(`UPDATE users SET step_input=NULL, export_type=NULL, template_export=NULL WHERE id=?`, [user.id]);
-                    user.step_input = null;
-                }
-
-                const [pendingApproval] = await query(`SELECT file_path FROM approvals WHERE user_id=? AND status='pending' ORDER BY created_at DESC LIMIT 1`, [user.id]);
-                if (pendingApproval && lowerMsg.startsWith('/export')) {
-                    const filename = path.basename(pendingApproval.file_path || '');
-                    const type = filename.startsWith('LEMBUR-') ? 'LEMBUR' : 'ABSENSI';
-                    return sendTyping(chat, `Laporan *${type}* kamu sedang dalam proses approval.\nSilakan tunggu sampai proses approval selesai.`);
-                }
-
-                await query(`DELETE FROM approvals WHERE user_id=? AND status='draft'`, [user.id]);
-                const paramBulan = pesan.split(' ').slice(1)[0] || null;
-                return handleExport(chat, user, pesan, db, paramBulan);
-            }
-
-            // /approve untuk user biasa
-            if (lowerMsg === '/approve') return approveUser(chat, user, db);
-
-            // Absen / lembur / riwayat / edit
-            if (lowerMsg === '/riwayat' || user.step_riwayat) return handleRiwayatAbsen(chat, user, pesan, db);
-            if (lowerMsg === '/absen' || user.step_absen) return handleAbsen(chat, user, lowerMsg, pesan, query);
-            if (lowerMsg === '/lembur' || user.step_lembur) return handleLembur(chat, user, pesan, (sql, params, cb) => db.query(sql, params, cb));
-            if (lowerMsg === '/edit' || handleEdit.isEditing(user.wa_number)) return handleEdit(chat, user, pesan, query);
-
-            // Greeting
+            // Greeting manual
             const replyGreeting = greetings[lowerMsg];
             if (replyGreeting) {
                 const randomReply = greetingReplies[Math.floor(Math.random() * greetingReplies.length)];
                 return sendTyping(chat, `${replyGreeting} *${nama_wa}*, ${randomReply}`, 1000);
             }
 
-            // Default fallback di akhir
+            // NLP intent handling
             const intent = await predictIntent(pesan);
 
             switch(intent) {
