@@ -133,6 +133,14 @@ module.exports = {
                     return handleExport(chat, user, pesan, db, paramBulan);
                 case 'approve':
                     return approveUser(chat, user, db);
+                case 'cancel':
+                    await query(`UPDATE users SET
+                        step_input=NULL, export_type=NULL, template_export=NULL,
+                        step_absen=NULL, step_lembur=NULL, step_riwayat=NULL
+                        WHERE id=?`, [user.id]);
+
+                    if (waitingTTD[wa_number]) delete waitingTTD[wa_number];
+                    return sendTyping(chat, 'Proses dibatalkan.');
                 case 'help':
                 case 'info':
                     const reply = await getResponse(pesan);

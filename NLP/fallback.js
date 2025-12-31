@@ -52,6 +52,12 @@ manager.addDocument('id', 'info', 'info');
 manager.addDocument('id', 'informasi', 'info');
 manager.addDocument('id', 'tentang bot', 'info');
 
+// EXIT / CANCEL
+manager.addDocument('id', 'keluar', 'cancel');
+manager.addDocument('id', 'exit', 'cancel');
+manager.addDocument('id', 'end', 'cancel');
+manager.addDocument('id', 'clear', 'cancel');
+
 // ===== Tambahkan jawaban default =====
 manager.addAnswer('id', 'help', 'Kamu bisa menggunakan perintah /help untuk melihat daftar perintah.');
 manager.addAnswer('id', 'absen', 'Kamu bisa mulai absen menggunakan /absen.');
