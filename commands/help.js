@@ -2,48 +2,25 @@
 const { sendTyping } = require('../utils/sendTyping');
 
 module.exports = async function handleHelp(chat, nama_wa) {
+    const pesan = `Halo *${nama_wa}* 👋
+Berikut daftar perintah yang bisa kamu gunakan di *ARTA PRESENCE*:
 
-    // Pesan pembuka
-    await sendTyping(
-        chat,
-        `Halo *${nama_wa}* 👋\nBerikut daftar perintah yang bisa kamu gunakan di *ARTA PRESENCE*:`,
-        1000
-    );
+*Absensi:*
+- /absen : Mulai proses absen (MASUK / PULANG)
+- /lembur : Mulai proses lembur
+- /edit : Edit data absensi atau lembur
+- /riwayat : Lihat laporan approved sebelumnya
 
-    // Perintah Absensi
-    await sendTyping(
-        chat,
-`*Absensi:*
-- /absen - Mulai proses absen untuk (MASUK / PULANG)
-- /lembur - Mulai proses untuk lmbur
-- /edit - Edit data absensi atau lembur yang sudah dibuat
-- /riwayat - Melihat data laporan approved sebelumnya`,1000
-    );
+*Export:*
+- /export : Export laporan Absensi atau Lembur ke PDF
 
-    // Perintah Export
-    await sendTyping(
-        chat,
-`*Export:*
-- /export - Export laporan Absensi atau Lembur ke PDF`,1000
-    );
+*Pengajuan:*
+- /approve : Kirim laporan ke approval untuk disetujui
 
-    // Perintah Approval
-    await sendTyping(
-        chat,
-`*Pengajuan:*
-- /approve - Kirim laporan ke approval untuk disetujui`,1000
-    );
+*Perintah Lain:*
+- /info : Info singkat tentang bot *(maintenance)*
 
-    // Perintah Lain
-    await sendTyping(
-        chat,
-`*Perintah Lain:*
-- /info - Informasi singkat tentang bot ARTA PRESENCE *(maintenance)*`,1000
-    );
+Jika mengalami kendala, hubungi author`;
 
-    // Pesan penutup
-    await sendTyping(
-        chat,
-        `Jika kamu mengalami kendala, tolong hubungi author 🤗`,1000
-    );
+    await sendTyping(chat, pesan, 1000);
 };
