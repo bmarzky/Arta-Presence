@@ -151,14 +151,29 @@ module.exports = {
 
             // Default fallback di akhir
             const intent = await predictIntent(pesan);
-            if (intent !== 'unknown') {
-                const reply = await getResponse(pesan);
-                return sendTyping(chat, reply, 1000);
-            } else {
-                await sendTyping(chat, `Hmm… ${nama_wa}, aku belum paham pesan kamu.`, 1000);
-                await sendTyping(chat, "Coba ketik */help* untuk melihat perintah.", 1000);
-            }
 
+            switch(intent) {
+                case 'absen':
+                    return handleAbsen(chat, user, lowerMsg, pesan, query);
+                case 'lembur':
+                    return handleLembur(chat, user, pesan, (sql, params, cb) => db.query(sql, params, cb));
+                case 'riwayat':
+                    return handleRiwayatAbsen(chat, user, pesan, db);
+                case 'edit':
+                    return handleEdit(chat, user, pesan, query);
+                case 'export':
+                    const paramBulan = pesan.split(' ').slice(1)[0] || null;
+                    return handleExport(chat, user, pesan, db, paramBulan);
+                case 'approve':
+                    return approveUser(chat, user, db);
+                case 'help':
+                case 'info':
+                    const reply = await getResponse(pesan);
+                    return sendTyping(chat, reply, 1000);
+                default:
+                    const fallback = await getResponse(pesan);
+                    return sendTyping(chat, fallback, 1000);
+            }
 
         } catch (err) {
             console.error('Error handling message:', err);
