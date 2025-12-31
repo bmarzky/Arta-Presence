@@ -17,6 +17,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
     const rawText = pesan || '';
     const text = rawText.trim().toLowerCase();
+    let currentApprovalId = null;
 
     try {
         // data atasan
@@ -162,19 +163,20 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 waitingTTD[atasan.wa_number] = { atasan: true };
                 await sendTyping(chat, 'Silakan kirim foto TTD kamu untuk approve laporan ini.');
                 await query(
-                    `UPDATE approvals 
-                    SET step_input='ttd_atasan',
-                        status='processing'
-                    WHERE id=? AND status='pending'`,
-                    [approval.id]
-                    );
+                `UPDATE approvals 
+                SET step_input='ttd_atasan' 
+                WHERE id=? AND status='pending'`,
+                [approval.id]
+            );
                 return;
             }
 
+            currentApprovalId = approval.id;
+
             const res = await query(
-            `UPDATE approvals SET status='processing'
-            WHERE id=? AND status='pending'`,
-            [approval.id]
+                `UPDATE approvals SET status='processing'
+                WHERE id=? AND status='pending'`,
+                [approval.id]
             );
 
             if (res.affectedRows === 0)
@@ -292,8 +294,16 @@ async function generatePDFForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML, wa
     // export PDF
     const exportsDir = path.join(__dirname, '../../exports');
     if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
-    const outputPath = path.join(exportsDir, `ABSENSI-${approval.user_nama}-${templateName}-Approve.pdf`);
+    const safeName = approval.user_nama
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
 
+    const outputPath = path.join(
+        exportsDir,
+        `ABSENSI-${safeName}-${templateName}-Approved.pdf`
+    );
+    
     await generatePDF(html, outputPath);
     return outputPath;
 }
