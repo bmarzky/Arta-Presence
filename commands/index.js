@@ -13,8 +13,15 @@ const handleLembur = require('./absensi/lembur');
 const handleEdit = require('./absensi/editAbsen');
 const handleRiwayatAbsen = require('./absensi/riwayatAbsen');
 const waitingTTD = require('../utils/waitingTTD');
-
+const { predictIntent, getResponse } = require('../NLP/fallback');
 const ttdFolder = path.join(__dirname, '../assets/ttd/');
+
+// Default fallback
+const intent = await predictIntent(pesan);
+if (intent !== 'unknown') {
+    const reply = await getResponse(pesan);
+    return sendTyping(chat, reply, 1000);
+}
 
 if (!fs.existsSync(ttdFolder)) fs.mkdirSync(ttdFolder, { recursive: true });
 
@@ -159,4 +166,3 @@ module.exports = {
         }
     }
 };
-
