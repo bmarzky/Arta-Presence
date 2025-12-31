@@ -8,7 +8,7 @@ const greetingReplies = require('../data/greetingReplies');
 const sendingIntro = {};
 const approveUser = require('./approve/approveUser');
 const approveAtasan = require('./approve/approveAtasan');
-const { sendTypingPerChar } = require('../utils/sendTypingPerChar');
+const { sendTyping } = require('../utils/sendTyping');
 const handleLembur = require('./absensi/lembur'); 
 const handleEdit = require('./absensi/editAbsen');
 const handleRiwayatAbsen = require('./absensi/riwayatAbsen');
@@ -51,9 +51,9 @@ module.exports = {
 
             // Guard restricted commands untuk atasan
             if (restrictedCommands.includes(command)) {
-                if (!user.jabatan) return sendTypingPerChar(chat, 'Data jabatan kamu tidak ditemukan.', 30);
+                if (!user.jabatan) return sendTyping(chat, 'Data jabatan kamu tidak ditemukan.');
                 if (user.jabatan !== 'Head West Java Operation') 
-                    return sendTypingPerChar(chat, 'Jabatan anda bukan *Head West Java Operation*,\n akses terbatas untuk approvals.', 30);
+                    return sendTyping(chat, 'Jabatan anda bukan *Head West Java Operation*,\n akses terbatas untuk approvals.');
 
                 return approveAtasan(chat, user, pesan, db);
             }
@@ -67,7 +67,7 @@ module.exports = {
 
                 if (waitingTTD[wa_number]) delete waitingTTD[wa_number];
 
-                return sendTypingPerChar(chat, 'Proses dibatalkan.', 30);
+                return sendTyping(chat, 'Proses dibatalkan.');
             }
 
             // Media (TTD)
@@ -79,14 +79,14 @@ module.exports = {
                 if (waitingTTD[wa_number]?.user) {
                     const [dbUser] = await query("SELECT * FROM users WHERE wa_number=?", [wa_number]);
                     delete waitingTTD[wa_number];
-                    await chat.sendTypingPerChar('*File berhasil ditandatangani*\nLaporan akan dikirim ke atasan untuk proses approval.', 30);
+                    await chat.sendMessage('*File berhasil ditandatangani*\nLaporan akan dikirim ke atasan untuk proses approval.');
                     return approveUser(chat, dbUser, db);
                 }
 
                 if (waitingTTD[wa_number]?.atasan) {
                     const [dbAtasan] = await query("SELECT * FROM users WHERE wa_number=?", [wa_number]);
                     delete waitingTTD[wa_number];
-                    await chat.sendTypingPerChar('*File berhasil ditandatangani*\nApproval laporan telah selesai.', 30);
+                    await chat.sendMessage('*File berhasil ditandatangani*\nApproval laporan telah selesai.');
                     return approveAtasan(chat, dbAtasan, 'approve', db);
                 }
 
@@ -100,9 +100,9 @@ module.exports = {
                 sendingIntro[wa_number] = true;
 
                 await typeAndDelay(chat);
-                await chat.sendTypingPerChar(
+                await chat.sendMessage(
                     `Halo *${nama_wa}* Saya *Arta Presence*, bot absensi otomatis *Lintasarta*.\n\n` +
-                    `Silakan gunakan perintah */help* untuk melihat daftar perintah.`, 30
+                    `Silakan gunakan perintah */help* untuk melihat daftar perintah.`
                 );
 
                 await query("UPDATE users SET intro=1 WHERE id=?", [user.id]);
@@ -125,7 +125,7 @@ module.exports = {
                 if (pendingApproval && lowerMsg.startsWith('/export')) {
                     const filename = path.basename(pendingApproval.file_path || '');
                     const type = filename.startsWith('LEMBUR-') ? 'LEMBUR' : 'ABSENSI';
-                    return sendTypingPerChar(chat, `Laporan *${type}* kamu sedang dalam proses approval.\nSilakan tunggu sampai proses approval selesai.`, 30);
+                    return sendTyping(chat, `Laporan *${type}* kamu sedang dalam proses approval.\nSilakan tunggu sampai proses approval selesai.`);
                 }
 
                 await query(`DELETE FROM approvals WHERE user_id=? AND status='draft'`, [user.id]);
@@ -146,16 +146,16 @@ module.exports = {
             const replyGreeting = greetings[lowerMsg];
             if (replyGreeting) {
                 const randomReply = greetingReplies[Math.floor(Math.random() * greetingReplies.length)];
-                return sendTypingPerChar(chat, `${replyGreeting} *${nama_wa}*, ${randomReply}`, 30);
+                return sendTyping(chat, `${replyGreeting} *${nama_wa}*, ${randomReply}`, 1000);
             }
 
             // Default fallback
-            await sendTypingPerChar(chat, `Hmm… ${nama_wa}, aku belum paham pesan kamu.`, 30);
-            await sendTypingPerChar(chat, "Coba ketik */help* untuk melihat perintah.", 30);
+            await sendTyping(chat, `Hmm… ${nama_wa}, aku belum paham pesan kamu.`, 1000);
+            await sendTyping(chat, "Coba ketik */help* untuk melihat perintah.", 1000);
 
         } catch (err) {
             console.error('Error handling message:', err);
-            return chat.sendTypingPerChar('Terjadi kesalahan sistem.', 30);
+            return chat.sendMessage('Terjadi kesalahan sistem.');
         }
     }
 };
