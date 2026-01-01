@@ -7,6 +7,7 @@ const commands = require('./commands');
 
 //OPEM AI API
 console.log('OPENAI KEY:', process.env.OPENAI_API_KEY ? 'TERBACA' : 'TIDAK ADA');
+console.log('OPENAI BASE URL:', process.env.OPENAI_BASE_URL || 'TIDAK ADA');
 
 // DB
 const db = mysql.createPool({
