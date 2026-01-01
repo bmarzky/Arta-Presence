@@ -36,14 +36,19 @@ Balas HANYA dengan satu kata intent (huruf kapital).
 `;
 
     const response = await openai.chat.completions.create({
-      model: 'gemini/gemini-2.5-flash', // 🔥 PENTING
+      model: 'gemini/gemini-2.5-flash',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0
     });
 
-    const intent = response.choices[0].message.content
+    const content = response?.choices?.[0]?.message?.content;
+    if (!content) return 'UNKNOWN';
+
+    const intent = content
       .trim()
-      .toUpperCase();
+      .toUpperCase()
+      .split(/\s+/)[0]
+      .replace(/[^A-Z]/g, '');
 
     const allowed = [
       'ABSEN',
@@ -53,6 +58,8 @@ Balas HANYA dengan satu kata intent (huruf kapital).
       'EXPORT',
       'REVISI'
     ];
+
+    console.log('[IntentAI]', text, '=>', intent);
 
     return allowed.includes(intent) ? intent : 'UNKNOWN';
 

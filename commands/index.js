@@ -112,8 +112,40 @@ module.exports = {
                 return;
             }
 
-            // Help
-            if (lowerMsg === '/help') return require('./help')(chat, user.nama_wa);
+// Help
+if (lowerMsg === '/help') return require('./help')(chat, user.nama_wa);
+
+// Inten
+
+const isCommand = lowerMsg.startsWith('/');
+const firstWord = lowerMsg.replace('/', '').split(' ')[0];
+const isRestrictedWord = ['approve', 'revisi', 'status'].includes(firstWord);
+
+if (
+  !isCommand &&
+  !isRestrictedWord &&
+  !user.step_absen &&
+  !user.step_lembur &&
+  !user.step_riwayat &&
+  !user.step_input
+) {
+  const intent = await detectIntentAI(pesan);
+  console.log('[INTENT AI]', pesan, '=>', intent);
+
+  switch (intent) {
+    case 'ABSEN':
+      return handleAbsen(chat, user, lowerMsg, pesan, query);
+    case 'RIWAYAT':
+      return handleRiwayatAbsen(chat, user, pesan, db);
+    case 'EXPORT':
+      return handleExport(chat, user, pesan, db, null);
+    case 'APPROVE':
+      if (user.jabatan !== 'Head West Java Operation')
+        return sendTyping(chat, 'Akses approve hanya untuk atasan.');
+      return approveAtasan(chat, user, pesan, db);
+  }
+}
+
 
             // Export
             if (lowerMsg.startsWith('/export') || user.step_input) {
@@ -142,37 +174,6 @@ module.exports = {
             if (lowerMsg === '/absen' || user.step_absen) return handleAbsen(chat, user, lowerMsg, pesan, query);
             if (lowerMsg === '/lembur' || user.step_lembur) return handleLembur(chat, user, pesan, (sql, params, cb) => db.query(sql, params, cb));
             if (lowerMsg === '/edit' || handleEdit.isEditing(user.wa_number)) return handleEdit(chat, user, pesan, query);
-
-const isCommand = lowerMsg.startsWith('/');
-const isInStep = user.step_input || user.step_absen || user.step_lembur || user.step_riwayat;
-const isRestrictedWord = ['approve', 'revisi', 'status'].includes(lowerMsg.split(' ')[0]);
-
-if (!isCommand && !isInStep && !isRestrictedWord) {
-    const intent = await detectIntentAI(pesan);
-
-    switch (intent) {
-        case 'ABSEN':
-            return handleAbsen(chat, user, lowerMsg, pesan, query);
-
-        case 'RIWAYAT':
-            return handleRiwayatAbsen(chat, user, pesan, db);
-
-        case 'EXPORT':
-            return handleExport(chat, user, pesan, db, null);
-
-        case 'STATUS':
-            return sendTyping(chat, 'Mau cek status laporan yang mana?');
-
-        case 'APPROVE':
-            if (user.jabatan !== 'Head West Java Operation') {
-                return sendTyping(chat, 'Akses approve hanya untuk atasan.');
-            }
-            return approveAtasan(chat, user, pesan, db);
-
-        case 'UNKNOWN':
-            break; // lanjut ke greeting / fallback
-    }
-}
 
             // Greeting
             const replyGreeting = greetings[lowerMsg];
