@@ -114,7 +114,10 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             return sendTyping(chat, `*Daftar Laporan Pending / Revisi:*\n\n${msg}`);
         }
 
-        const revisiApproval = pendingApprovals.find(a => a.step_input === 'alasan_revisi');
+        const revisiApproval = pendingApprovals.find(
+            a => a.step_input === 'alasan_revisi' || a.status === 'revised'
+        );
+
         if (revisiApproval) {
             if (rawText.trim().length < 3) {
                 return sendTyping(chat, 'Silakan ketik *alasan revisi* yang jelas.');
