@@ -1,8 +1,12 @@
 // index.js
+require('dotenv').config();
 const qrcode = require('qrcode-terminal');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const mysql = require('mysql2');
 const commands = require('./commands');
+
+//OPEM AI API
+console.log('OPENAI KEY:', process.env.OPENAI_API_KEY ? 'TERBACA' : 'TIDAK ADA');
 
 // DB
 const db = mysql.createPool({

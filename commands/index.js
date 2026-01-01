@@ -13,6 +13,7 @@ const handleLembur = require('./absensi/lembur');
 const handleEdit = require('./absensi/editAbsen');
 const handleRiwayatAbsen = require('./absensi/riwayatAbsen');
 const waitingTTD = require('../utils/waitingTTD');
+const detectIntentAI = require('../utils/intentAI');
 // const { predictIntent, getResponse } = require('../NLP/fallback');
 const ttdFolder = path.join(__dirname, '../assets/ttd/');
 
@@ -141,6 +142,37 @@ module.exports = {
             if (lowerMsg === '/absen' || user.step_absen) return handleAbsen(chat, user, lowerMsg, pesan, query);
             if (lowerMsg === '/lembur' || user.step_lembur) return handleLembur(chat, user, pesan, (sql, params, cb) => db.query(sql, params, cb));
             if (lowerMsg === '/edit' || handleEdit.isEditing(user.wa_number)) return handleEdit(chat, user, pesan, query);
+
+const isCommand = lowerMsg.startsWith('/');
+const isInStep = user.step_input || user.step_absen || user.step_lembur || user.step_riwayat;
+const isRestrictedWord = ['approve', 'revisi', 'status'].includes(lowerMsg.split(' ')[0]);
+
+if (!isCommand && !isInStep && !isRestrictedWord) {
+    const intent = await detectIntentAI(pesan);
+
+    switch (intent) {
+        case 'ABSEN':
+            return handleAbsen(chat, user, lowerMsg, pesan, query);
+
+        case 'RIWAYAT':
+            return handleRiwayatAbsen(chat, user, pesan, db);
+
+        case 'EXPORT':
+            return handleExport(chat, user, pesan, db, null);
+
+        case 'STATUS':
+            return sendTyping(chat, 'Mau cek status laporan yang mana?');
+
+        case 'APPROVE':
+            if (user.jabatan !== 'Head West Java Operation') {
+                return sendTyping(chat, 'Akses approve hanya untuk atasan.');
+            }
+            return approveAtasan(chat, user, pesan, db);
+
+        case 'UNKNOWN':
+            break; // lanjut ke greeting / fallback
+    }
+}
 
             // Greeting
             const replyGreeting = greetings[lowerMsg];
