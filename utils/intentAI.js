@@ -1,15 +1,11 @@
 const OpenAI = require('openai');
 
-let client; // lazy init
+let client;
 
 function getClient() {
   if (!client) {
     if (!process.env.OPENAI_API_KEY) {
       throw new Error('OPENAI_API_KEY belum tersedia');
-    }
-
-    if (!process.env.OPENAI_BASE_URL) {
-      throw new Error('OPENAI_BASE_URL belum tersedia');
     }
 
     client = new OpenAI({
@@ -25,18 +21,27 @@ module.exports = async function detectIntentAI(text) {
   try {
     const openai = getClient();
 
+    const prompt = `
+Kamu adalah intent classifier untuk bot WhatsApp absensi kantor.
+
+Tentukan SATU intent dari daftar berikut:
+- ABSEN
+- RIWAYAT
+- STATUS
+- APPROVE
+- EXPORT
+- REVISI
+- UNKNOWN
+
+Pesan user:
+"${text}"
+
+Balas HANYA dengan satu kata intent (huruf kapital).
+`;
+
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini', // atau tanya provider: model apa yg tersedia
-      messages: [
-        {
-          role: 'system',
-          content: 'Kamu adalah intent classifier bot WhatsApp absensi.'
-        },
-        {
-          role: 'user',
-          content: text
-        }
-      ],
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
       temperature: 0
     });
 
@@ -45,18 +50,14 @@ module.exports = async function detectIntentAI(text) {
       .toUpperCase();
 
     const allowed = [
-      'ABSEN',
-      'RIWAYAT',
-      'STATUS',
-      'APPROVE',
-      'EXPORT',
-      'REVISI'
+      'ABSEN', 'RIWAYAT', 'STATUS',
+      'APPROVE', 'EXPORT', 'REVISI'
     ];
 
     return allowed.includes(intent) ? intent : 'UNKNOWN';
 
-  } catch (error) {
-    console.error('[IntentAI Error]', error.message);
+  } catch (err) {
+    console.error('[IntentAI Error]', err.message);
     return 'UNKNOWN';
   }
 };
