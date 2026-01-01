@@ -150,13 +150,15 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         const namaUser = match[3].trim().toLowerCase();
 
         // Ambil approval terbaru yang pending
+        const allowedStatuses = ['pending', 'processing'];
         const approval = pendingApprovals
             .filter(a =>
                 a.export_type.toLowerCase() === export_type &&
                 a.user_nama.toLowerCase() === namaUser &&
-                a.status === 'pending'
+                allowedStatuses.includes(a.status)
             )
             .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
 
         if (!approval) {
             const oldApproval = pendingApprovals.find(a =>
