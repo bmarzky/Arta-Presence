@@ -106,7 +106,14 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
         if (!pendingApprovals.length) return sendTyping(chat, 'Tidak ada laporan yang menunggu approval.');
 
-        // Tangani revisi
+        // Status
+        if (text === 'status') {
+            const msg = pendingApprovals.map((a, i) =>
+                `${i+1}. ${a.user_nama} (${a.export_type}) - Status: ${a.status}`
+            ).join('\n');
+            return sendTyping(chat, `*Daftar Laporan Pending / Revisi:*\n\n${msg}`);
+        }
+
         const revisiApproval = pendingApprovals.find(a => a.step_input === 'alasan_revisi');
         if (revisiApproval) {
             if (rawText.trim().length < 3) {
@@ -130,14 +137,6 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             );
 
             return sendTyping(chat, `Revisi berhasil dikirim ke *${revisiApproval.user_nama}*.`);
-        }
-
-        // Status
-        if (text === 'status') {
-            const msg = pendingApprovals.map((a, i) =>
-                `${i+1}. ${a.user_nama} (${a.export_type}) - Status: ${a.status}`
-            ).join('\n');
-            return sendTyping(chat, `*Daftar Laporan Pending / Revisi:*\n\n${msg}`);
         }
 
         // Parsing approve/revisi
