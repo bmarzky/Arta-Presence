@@ -142,6 +142,12 @@ Ketik */help* untuk bantuan.`
       if (lowerMsg.startsWith('/export'))
         return handleExport(chat, user, pesan, db, pesan.split(' ')[1] || null);
 
+    /* ================= KIRIM LAPORAN USER ================= */
+    if (['kirim'].includes(firstWord)) {
+        return approveUser(chat, user, db);
+    }
+
+
       /* ================= INTENT AI ================= */
       if (!lowerMsg.startsWith('/')) {
         const intent = await detectIntentAI(pesan);
