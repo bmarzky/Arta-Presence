@@ -114,6 +114,36 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             return sendTyping(chat, `*Daftar Laporan Pending / Revisi:*\n\n${msg}`);
         }
 
+
+        // ================= STEP 2: kirim alasan revisi =================
+        if (waitingTTD[user.wa_number]?.revisi_id) {
+            const revisiId = waitingTTD[user.wa_number].revisi_id;
+
+            await query(
+                `UPDATE approvals SET revisi_catatan=?, step_input=NULL WHERE id=?`,
+                [pesan.trim(), revisiId]
+            );
+
+            // ambil data user untuk dikirim revisi
+            const [revisiApproval] = await query(
+                `SELECT u.wa_number AS user_wa, u.nama_lengkap AS user_nama 
+                 FROM approvals a 
+                 JOIN users u ON u.id = a.user_id
+                 WHERE a.id=?`,
+                [revisiId]
+            );
+
+            const userWA = revisiApproval.user_wa.includes('@') ? revisiApproval.user_wa : revisiApproval.user_wa + '@c.us';
+            await chat.client.sendMessage(
+                userWA,
+                `*LAPORAN PERLU REVISI*\n\nApproval: *${user.nama_lengkap}*\n\n*Catatan revisi:*\n${pesan.trim()}\n\nSilakan perbaiki dan lakukan */export* ulang.`
+            );
+
+            delete waitingTTD[user.wa_number];
+            return sendTyping(chat, `Revisi berhasil dikirim ke *${revisiApproval.user_nama}*.`);
+        }
+
+        
         // Parsing approve/revisi
         const match = rawText.trim().match(/^(approve|revisi)\s+([^-]+)-(.+)$/i);
         if (!match)
@@ -156,36 +186,6 @@ if (action === 'revisi') {
     waitingTTD[user.wa_number] = { revisi_id: approval.id };
     return sendTyping(chat, `Silakan ketik *alasan revisi* untuk ${export_type}-${namaUser}.`);
 }
-
-// STEP 2: atasan kirim alasan revisi
-if (waitingTTD[user.wa_number]?.revisi_id) {
-    const revisiId = waitingTTD[user.wa_number].revisi_id;
-
-    await query(
-        `UPDATE approvals SET revisi_catatan=?, step_input=NULL WHERE id=?`,
-        [pesan.trim(), revisiId]   // gunakan raw pesan asli, bukan lowercase
-    );
-
-    // kirim ke user
-    const [revisiApproval] = await query(
-        `SELECT u.wa_number AS user_wa, u.nama_lengkap AS user_nama 
-         FROM approvals a 
-         JOIN users u ON u.id = a.user_id
-         WHERE a.id=?`,
-        [revisiId]
-    );
-
-    const userWA = revisiApproval.user_wa.includes('@') ? revisiApproval.user_wa : revisiApproval.user_wa + '@c.us';
-    await chat.client.sendMessage(
-        userWA,
-        `*LAPORAN PERLU REVISI*\n\nApproval: *${atasan.nama_lengkap}*\n\n*Catatan revisi:*\n${pesan.trim()}\n\nSilakan perbaiki dan lakukan */export* ulang.`
-    );
-
-    delete waitingTTD[user.wa_number];
-    return sendTyping(chat, `Revisi berhasil dikirim ke *${revisiApproval.user_nama}*.`);
-}
-
-
 
         // Handle approve
         if (action === 'approve') {
