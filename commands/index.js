@@ -1,186 +1,232 @@
 // index.js
 const fs = require('fs');
 const path = require('path');
+
 const handleAbsen = require('./absen');
 const { handleExport } = require('./export');
-const greetings = require('../data/greetings');
-const greetingReplies = require('../data/greetingReplies');
-const sendingIntro = {};
 const approveUser = require('./approve/approveUser');
 const approveAtasan = require('./approve/approveAtasan');
-const { sendTyping } = require('../utils/sendTyping');
-const handleLembur = require('./absensi/lembur'); 
+
+const handleLembur = require('./absensi/lembur');
 const handleEdit = require('./absensi/editAbsen');
 const handleRiwayatAbsen = require('./absensi/riwayatAbsen');
-const waitingTTD = require('../utils/waitingTTD');
-const detectIntentAI = require('../utils/intentAI');
-// const { predictIntent, getResponse } = require('../NLP/fallback');
-const ttdFolder = path.join(__dirname, '../assets/ttd/');
 
+const greetings = require('../data/greetings');
+const greetingReplies = require('../data/greetingReplies');
+
+const waitingTTD = require('../utils/waitingTTD');
+const { sendTyping } = require('../utils/sendTyping');
+const detectIntentAI = require('../utils/intentAI');
+
+const sendingIntro = {};
+const ttdFolder = path.join(__dirname, '../assets/ttd/');
 if (!fs.existsSync(ttdFolder)) fs.mkdirSync(ttdFolder, { recursive: true });
 
 const typeAndDelay = async (chat, ms = 800, random = 400) => {
-    await chat.sendStateTyping();
-    await new Promise(r => setTimeout(r, ms + Math.random() * random));
+  await chat.sendStateTyping();
+  await new Promise(r => setTimeout(r, ms + Math.random() * random));
 };
 
-const isUserDataComplete = (user) => !!(user.nama_lengkap && user.jabatan && user.nik);
+const isUserDataComplete = (user) =>
+  !!(user.nama_lengkap && user.jabatan && user.nik);
 
 module.exports = {
-    message: async (chat, wa_number, nama_wa, db, pesan, messageMedia) => {
-        const lowerMsg = pesan.toLowerCase().trim();
-        const query = (sql, params) =>
-            new Promise((res, rej) =>
-                db.query(sql, params, (err, result) => err ? rej(err) : res(result))
-            );
+  message: async (chat, wa_number, nama_wa, db, pesan, messageMedia) => {
+    const lowerMsg = pesan.toLowerCase().trim();
 
-        try {
-            // Ambil user atau buat baru
-            let [user] = await query("SELECT * FROM users WHERE wa_number=?", [wa_number]);
+    const query = (sql, params = []) =>
+      new Promise((res, rej) =>
+        db.query(sql, params, (err, result) => err ? rej(err) : res(result))
+      );
 
-            if (!user) {
-                await query("INSERT INTO users (wa_number, nama_wa, intro) VALUES (?, ?, 0)", [wa_number, nama_wa]);
-                [user] = await query("SELECT * FROM users WHERE wa_number=?", [wa_number]);
-            } else if (user.nama_wa !== nama_wa) {
+    try {
+      /* ================= USER INIT ================= */
+      let [user] = await query(
+        "SELECT * FROM users WHERE wa_number=?",
+        [wa_number]
+      );
 
-                await query("UPDATE users SET nama_wa=? WHERE id=?", [nama_wa, user.id]);
-                user.nama_wa = nama_wa;
-            }
+      if (!user) {
+        await query(
+          "INSERT INTO users (wa_number, nama_wa, intro) VALUES (?, ?, 0)",
+          [wa_number, nama_wa]
+        );
+        [user] = await query(
+          "SELECT * FROM users WHERE wa_number=?",
+          [wa_number]
+        );
+      } else if (user.nama_wa !== nama_wa) {
+        await query(
+          "UPDATE users SET nama_wa=? WHERE id=?",
+          [nama_wa, user.id]
+        );
+        user.nama_wa = nama_wa;
+      }
 
-            const command = pesan.split(' ')[0].toLowerCase();
-            const restrictedCommands = ['approve', 'revisi', 'status'];
+      /* ================= RESTRICTED COMMAND ================= */
+      const firstWord = lowerMsg.replace('/', '').split(' ')[0];
+      const restrictedWords = ['approve', 'revisi', 'status'];
 
-            // Guard restricted commands untuk atasan
-            if (restrictedCommands.includes(command)) {
-                if (!user.jabatan) return sendTyping(chat, 'Data jabatan kamu tidak ditemukan.');
-                if (user.jabatan !== 'Head West Java Operation') 
-                    return sendTyping(chat, 'Jabatan anda bukan *Head West Java Operation*,\n akses terbatas untuk approvals.');
+      if (restrictedWords.includes(firstWord)) {
+        if (!user.jabatan)
+          return sendTyping(chat, 'Data jabatan kamu tidak ditemukan.');
 
-                return approveAtasan(chat, user, pesan, db);
-            }
+        if (user.jabatan !== 'Head West Java Operation')
+          return sendTyping(
+            chat,
+            'Jabatan anda bukan *Head West Java Operation*,\nakses terbatas untuk approvals.'
+          );
 
-            // Cancel / close global
-            if (['batal', 'cancel', 'close', '/cancel'].includes(lowerMsg)) {
-                await query(`UPDATE users SET
-                    step_input=NULL, export_type=NULL, template_export=NULL,
-                    step_absen=NULL, step_lembur=NULL, step_riwayat=NULL
-                    WHERE id=?`, [user.id]);
+        return approveAtasan(chat, user, pesan, db);
+      }
 
-                if (waitingTTD[wa_number]) delete waitingTTD[wa_number];
+      /* ================= CANCEL ================= */
+      if (['batal', 'cancel', 'close', '/cancel'].includes(lowerMsg)) {
+        await query(`
+          UPDATE users SET
+            step_input=NULL,
+            export_type=NULL,
+            template_export=NULL,
+            step_absen=NULL,
+            step_lembur=NULL,
+            step_riwayat=NULL
+          WHERE id=?
+        `, [user.id]);
 
-                return sendTyping(chat, 'Proses dibatalkan.');
-            }
+        delete waitingTTD[wa_number];
+        return sendTyping(chat, 'Proses dibatalkan.');
+      }
 
-            // Media (TTD)
-            if (messageMedia && messageMedia.mimetype.startsWith('image/')) {
-                const ext = messageMedia.mimetype.split('/')[1] || 'png';
-                const filePath = path.join(ttdFolder, `${wa_number}.${ext}`);
-                fs.writeFileSync(filePath, messageMedia.data, { encoding: 'base64' });
+      /* ================= MEDIA (TTD) ================= */
+      if (messageMedia?.mimetype?.startsWith('image/')) {
+        const ext = messageMedia.mimetype.split('/')[1] || 'png';
+        const filePath = path.join(ttdFolder, `${wa_number}.${ext}`);
+        fs.writeFileSync(filePath, messageMedia.data, { encoding: 'base64' });
 
-                if (waitingTTD[wa_number]?.user) {
-                    const [dbUser] = await query("SELECT * FROM users WHERE wa_number=?", [wa_number]);
-                    delete waitingTTD[wa_number];
-                    await chat.sendMessage('*File berhasil ditandatangani*\nLaporan akan dikirim ke atasan untuk proses approval.');
-                    return approveUser(chat, dbUser, db);
-                }
-
-                if (waitingTTD[wa_number]?.atasan) {
-                    const [dbAtasan] = await query("SELECT * FROM users WHERE wa_number=?", [wa_number]);
-                    delete waitingTTD[wa_number];
-                    await chat.sendMessage('*File berhasil ditandatangani*\nApproval laporan telah selesai.');
-                    return approveAtasan(chat, dbAtasan, 'approve', db);
-                }
-
-                return;
-            }
-
-            // Intro
-            if (user.intro === 0) {
-                if (sendingIntro[wa_number]) return;
-
-                sendingIntro[wa_number] = true;
-
-                await typeAndDelay(chat);
-                await chat.sendMessage(
-                    `Halo *${nama_wa}* Saya *Arta Presence*, bot absensi otomatis *Lintasarta*.\n\n` +
-                    `Silakan gunakan perintah */help* untuk melihat daftar perintah.`
-                );
-
-                await query("UPDATE users SET intro=1 WHERE id=?", [user.id]);
-
-                delete sendingIntro[wa_number];
-                return;
-            }
-
-            // Help
-            if (lowerMsg === '/help') return require('./help')(chat, user.nama_wa);
-            
-            // Export
-            if (lowerMsg.startsWith('/export') || user.step_input) {
-                if (!isUserDataComplete(user) && ['choose_export_type', 'choose_template', 'start_export'].includes(user.step_input)) {
-                    await query(`UPDATE users SET step_input=NULL, export_type=NULL, template_export=NULL WHERE id=?`, [user.id]);
-                    user.step_input = null;
-                }
-
-                const [pendingApproval] = await query(`SELECT file_path FROM approvals WHERE user_id=? AND status='pending' ORDER BY created_at DESC LIMIT 1`, [user.id]);
-                if (pendingApproval && lowerMsg.startsWith('/export')) {
-                    const filename = path.basename(pendingApproval.file_path || '');
-                    const type = filename.startsWith('LEMBUR-') ? 'LEMBUR' : 'ABSENSI';
-                    return sendTyping(chat, `Laporan *${type}* kamu sedang dalam proses approval.\nSilakan tunggu sampai proses approval selesai.`);
-                }
-
-                await query(`DELETE FROM approvals WHERE user_id=? AND status='draft'`, [user.id]);
-                const paramBulan = pesan.split(' ').slice(1)[0] || null;
-                return handleExport(chat, user, pesan, db, paramBulan);
-            }
-
-            // /approve untuk user biasa
-            if (lowerMsg === '/approve') return approveUser(chat, user, db);
-
-            // Absen / lembur / riwayat / edit
-            if (lowerMsg === '/riwayat' || user.step_riwayat) return handleRiwayatAbsen(chat, user, pesan, db);
-            if (lowerMsg === '/absen' || user.step_absen) return handleAbsen(chat, user, lowerMsg, pesan, query);
-            if (lowerMsg === '/lembur' || user.step_lembur) return handleLembur(chat, user, pesan, (sql, params, cb) => db.query(sql, params, cb));
-            if (lowerMsg === '/edit' || handleEdit.isEditing(user.wa_number)) return handleEdit(chat, user, pesan, query);
-
-// Inten
-
-const isCommand = lowerMsg.startsWith('/');
-const firstWord = lowerMsg.replace('/', '').split(' ')[0];
-const isRestrictedWord = ['approve', 'revisi', 'status'].includes(firstWord);
-
-if (!isCommand && !isRestrictedWord) {
-  const intent = await detectIntentAI(pesan);
-  console.log('[INTENT AI]', pesan, '=>', intent);
-
-  switch (intent) {
-    case 'ABSEN':
-      return handleAbsen(chat, user, lowerMsg, pesan, query);
-    case 'RIWAYAT':
-      return handleRiwayatAbsen(chat, user, pesan, db);
-    case 'EXPORT':
-      return handleExport(chat, user, pesan, db, null);
-    case 'APPROVE':
-      if (user.jabatan !== 'Head West Java Operation')
-        return sendTyping(chat, 'Akses approve hanya untuk atasan.');
-      return approveAtasan(chat, user, pesan, db);
-  }
-}
-
-            // Greeting
-            const replyGreeting = greetings[lowerMsg];
-            if (replyGreeting) {
-                const randomReply = greetingReplies[Math.floor(Math.random() * greetingReplies.length)];
-                return sendTyping(chat, `${replyGreeting} *${nama_wa}*, ${randomReply}`, 1000);
-            }
-
-            // Default fallback
-            await sendTyping(chat, `Hmm… ${nama_wa}, aku belum paham pesan kamu.`, 1000);
-            await sendTyping(chat, "Coba ketik */help* untuk melihat perintah.", 1000);
-
-        } catch (err) {
-            console.error('Error handling message:', err);
-            return chat.sendMessage('Terjadi kesalahan sistem.');
+        if (waitingTTD[wa_number]?.user) {
+          delete waitingTTD[wa_number];
+          await chat.sendMessage(
+            '*File berhasil ditandatangani*\nLaporan akan dikirim ke atasan.'
+          );
+          return approveUser(chat, user, db);
         }
+
+        if (waitingTTD[wa_number]?.atasan) {
+          delete waitingTTD[wa_number];
+          await chat.sendMessage(
+            '*File berhasil ditandatangani*\nApproval laporan telah selesai.'
+          );
+          return approveAtasan(chat, user, 'approve', db);
+        }
+
+        return;
+      }
+
+      /* ================= INTRO ================= */
+      if (user.intro === 0) {
+        if (sendingIntro[wa_number]) return;
+
+        sendingIntro[wa_number] = true;
+        await typeAndDelay(chat);
+        await chat.sendMessage(
+          `Halo *${nama_wa}* 👋\nSaya *Arta Presence*, bot absensi otomatis.\n\nKetik */help* untuk melihat perintah.`
+        );
+        await query("UPDATE users SET intro=1 WHERE id=?", [user.id]);
+        delete sendingIntro[wa_number];
+        return;
+      }
+
+      /* ================= HELP ================= */
+      if (lowerMsg === '/help')
+        return require('./help')(chat, user.nama_wa);
+
+      /* ================= STATE MACHINE (PRIORITAS) ================= */
+      if (user.step_absen)
+        return handleAbsen(chat, user, lowerMsg, pesan, query);
+
+      if (user.step_lembur)
+        return handleLembur(chat, user, pesan, db);
+
+      if (user.step_riwayat)
+        return handleRiwayatAbsen(chat, user, pesan, db);
+
+      if (user.step_input)
+        return handleExport(chat, user, pesan, db, null);
+
+      /* ================= COMMAND ================= */
+      if (lowerMsg === '/approve')
+        return approveUser(chat, user, db);
+
+      if (lowerMsg.startsWith('/export')) {
+        if (!isUserDataComplete(user)) {
+          await query(`
+            UPDATE users SET
+              step_input=NULL,
+              export_type=NULL,
+              template_export=NULL
+            WHERE id=?
+          `, [user.id]);
+        }
+
+        const [pending] = await query(`
+          SELECT file_path FROM approvals
+          WHERE user_id=? AND status='pending'
+          ORDER BY created_at DESC LIMIT 1
+        `, [user.id]);
+
+        if (pending) {
+          const type = pending.file_path?.startsWith('LEMBUR-')
+            ? 'LEMBUR'
+            : 'ABSENSI';
+          return sendTyping(
+            chat,
+            `Laporan *${type}* masih menunggu approval.`
+          );
+        }
+
+        await query(
+          "DELETE FROM approvals WHERE user_id=? AND status='draft'",
+          [user.id]
+        );
+
+        const paramBulan = pesan.split(' ')[1] || null;
+        return handleExport(chat, user, pesan, db, paramBulan);
+      }
+
+      /* ================= INTENT AI (FALLBACK) ================= */
+      if (!lowerMsg.startsWith('/')) {
+        const intent = await detectIntentAI(pesan);
+        console.log('[INTENT AI]', pesan, '=>', intent);
+
+        switch (intent) {
+          case 'ABSEN':
+            return handleAbsen(chat, user, lowerMsg, pesan, query);
+          case 'RIWAYAT':
+            return handleRiwayatAbsen(chat, user, pesan, db);
+          case 'EXPORT':
+            return handleExport(chat, user, pesan, db, null);
+          case 'APPROVE':
+            return sendTyping(chat, 'Akses approve hanya untuk atasan.');
+        }
+      }
+
+      /* ================= GREETING ================= */
+      if (greetings[lowerMsg]) {
+        const reply =
+          greetingReplies[Math.floor(Math.random() * greetingReplies.length)];
+        return sendTyping(
+          chat,
+          `${greetings[lowerMsg]} *${nama_wa}*, ${reply}`
+        );
+      }
+
+      /* ================= FALLBACK ================= */
+      await sendTyping(chat, `Hmm… ${nama_wa}, aku belum paham pesannya.`);
+      return sendTyping(chat, 'Coba ketik */help* 😊');
+
+    } catch (err) {
+      console.error('[INDEX ERROR]', err);
+      return chat.sendMessage('Terjadi kesalahan sistem.');
     }
+  }
 };
