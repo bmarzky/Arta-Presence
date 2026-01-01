@@ -8,7 +8,6 @@ const approveUser = require('./approve/approveUser');
 const approveAtasan = require('./approve/approveAtasan');
 
 const handleLembur = require('./absensi/lembur');
-const handleEdit = require('./absensi/editAbsen');
 const handleRiwayatAbsen = require('./absensi/riwayatAbsen');
 
 const greetings = require('../data/greetings');
@@ -21,11 +20,6 @@ const detectIntentAI = require('../utils/intentAI');
 const sendingIntro = {};
 const ttdFolder = path.join(__dirname, '../assets/ttd/');
 if (!fs.existsSync(ttdFolder)) fs.mkdirSync(ttdFolder, { recursive: true });
-
-const typeAndDelay = async (chat, ms = 800, random = 400) => {
-  await chat.sendStateTyping();
-  await new Promise(r => setTimeout(r, ms + Math.random() * random));
-};
 
 const isUserDataComplete = (user) =>
   !!(user.nama_lengkap && user.jabatan && user.nik);
@@ -63,20 +57,11 @@ module.exports = {
         user.nama_wa = nama_wa;
       }
 
-      /* ================= RESTRICTED COMMAND ================= */
+      /* ================= RESTRICTED ================= */
       const firstWord = lowerMsg.replace('/', '').split(' ')[0];
-      const restrictedWords = ['approve', 'revisi', 'status'];
-
-      if (restrictedWords.includes(firstWord)) {
-        if (!user.jabatan)
-          return sendTyping(chat, 'Data jabatan kamu tidak ditemukan.');
-
+      if (['approve', 'revisi', 'status'].includes(firstWord)) {
         if (user.jabatan !== 'Head West Java Operation')
-          return sendTyping(
-            chat,
-            'Jabatan anda bukan *Head West Java Operation*,\nakses terbatas untuk approvals.'
-          );
-
+          return sendTyping(chat, 'Akses terbatas untuk atasan.');
         return approveAtasan(chat, user, pesan, db);
       }
 
@@ -84,12 +69,12 @@ module.exports = {
       if (['batal', 'cancel', 'close', '/cancel'].includes(lowerMsg)) {
         await query(`
           UPDATE users SET
-            step_input=NULL,
-            export_type=NULL,
-            template_export=NULL,
             step_absen=NULL,
             step_lembur=NULL,
-            step_riwayat=NULL
+            step_riwayat=NULL,
+            step_input=NULL,
+            export_type=NULL,
+            template_export=NULL
           WHERE id=?
         `, [user.id]);
 
@@ -105,31 +90,25 @@ module.exports = {
 
         if (waitingTTD[wa_number]?.user) {
           delete waitingTTD[wa_number];
-          await chat.sendMessage(
-            '*File berhasil ditandatangani*\nLaporan akan dikirim ke atasan.'
-          );
+          await chat.sendMessage('*File berhasil ditandatangani*');
           return approveUser(chat, user, db);
         }
 
         if (waitingTTD[wa_number]?.atasan) {
           delete waitingTTD[wa_number];
-          await chat.sendMessage(
-            '*File berhasil ditandatangani*\nApproval laporan telah selesai.'
-          );
+          await chat.sendMessage('*Approval laporan telah selesai*');
           return approveAtasan(chat, user, 'approve', db);
         }
-
         return;
       }
 
       /* ================= INTRO ================= */
-      if (user.intro === 0) {
-        if (sendingIntro[wa_number]) return;
-
+      if (user.intro === 0 && !sendingIntro[wa_number]) {
         sendingIntro[wa_number] = true;
-        await typeAndDelay(chat);
-        await chat.sendMessage(
-          `Halo *${nama_wa}* 👋\nSaya *Arta Presence*, bot absensi otomatis.\n\nKetik */help* untuk melihat perintah.`
+        await sendTyping(chat,
+          `Halo *${nama_wa}* 👋
+Saya *Arta Presence*, bot absensi otomatis.
+Ketik */help* untuk bantuan.`
         );
         await query("UPDATE users SET intro=1 WHERE id=?", [user.id]);
         delete sendingIntro[wa_number];
@@ -140,7 +119,7 @@ module.exports = {
       if (lowerMsg === '/help')
         return require('./help')(chat, user.nama_wa);
 
-      /* ================= STATE MACHINE (PRIORITAS) ================= */
+      /* ================= STATE MACHINE (PRIORITAS UTAMA) ================= */
       if (user.step_absen)
         return handleAbsen(chat, user, lowerMsg, pesan, query);
 
@@ -153,76 +132,43 @@ module.exports = {
       if (user.step_input)
         return handleExport(chat, user, pesan, db, null);
 
-      /* ================= COMMAND ================= */
-      if (lowerMsg === '/approve')
-        return approveUser(chat, user, db);
+      /* ================= COMMAND (ALIAS INTENT) ================= */
+      if (lowerMsg === '/absen')
+        return handleAbsen(chat, user, lowerMsg, pesan, query);
 
-      if (lowerMsg.startsWith('/export')) {
-        if (!isUserDataComplete(user)) {
-          await query(`
-            UPDATE users SET
-              step_input=NULL,
-              export_type=NULL,
-              template_export=NULL
-            WHERE id=?
-          `, [user.id]);
-        }
+      if (lowerMsg === '/riwayat')
+        return handleRiwayatAbsen(chat, user, pesan, db);
 
-        const [pending] = await query(`
-          SELECT file_path FROM approvals
-          WHERE user_id=? AND status='pending'
-          ORDER BY created_at DESC LIMIT 1
-        `, [user.id]);
+      if (lowerMsg.startsWith('/export'))
+        return handleExport(chat, user, pesan, db, pesan.split(' ')[1] || null);
 
-        if (pending) {
-          const type = pending.file_path?.startsWith('LEMBUR-')
-            ? 'LEMBUR'
-            : 'ABSENSI';
-          return sendTyping(
-            chat,
-            `Laporan *${type}* masih menunggu approval.`
-          );
-        }
-
-        await query(
-          "DELETE FROM approvals WHERE user_id=? AND status='draft'",
-          [user.id]
-        );
-
-        const paramBulan = pesan.split(' ')[1] || null;
-        return handleExport(chat, user, pesan, db, paramBulan);
-      }
-
-      /* ================= INTENT AI (FALLBACK) ================= */
+      /* ================= INTENT AI ================= */
       if (!lowerMsg.startsWith('/')) {
         const intent = await detectIntentAI(pesan);
         console.log('[INTENT AI]', pesan, '=>', intent);
 
-        switch (intent) {
-          case 'ABSEN':
-            return handleAbsen(chat, user, lowerMsg, pesan, query);
-          case 'RIWAYAT':
-            return handleRiwayatAbsen(chat, user, pesan, db);
-          case 'EXPORT':
-            return handleExport(chat, user, pesan, db, null);
-          case 'APPROVE':
-            return sendTyping(chat, 'Akses approve hanya untuk atasan.');
-        }
+        if (intent === 'ABSEN')
+          return handleAbsen(chat, user, lowerMsg, pesan, query);
+
+        if (intent === 'RIWAYAT')
+          return handleRiwayatAbsen(chat, user, pesan, db);
+
+        if (intent === 'EXPORT')
+          return handleExport(chat, user, pesan, db, null);
       }
 
       /* ================= GREETING ================= */
       if (greetings[lowerMsg]) {
         const reply =
           greetingReplies[Math.floor(Math.random() * greetingReplies.length)];
-        return sendTyping(
-          chat,
+        return sendTyping(chat,
           `${greetings[lowerMsg]} *${nama_wa}*, ${reply}`
         );
       }
 
       /* ================= FALLBACK ================= */
-      await sendTyping(chat, `Hmm… ${nama_wa}, aku belum paham pesannya.`);
-      return sendTyping(chat, 'Coba ketik */help* 😊');
+      await sendTyping(chat, `Aku belum paham pesannya 😅`);
+      return sendTyping(chat, 'Coba ketik */help*');
 
     } catch (err) {
       console.error('[INDEX ERROR]', err);
