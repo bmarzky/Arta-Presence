@@ -163,7 +163,7 @@ if (waitingTTD[user.wa_number]?.revisi_id) {
 
     await query(
         `UPDATE approvals SET revisi_catatan=?, step_input=NULL WHERE id=?`,
-        [rawText.trim(), revisiId]
+        [pesan.trim(), revisiId]   // gunakan raw pesan asli, bukan lowercase
     );
 
     // kirim ke user
@@ -178,12 +178,13 @@ if (waitingTTD[user.wa_number]?.revisi_id) {
     const userWA = revisiApproval.user_wa.includes('@') ? revisiApproval.user_wa : revisiApproval.user_wa + '@c.us';
     await chat.client.sendMessage(
         userWA,
-        `*LAPORAN PERLU REVISI*\n\nApproval: *${atasan.nama_lengkap}*\n\n*Catatan revisi:*\n${rawText.trim()}\n\nSilakan perbaiki dan lakukan */export* ulang.`
+        `*LAPORAN PERLU REVISI*\n\nApproval: *${atasan.nama_lengkap}*\n\n*Catatan revisi:*\n${pesan.trim()}\n\nSilakan perbaiki dan lakukan */export* ulang.`
     );
 
     delete waitingTTD[user.wa_number];
     return sendTyping(chat, `Revisi berhasil dikirim ke *${revisiApproval.user_nama}*.`);
 }
+
 
 
         // Handle approve

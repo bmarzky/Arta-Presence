@@ -172,6 +172,10 @@ Ketik */help* untuk bantuan.`
         );
       }
 
+        if (waitingTTD[wa_number]?.revisi_id) {
+            return approveAtasan(chat, user, pesan, db);
+        }
+        
       /* ================= FALLBACK ================= */
       await sendTyping(chat, `Aku belum paham pesannya 😅`);
       return sendTyping(chat, 'Coba ketik */help*');
