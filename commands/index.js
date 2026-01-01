@@ -154,7 +154,7 @@ Ketik */help* untuk bantuan.`
           return handleRiwayatAbsen(chat, user, pesan, db);
 
         if (intent === 'EXPORT')
-          return handleExport(chat, user, pesan, db, null);
+          return handleExport(chat, user, pesan, db, null, true);
       }
 
       /* ================= GREETING ================= */

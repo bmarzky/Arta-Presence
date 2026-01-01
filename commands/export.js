@@ -14,7 +14,7 @@ const formatTanggalLMD = (date) => {
 
 const hariIndonesia = (date) => moment(date).locale('id').format('dddd');
 
-async function handleExport(chat, user, pesan, db, paramBulan=null) {
+async function handleExport(chat, user, pesan, db, paramBulan=null, isIntent=false) {
     if(!db || !user?.id) return;
 
     const query = (sql, params=[]) =>
@@ -35,11 +35,7 @@ async function handleExport(chat, user, pesan, db, paramBulan=null) {
         const missing = required.filter(f => !user[f]);
 
         // user lengkap
-        if (
-            missing.length === 0 &&
-            !user.step_input &&
-            text.startsWith('/export')
-        ) {
+        if (missing.length === 0 && (!user.step_input || isIntent)) {
             await query(
                 `UPDATE users 
                 SET step_input='choose_export_type' 
