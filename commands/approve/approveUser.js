@@ -118,16 +118,13 @@ if (!approverWA) {
             }
         }
 
-const lock = await query(
-    `UPDATE approvals 
-     SET status='processing'
-     WHERE id=? AND status='pending'`,
-    [approvalToSend.id]
-);
+        // update ke processing tanpa mengunci status
+        await query(
+            `UPDATE approvals SET status='processing' WHERE id=?`,
+            [approvalToSend.id]
+        );
+        approvalToSend.status = 'processing';
 
-if (lock.affectedRows === 0) {
-    return sendTyping(chat, 'Laporan ini sedang diproses.');
-}
 
 // pastikan WA format
 if (!approverWA || typeof approverWA !== 'string') {
