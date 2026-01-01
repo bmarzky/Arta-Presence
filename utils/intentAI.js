@@ -4,10 +4,6 @@ let client;
 
 function getClient() {
   if (!client) {
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY belum tersedia');
-    }
-
     client = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
       baseURL: process.env.OPENAI_BASE_URL,
@@ -40,7 +36,7 @@ Balas HANYA dengan satu kata intent (huruf kapital).
 `;
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gemini/gemini-2.5-flash', // 🔥 PENTING
       messages: [{ role: 'user', content: prompt }],
       temperature: 0
     });
@@ -50,8 +46,12 @@ Balas HANYA dengan satu kata intent (huruf kapital).
       .toUpperCase();
 
     const allowed = [
-      'ABSEN', 'RIWAYAT', 'STATUS',
-      'APPROVE', 'EXPORT', 'REVISI'
+      'ABSEN',
+      'RIWAYAT',
+      'STATUS',
+      'APPROVE',
+      'EXPORT',
+      'REVISI'
     ];
 
     return allowed.includes(intent) ? intent : 'UNKNOWN';
