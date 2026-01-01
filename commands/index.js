@@ -148,7 +148,7 @@ Ketik */help* untuk bantuan.`
         console.log('[INTENT AI]', pesan, '=>', intent);
 
         if (intent === 'ABSEN')
-          return handleAbsen(chat, user, lowerMsg, pesan, query);
+          return handleAbsen(chat, user, lowerMsg, pesan, query, true);
 
         if (intent === 'RIWAYAT')
           return handleRiwayatAbsen(chat, user, pesan, db);

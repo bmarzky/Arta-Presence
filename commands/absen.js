@@ -107,49 +107,52 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query, 
         }
     }
 
-
-    // Command
-    if (lowerMsg !== '/absen' || isIntent) return;
-
-    // Belum absen hari ini
-    if (!todayAbsen) {
-        await query(
-            `INSERT INTO absensi (user_id, tanggal, jam_masuk)
-             VALUES (?, ?, CURTIME())`,
-            [user.id, today]
-        );
-
-        await query(
-            "UPDATE users SET step_absen='ket_masuk' WHERE id=?",
-            [user.id]
-        );
-
-        await sendTyping(chat, `Absen MASUK berhasil pada ${nowTime}`);
-        return sendTyping(chat, 'Mau tambahkan keterangan? (ya/tidak)');
-    }
-
-    // Sudah masuk, belum pulang
-    if (todayAbsen.jam_masuk && !todayAbsen.jam_pulang) {
-
-        if (!todayAbsen.deskripsi) {
+    // Command atau Intent
+    if (lowerMsg === '/absen' || isIntent) {
+        // Belum absen hari ini
+        if (!todayAbsen) {
             await query(
-                "UPDATE users SET step_absen='isi_ket_pulang' WHERE id=?",
+                `INSERT INTO absensi (user_id, tanggal, jam_masuk)
+                VALUES (?, ?, CURTIME())`,
+                [user.id, today]
+            );
+
+            await query(
+                "UPDATE users SET step_absen='ket_masuk' WHERE id=?",
                 [user.id]
             );
-            await sendTyping(chat, 'Kamu belum mengisi keterangan kerja hari ini.');
-            return sendTyping(
-                chat,
-                'Silakan isi keterangan sekarang sebelum absen pulang.'
-            );
+
+            await sendTyping(chat, `Absen MASUK berhasil pada ${nowTime}`);
+            return sendTyping(chat, 'Mau tambahkan keterangan? (ya/tidak)');
         }
 
-        await query(
-            "UPDATE users SET step_absen='konfirmasi_pulang' WHERE id=?",
-            [user.id]
-        );
-        return sendTyping(chat, 'Mau absen PULANG sekarang? (ya/tidak)');
+        // Sudah masuk, belum pulang
+        if (todayAbsen.jam_masuk && !todayAbsen.jam_pulang) {
+
+            if (!todayAbsen.deskripsi) {
+                await query(
+                    "UPDATE users SET step_absen='isi_ket_pulang' WHERE id=?",
+                    [user.id]
+                );
+                await sendTyping(chat, 'Kamu belum mengisi keterangan kerja hari ini.');
+                return sendTyping(
+                    chat,
+                    'Silakan isi keterangan sekarang sebelum absen pulang.'
+                );
+            }
+
+            await query(
+                "UPDATE users SET step_absen='konfirmasi_pulang' WHERE id=?",
+                [user.id]
+            );
+            return sendTyping(chat, 'Mau absen PULANG sekarang? (ya/tidak)');
+        }
+
+        // Absen sudah lengkap
+        return sendTyping(chat, 'Absensi hari ini sudah lengkap');
     }
 
-    // Absen sudah lengkap
-    return sendTyping(chat, 'Absensi hari ini sudah lengkap');
+    // Kalau bukan command atau intent, return diam
+    return;
+
 };
