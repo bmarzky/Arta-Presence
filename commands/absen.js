@@ -70,7 +70,7 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query, 
                 );
 
                 await sendTyping(chat, 'Keterangan tersimpan.');
-                return sendTyping(chat, 'Mau absen PULANG sekarang? (ya/tidak)');
+                return sendTyping(chat, 'Mau absen PULANG sekarang?');
             }
 
             // Konfirmasi absen pulang
@@ -123,7 +123,7 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query, 
             );
 
             await sendTyping(chat, `Absen MASUK berhasil pada ${nowTime}`);
-            return sendTyping(chat, 'Mau tambahkan keterangan? (ya/tidak)');
+            return sendTyping(chat, 'Mau tambahkan keterangan?');
         }
 
         // Sudah masuk, belum pulang
@@ -145,7 +145,7 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query, 
                 "UPDATE users SET step_absen='konfirmasi_pulang' WHERE id=?",
                 [user.id]
             );
-            return sendTyping(chat, 'Mau absen PULANG sekarang? (ya/tidak)');
+            return sendTyping(chat, 'Mau absen PULANG sekarang?');
         }
 
         // Absen sudah lengkap
