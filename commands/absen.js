@@ -1,7 +1,7 @@
 const moment = require('moment');
 const { sendTyping } = require('../utils/sendTyping');
 
-module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query) {
+module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query, isIntent = false) {
     const today = moment().format('YYYY-MM-DD');
     const nowTime = moment().format('HH:mm');
 
@@ -109,7 +109,7 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query) 
 
 
     // Command
-    if (lowerMsg !== '/absen') return;
+    if (lowerMsg !== '/absen' || isIntent) return;
 
     // Belum absen hari ini
     if (!todayAbsen) {
