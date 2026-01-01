@@ -1,8 +1,19 @@
 const OpenAI = require('openai');
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+let client; // ← lazy init
+
+function getClient() {
+  if (!client) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY belum tersedia');
+    }
+
+    client = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
+  }
+  return client;
+}
 
 /**
  * Detect intent user menggunakan AI
@@ -11,17 +22,19 @@ const client = new OpenAI({
  */
 module.exports = async function detectIntentAI(text) {
   try {
+    const openai = getClient();
+
     const prompt = `
 Kamu adalah intent classifier untuk bot WhatsApp absensi kantor.
 
 Tentukan SATU intent dari daftar berikut:
-- ABSEN : user ingin absen / hadir / presensi
-- RIWAYAT : user ingin melihat riwayat absensi atau laporan
-- STATUS : user ingin mengecek status laporan / approval
-- APPROVE : atasan ingin menyetujui laporan
-- EXPORT : user ingin export / download laporan
-- REVISI : atasan ingin revisi laporan
-- UNKNOWN : jika tidak jelas
+- ABSEN
+- RIWAYAT
+- STATUS
+- APPROVE
+- EXPORT
+- REVISI
+- UNKNOWN
 
 Pesan user:
 "${text}"
@@ -29,11 +42,9 @@ Pesan user:
 Balas HANYA dengan satu kata intent (huruf kapital).
 `;
 
-    const response = await client.chat.completions.create({
+    const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
-      messages: [
-        { role: 'user', content: prompt }
-      ],
+      messages: [{ role: 'user', content: prompt }],
       temperature: 0
     });
 
@@ -41,7 +52,6 @@ Balas HANYA dengan satu kata intent (huruf kapital).
       .trim()
       .toUpperCase();
 
-    // Validasi biar aman
     const allowedIntents = [
       'ABSEN',
       'RIWAYAT',
@@ -51,11 +61,7 @@ Balas HANYA dengan satu kata intent (huruf kapital).
       'REVISI'
     ];
 
-    if (!allowedIntents.includes(intent)) {
-      return 'UNKNOWN';
-    }
-
-    return intent;
+    return allowedIntents.includes(intent) ? intent : 'UNKNOWN';
 
   } catch (error) {
     console.error('[IntentAI Error]', error.message);
