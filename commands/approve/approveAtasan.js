@@ -176,21 +176,25 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
         // Handle approve
         if (action === 'approve') {
-            // Cek TTD atasan
+            if (!approval) {
+                return sendTyping(chat, `Tidak ditemukan laporan ${export_type}-${namaUser} yang pending.`);
+            }
+
+            // cek TTD atasan
             const ttdPng = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.png`);
             const ttdJpg = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.jpg`);
             if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
                 waitingTTD[atasan.wa_number] = {
-                atasan: true,
-                approval_id: approval.id
-            };
+                    atasan: true,
+                    approval_id: approval.id
+                };
                 await sendTyping(chat, 'Silakan kirim foto TTD kamu untuk approve laporan ini.');
                 await query(
-                `UPDATE approvals 
-                SET step_input='ttd_atasan' 
-                WHERE id=? AND status='pending'`,
-                [approval.id]
-            );
+                    `UPDATE approvals 
+                    SET step_input='ttd_atasan' 
+                    WHERE id=? AND status='pending'`,
+                    [approval.id]
+                );
                 return;
             }
 
