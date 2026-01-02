@@ -24,73 +24,45 @@ module.exports = async function approveAtasan(chat, user, pesan, db, isTTDReady 
         const [atasan] = await query(`SELECT * FROM users WHERE wa_number=? LIMIT 1`, [user.wa_number]);
         if (!atasan) return sendTyping(chat, 'Data atasan tidak ditemukan.');
         // ttd confirm
-        if (waitingTTD[user.wa_number]?.atasan) {
-            if (!chat.hasMedia) {
-                return sendTyping(chat, 'Silakan kirim *foto TTD* untuk melanjutkan approval.');
-            }
-        
-        const image = await chat.downloadMedia();
-        if (!image.mimetype.startsWith('image/')) {
-            return sendTyping(chat, 'TTD harus berupa *gambar* (PNG/JPG).');
-        }
+if (waitingTTD[user.wa_number]?.atasan) {
+    if (!chat.hasMedia) {
+        return sendTyping(chat, 'Silakan kirim *foto TTD* untuk melanjutkan approval.');
+    }
 
-        const ext = image.mimetype.split('/')[1]; // png/jpg
-        const ttdPath = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.${ext}`);
-        fs.writeFileSync(ttdPath, image.data, { encoding: 'base64' });
+    const image = await chat.downloadMedia();
+    if (!image.mimetype.startsWith('image/')) {
+        return sendTyping(chat, 'TTD harus berupa *gambar* (PNG/JPG).');
+    }
 
-        if (isTTDReady || waitingTTD[user.wa_number]?.atasan) {
-            const approvalId = waitingTTD[user.wa_number]?.approval_id;
-            if (!approvalId) {
-                delete waitingTTD[user.wa_number];
-                return sendTyping(chat, 'Context approval tidak ditemukan. Silakan ulangi approve.');
-            }
+    const ext = image.mimetype.split('/')[1];
+    const ttdPath = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.${ext}`);
+    fs.writeFileSync(ttdPath, image.data, { encoding: 'base64' });
 
-            const [approval] = await query(`
-                SELECT a.*, u.wa_number AS user_wa, u.nama_lengkap AS user_nama
-                FROM approvals a
-                JOIN users u ON u.id = a.user_id
-                WHERE a.id=?
-            `, [approvalId]);
+    // Hapus waitingTTD agar tidak looping minta TTD lagi
+    const approvalId = waitingTTD[user.wa_number].approval_id;
+    delete waitingTTD[user.wa_number];
 
-            if (!approval) {
-                delete waitingTTD[user.wa_number];
-                return sendTyping(chat, 'Data approval tidak ditemukan.');
-            }
+    // Langsung generate PDF
+    const [approval] = await query(`SELECT * FROM approvals WHERE id=?`, [approvalId]);
+    const ttdAtasanHTML = getTTDHTML(atasan.wa_number);
+    const ttdUserHTML   = getTTDHTML(approval.user_wa);
 
-            // cek apakah TTD sudah di-upload
-            const ttdFiles = fs.readdirSync(path.join(__dirname, '../../assets/ttd'));
-            const ttdExists = ttdFiles.some(f => f.startsWith(user.wa_number));
-            if (!ttdExists) {
-                return sendTyping(chat, 'Silakan kirim *foto TTD* untuk melanjutkan approval.');
-            }
+    let outputPath;
+    if (approval.export_type === 'lembur') {
+        outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML);
+    } else {
+        outputPath = await generatePDFForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML);
+    }
 
-            // ambil data atasan
-            const [atasan] = await query(`SELECT * FROM users WHERE wa_number=? LIMIT 1`, [user.wa_number]);
-            const ttdAtasanHTML = getTTDHTML(atasan.wa_number);
-            const ttdUserHTML   = getTTDHTML(approval.user_wa);
+    await query(`UPDATE approvals SET status='approved', step_input=NULL, ttd_atasan_at=NOW() WHERE id=?`, [approval.id]);
 
-            let outputPath;
-            if (approval.export_type === 'lembur') {
-                outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML);
-            } else {
-                outputPath = await generatePDFForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML);
-            }
+    const media = MessageMedia.fromFilePath(outputPath);
+    const userWA = approval.user_wa.includes('@') ? approval.user_wa : approval.user_wa + '@c.us';
+    await chat.client.sendMessage(userWA, media);
+    await chat.client.sendMessage(userWA, `Laporan ${approval.export_type}-${approval.user_nama} telah disetujui oleh *${atasan.nama_lengkap}*.`);
 
-            await query(`
-                UPDATE approvals 
-                SET status='approved', step_input=NULL, ttd_atasan_at=NOW()
-                WHERE id=?
-            `, [approval.id]);
-
-            const media = MessageMedia.fromFilePath(outputPath);
-            const userWA = approval.user_wa.includes('@') ? approval.user_wa : approval.user_wa + '@c.us';
-            await chat.client.sendMessage(userWA, media);
-            await chat.client.sendMessage(userWA, `Laporan ${approval.export_type}-${approval.user_nama} telah disetujui oleh *${atasan.nama_lengkap}*.`);
-
-            delete waitingTTD[user.wa_number];
-            return sendTyping(chat, '*File berhasil ditandatangani*\nApproval laporan telah selesai.');
-        }
-        }
+    return sendTyping(chat, '*File berhasil ditandatangani*\nApproval laporan telah selesai.');
+}
 
         // Semua laporan pending/revised
         const pendingApprovals = await query(`
