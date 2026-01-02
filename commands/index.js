@@ -97,9 +97,9 @@ module.exports = {
             }
 
             if (waitingTTD[wa_number]?.atasan) {
-                delete waitingTTD[wa_number];
-                return approveAtasan(chat, user, 'approve', db);
+                return approveAtasan(chat, user, null, db, true);
             }
+
             return;
         }
 
