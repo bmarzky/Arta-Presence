@@ -194,9 +194,11 @@ if (action === 'revisi') {
             }
 
         // cek TTD atasan
-        const ttdPng = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.png`);
-        const ttdJpg = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.jpg`);
-        if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
+        const ttdFolder = path.join(__dirname, '../../assets/ttd');
+        const ttdFiles = fs.readdirSync(ttdFolder);
+
+        const ttdExists = ttdFiles.some(f => f.startsWith(atasan.wa_number));
+        if (!ttdExists) {
             waitingTTD[atasan.wa_number] = {
                 atasan: true,
                 approval_id: approval.id
