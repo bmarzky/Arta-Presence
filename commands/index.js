@@ -91,26 +91,33 @@ module.exports = {
         return sendTyping(chat, 'Proses dibatalkan.');
       }
 
-        /* ================= MEDIA (TTD) ================= */
-        if (messageMedia?.mimetype?.startsWith('image/')) {
-            const ext = messageMedia.mimetype.split('/')[1] || 'png';
-            const ttdPath = path.join(ttdFolder, `${wa_number}.${ext}`);
-            fs.writeFileSync(ttdPath, messageMedia.data, { encoding: 'base64' });
+    /* ================= MEDIA (TTD) ================= */
+    if (messageMedia?.mimetype?.startsWith('image/')) {
+        const extRaw = messageMedia.mimetype.split('/')[1] || 'png';
+        const ext = ['png','jpg','jpeg'].includes(extRaw) ? extRaw : 'png';
+        const ttdPath = path.join(ttdFolder, `${wa_number}.${ext}`);
+        fs.writeFileSync(ttdPath, messageMedia.data, { encoding: 'base64' });
 
-            // TTD untuk user (kirim laporan)
-            if (waitingTTD[wa_number]?.user) {
-                delete waitingTTD[wa_number];
-                return await approveUser(chat, user, db);
-            }
-
-            // TTD untuk approval atasan
-            if (waitingTTD[wa_number]?.approval) {
-                // jangan hapus dulu
-                return await approveAtasan(chat, user, null, db);
-            }
-
-            return await sendTyping(chat, 'TTD tidak terkait dengan proses apapun.');
+        // TTD untuk user (kirim laporan)
+        if (waitingTTD[wa_number]?.user) {
+            // hapus setelah approve selesai
+            await approveUser(chat, user, db);
+            delete waitingTTD[wa_number];
+            return;
         }
+
+        // TTD untuk approval atasan
+        if (waitingTTD[wa_number]?.approval_id) { // sesuaikan key dengan approveAtasan
+            return await approveAtasan(chat, user, null, db); // approveAtasan nanti yang hapus
+        }
+
+        // TTD untuk revisi atasan
+        if (waitingTTD[wa_number]?.revisi_id) {
+            return await approveAtasan(chat, user, null, db);
+        }
+
+        return await sendTyping(chat, 'TTD tidak terkait dengan proses apapun.');
+    }
 
       /* ================= INTRO ================= */
       if (user.intro === 0 && !sendingIntro[wa_number]) {
