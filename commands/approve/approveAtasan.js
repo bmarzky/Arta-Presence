@@ -213,35 +213,35 @@ if (action === 'revisi') {
 
         currentApprovalId = approval.id;
 
-        const res = await query(
-            `UPDATE approvals SET status='processing'
-            WHERE id=? AND status='pending'`,
-            [approval.id]
-        );
+// Jika masih pending, update ke processing
+if (approval.status === 'pending') {
+    await query(
+        `UPDATE approvals SET status='processing' WHERE id=?`,
+        [approval.id]
+    );
+}
 
-        if (res.affectedRows === 0)
-            return sendTyping(chat, 'Laporan sedang diproses.');
+// Lanjutkan proses approve
+const ttdAtasanHTML = getTTDHTML(atasan.wa_number);
+const ttdUserHTML = getTTDHTML(approval.user_wa);
 
-        const ttdAtasanHTML = getTTDHTML(atasan.wa_number);
-        const ttdUserHTML = getTTDHTML(approval.user_wa);
+// Generate PDF
+let outputPath;
+if (approval.export_type === 'lembur') {
+    outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML, atasan.wa_number);
+} else {
+    outputPath = await generatePDFForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML, atasan.wa_number);
+}
 
-        // Generate PDF
-        let outputPath;
-        if (approval.export_type === 'lembur') {
-            outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML, atasan.wa_number);
-        } else {
-            outputPath = await generatePDFForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML, atasan.wa_number);
-        }
-
-        // Update status approved
-        await query(
-            `UPDATE approvals 
-            SET status='approved',
-                step_input=NULL,
-                ttd_atasan_at=NOW()
-            WHERE id=?`,
-            [approval.id]
-        );
+// Update status approved
+await query(
+    `UPDATE approvals 
+    SET status='approved',
+        step_input=NULL,
+        ttd_atasan_at=NOW()
+    WHERE id=?`,
+    [approval.id]
+);
 
         // Kirim file ke user
         const media = MessageMedia.fromFilePath(outputPath);
