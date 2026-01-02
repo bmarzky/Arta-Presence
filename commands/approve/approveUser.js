@@ -143,10 +143,13 @@ if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
     // simpan context supaya bot tahu user sedang dikirim TTD
     waitingTTD[wa_number] = { user: true, approval_id: approvalToSend.id };
 
-    return sendTyping(
+    await sendTyping(
         chat,
         'Silakan kirim foto tanda tangan kamu untuk melanjutkan approval.'
     );
+
+    // hentikan sementara, proses kirim ke atasan akan dipicu setelah user kirim TTD
+    return;
 }
 
 // jika TTD sudah ada → langsung generate PDF + kirim ke atasan
