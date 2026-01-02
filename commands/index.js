@@ -163,6 +163,12 @@ Ketik */help* untuk bantuan.`
       if (['kirim'].includes(firstWord)) {
         return approveUser(chat, user, db);
       }
+      
+      /* ================= REVISI ================= */
+      if (waitingTTD[wa_number]?.revisi_id) {
+        return approveAtasan(chat, user, pesan, db);
+      }
+
 
       /* ================= INTENT AI ================= */
       if (!lowerMsg.startsWith('/')) {
@@ -186,11 +192,6 @@ Ketik */help* untuk bantuan.`
         return sendTyping(chat,
           `${greetings[lowerMsg]} *${nama_wa}*, ${reply}`
         );
-      }
-
-      /* ================= REVISI ================= */
-      if (waitingTTD[wa_number]?.revisi_id) {
-        return approveAtasan(chat, user, pesan, db);
       }
 
       /* ================= FALLBACK ================= */
