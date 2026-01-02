@@ -118,13 +118,6 @@ if (!approverWA) {
             }
         }
 
-        // update ke processing tanpa mengunci status
-        await query(
-            `UPDATE approvals SET status='processing' WHERE id=?`,
-            [approvalToSend.id]
-        );
-        approvalToSend.status = 'processing';
-
 
 // pastikan WA format
 if (!approverWA || typeof approverWA !== 'string') {
@@ -151,6 +144,14 @@ if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
     // hentikan sementara, proses kirim ke atasan akan dipicu setelah user kirim TTD
     return;
 }
+
+// --- hanya di sini set status processing ---
+await query(
+    `UPDATE approvals SET status='processing' WHERE id=?`,
+    [approvalToSend.id]
+);
+approvalToSend.status = 'processing';
+
 
 // jika TTD sudah ada → langsung generate PDF + kirim ke atasan
 const updatedFilePath =
@@ -197,9 +198,7 @@ await query(`UPDATE approvals SET status='pending' WHERE id=?`, [approvalToSend.
 
 return sendTyping(chat, `*${nama_user}*, laporan berhasil dikirim ke *${nama_atasan}* untuk proses approval.`);
 
-
     } 
-    
     
     catch (err) {        
         console.error('Gagal kirim approval:', err);
