@@ -16,13 +16,11 @@ function getWAfinal(waNumber, selfNumber) {
 }
 
     // Wrapper untuk memanggil fungsi PDF sesuai tipe approval
-    async function generatePDFForAtasanWrapper(approval, db, ttdAtasanHTML, ttdUserHTML) {
+    async function generatePDFForAtasanWrapper(approval, user, db, ttdAtasanHTML, ttdUserHTML) {
         if (approval.export_type === 'lembur') {
-            // panggil fungsi lokal
-            return await generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML);
+            return await generatePDFLemburForAtasan(approval, user, db, ttdAtasanHTML, ttdUserHTML);
         }
-        // panggil fungsi lokal
-        return await generatePDFForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML);
+        return await generatePDFForAtasan(approval, user, db, ttdAtasanHTML, ttdUserHTML);
     }
 
 module.exports = async function approveAtasan(chat, user, pesan, db) {
@@ -55,7 +53,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 if (!ttdAtasanHTML) return sendTyping(chat, 'TTD atasan belum tersedia, silakan kirim TTD.');
 
                 const ttdUserHTML = getTTDHTML(approval.user_wa) || '';
-                const outputPath = await generatePDFForAtasanWrapper(approval, db, ttdAtasanHTML, ttdUserHTML);
+                const outputPath = await generatePDFForAtasanWrapper(approval, user, db, ttdAtasanHTML, ttdUserHTML);
 
                 await query(`UPDATE approvals SET status='approved', step_input=NULL, ttd_atasan_at=NOW() WHERE id=?`, [approval.id]);
 
@@ -150,7 +148,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
             const ttdAtasanHTML = getTTDHTML(atasan.wa_number) || '';
             const ttdUserHTML = getTTDHTML(approval.user_wa) || '';
-            const outputPath = await generatePDFForAtasanWrapper(approval, db, ttdAtasanHTML, ttdUserHTML);
+            const outputPath = await generatePDFForAtasanWrapper(approval, user, db, ttdAtasanHTML, ttdUserHTML);
 
             await query(`UPDATE approvals SET status='approved', step_input=NULL, ttd_atasan_at=NOW() WHERE id=?`, [approval.id]);
 
@@ -175,7 +173,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 };
 
 // Fungsi generate PDF - absensi
-async function generatePDFForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML)
+async function generatePDFForAtasan(approval, user, db, ttdAtasanHTML, ttdUserHTML)
  {
 
     const generatePDF = require('../../utils/pdfGenerator');
@@ -253,7 +251,7 @@ async function generatePDFForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML)
 }
 
 // Fungsi generate PDF - lembur
-async function generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML) {
+async function generatePDFLemburForAtasan(approval, user, db, ttdAtasanHTML, ttdUserHTML) {
 
     const generatePDF = require('../../utils/pdfGenerator');
     const templateName = approval.template_export || 'LMD';
