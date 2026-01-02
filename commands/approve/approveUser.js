@@ -133,6 +133,8 @@ if (!approverWA || typeof approverWA !== 'string') {
     return sendTyping(chat, 'Nomor WhatsApp atasan belum tersedia.');
 }
 
+let approverWAfinal = approverWA.includes('@') ? approverWA : approverWA + '@c.us';
+
 if (!approverWA.includes('@')) {
     approverWA += '@c.us';
 }
