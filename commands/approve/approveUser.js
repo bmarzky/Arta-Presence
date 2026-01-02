@@ -66,7 +66,10 @@ let nama_atasan = approval.nama_atasan || '';
 let nik_atasan = approval.nik_atasan || '';
 
 if (!approverWA) {
-    const [approver] = await query(`SELECT * FROM users WHERE jabatan='Head West Java Operation' LIMIT 1`);
+    const [approver] = await query(
+        `SELECT * FROM users WHERE jabatan='Head West Java Operation' AND id != ? LIMIT 1`,
+        [user.id]
+    );
     if (!approver) {
         return sendTyping(chat, "Head West Java Operation Belum Menggunakan *ARTA PRESENCE*");
     }
@@ -178,7 +181,9 @@ const updatedFilePath =
           );
 
 // pastikan WA approver
-let approverWAfinal = approverWA.includes('@') ? approverWA : approverWA + '@c.us';
+if (approverWAfinal === wa_number) {
+    return sendTyping(chat, 'Approval gagal: tidak bisa kirim ke diri sendiri.');
+}
 
 const media = MessageMedia.fromFilePath(
     Array.isArray(updatedFilePath) ? updatedFilePath[0] : updatedFilePath
