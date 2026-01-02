@@ -94,38 +94,24 @@ module.exports = {
         /* ================= MEDIA (TTD) ================= */
         if (messageMedia?.mimetype?.startsWith('image/')) {
             const ext = messageMedia.mimetype.split('/')[1] || 'png';
-            const filePath = path.join(ttdFolder, `${wa_number}.${ext}`);
-            fs.writeFileSync(filePath, messageMedia.data, { encoding: 'base64' });
+            const ttdPath = path.join(ttdFolder, `${wa_number}.${ext}`);
+            fs.writeFileSync(ttdPath, messageMedia.data, { encoding: 'base64' });
 
-            // TTD user
+            // TTD untuk user (kirim laporan)
             if (waitingTTD[wa_number]?.user) {
                 delete waitingTTD[wa_number];
                 return await approveUser(chat, user, db);
             }
 
-            // TTD atasan
-            if (waitingTTD[wa_number]?.approval_id) {
-                const [approval] = await query(
-                    `SELECT a.*, u.wa_number AS user_wa, u.nama_lengkap AS user_nama, u.nik AS user_nik, u.jabatan AS user_jabatan
-                    FROM approvals a
-                    JOIN users u ON u.id = a.user_id
-                    WHERE a.id=?`,
-                    [waitingTTD[wa_number].approval_id]
-                );
+            // TTD untuk approval atasan
+            if (waitingTTD[wa_number]?.approval) {
+                const pendingApproval = waitingTTD[wa_number].approval;
+                delete waitingTTD[wa_number]; // hapus biar gak double
 
-                if (!approval) return await sendTyping(chat, 'Approval tidak ditemukan.');
-
-                const ttdAtasanHTML = getTTDHTML(user.wa_number);
-                if (ttdAtasanHTML) {
-                    delete waitingTTD[wa_number];
-                    return await approveAtasan(chat, user, null, db, true);
-                } else {
-                    waitingTTD[wa_number].approval = approval;
-                    return await sendTyping(chat, 'TTD atasan belum tersedia.');
-                }
+                // panggil approveAtasan dengan approval langsung
+                return await approveAtasan(chat, user, null, db, pendingApproval);
             }
 
-            // TTD dikirim tapi tidak ada waitingTTD
             return await sendTyping(chat, 'TTD tidak terkait dengan proses apapun.');
         }
 
