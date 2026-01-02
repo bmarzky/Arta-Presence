@@ -23,16 +23,16 @@ module.exports = async function approveAtasan(chat, user, pesan, db, isTTDReady 
         // data atasan
         const [atasan] = await query(`SELECT * FROM users WHERE wa_number=? LIMIT 1`, [user.wa_number]);
         if (!atasan) return sendTyping(chat, 'Data atasan tidak ditemukan.');
-        // ttd confirm
-        if (waitingTTD[user.wa_number]?.atasan) {
-            const ttdFiles = fs.readdirSync(path.join(__dirname, '../../assets/ttd'));
-            const ttdExists = ttdFiles.some(f => f.startsWith(atasan.wa_number));
-            
-            if (!ttdExists) {
-                return sendTyping(chat, 'Silakan kirim *foto TTD* untuk melanjutkan approval.');
-            }
+// TTD confirm
+if (waitingTTD[user.wa_number]?.approval_id) {
+    const ttdFiles = fs.readdirSync(path.join(__dirname, '../../assets/ttd'));
+    const ttdExists = ttdFiles.some(f => f.startsWith(atasan.wa_number));
+    
+    if (!ttdExists) {
+        return sendTyping(chat, 'Silakan kirim *foto TTD* untuk melanjutkan approval.');
+    }
 
-    // Jika TTD ada, lanjut generate PDF langsung
+    // Jika TTD ada, lanjut generate PDF dan kirim file ke user
     const approvalId = waitingTTD[user.wa_number].approval_id;
     const [approval] = await query(`SELECT * FROM approvals WHERE id=?`, [approvalId]);
     const ttdAtasanHTML = getTTDHTML(atasan.wa_number);
@@ -40,9 +40,9 @@ module.exports = async function approveAtasan(chat, user, pesan, db, isTTDReady 
 
     let outputPath;
     if (approval.export_type === 'lembur') {
-        outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML);
+        outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML, atasan.wa_number);
     } else {
-        outputPath = await generatePDFForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML);
+        outputPath = await generatePDFForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML, atasan.wa_number);
     }
 
     await query(`UPDATE approvals SET status='approved', step_input=NULL, ttd_atasan_at=NOW() WHERE id=?`, [approval.id]);
@@ -53,7 +53,8 @@ module.exports = async function approveAtasan(chat, user, pesan, db, isTTDReady 
     await chat.client.sendMessage(userWA, `Laporan ${approval.export_type}-${approval.user_nama} telah disetujui oleh *${atasan.nama_lengkap}*.`);
 
     delete waitingTTD[user.wa_number];
-    return sendTyping(chat, '*File berhasil ditandatangani*\nApproval laporan telah selesai.');
+
+    return sendTyping(chat, `*File berhasil ditandatangani*\nApproval laporan telah selesai dan dikirim ke *${approval.user_nama}*.`);
 }
 
         // Semua laporan pending/revised
