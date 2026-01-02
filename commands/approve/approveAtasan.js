@@ -117,8 +117,13 @@ module.exports = async function approveAtasan(chat, user, pesan, db, isTTDReady 
 
         // Parsing approve/revisi
         const match = rawText.trim().match(/^(approve|revisi)\s+([^-]+)-(.+)$/i);
-        if (!match)
-            return sendTyping(chat, 'Format salah. Contoh:\napprove lembur-Bima Rizki');
+        if (!match) {
+            if (waitingTTD[user.wa_number]?.revisi_id) {
+                // proses revisi
+            } else {
+                return sendTyping(chat, 'Format salah. Contoh:\napprove lembur-Bima Rizki');
+            }
+        }
 
         const action = match[1].toLowerCase();
         const export_type = match[2].trim().toLowerCase();
@@ -150,7 +155,8 @@ module.exports = async function approveAtasan(chat, user, pesan, db, isTTDReady 
                 `UPDATE approvals SET status='revised', step_input='alasan_revisi' WHERE id=?`,
                 [approval.id]
             );
-            waitingTTD[user.wa_number] = { revisi_id: approval.id };
+            waitingTTD[user.wa_number] = waitingTTD[user.wa_number] || {};
+            waitingTTD[user.wa_number].revisi_id = approval.id;
             return sendTyping(chat, `Silakan ketik *alasan revisi* untuk ${export_type}-${namaUser}.`);
         }
 
@@ -174,7 +180,8 @@ module.exports = async function approveAtasan(chat, user, pesan, db, isTTDReady 
                     WHERE a.id=?
                 `, [approval.id]);
 
-                waitingTTD[user.wa_number] = { approval: fullApproval };
+                waitingTTD[user.wa_number] = waitingTTD[user.wa_number] || {};
+                waitingTTD[user.wa_number].approval = fullApproval;
                 return sendTyping(chat, `Silakan kirim *foto TTD* untuk melanjutkan approval ${export_type}-${namaUser}.`);
             }
 

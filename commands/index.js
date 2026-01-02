@@ -109,8 +109,9 @@ module.exports = {
           if (!approval) return sendTyping(chat, 'Approval tidak ditemukan.');
 
           // mencegah kirim ke diri sendiri
-          const approverWAfinal = getApproverWAfinal(approval.approver_wa, wa_number);
-          if (!approverWAfinal) return sendTyping(chat, 'Approval gagal: tidak bisa kirim ke diri sendiri.');
+        const approverWAfinal = getWAfinal(approval.user_wa, wa_number); // receiver = user bawahan, sender = atasan
+        if (!approverWAfinal) return sendTyping(chat, 'Approval gagal: tidak bisa kirim ke diri sendiri.');
+
 
           waitingTTD[wa_number] = { approval };
           return approveAtasan(chat, user, null, db, true);

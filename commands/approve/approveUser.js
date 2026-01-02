@@ -65,7 +65,9 @@ module.exports = async function approveUser(chat, user, db) {
                 `SELECT * FROM users WHERE jabatan='Head West Java Operation' AND id != ? LIMIT 1`,
                 [user.id]
             );
-            if (!approver) return sendTyping(chat, "Head West Java Operation belum menggunakan *ARTA PRESENCE*");
+            if (!approver) {
+                return sendTyping(chat, "Head West Java Operation Belum Menggunakan *ARTA PRESENCE*");
+            }
 
             approverWA = approver.wa_number;
             nama_atasan = approver.nama_lengkap;
@@ -77,10 +79,12 @@ module.exports = async function approveUser(chat, user, db) {
             );
         }
 
-        // cek WA approver final
-        const approverWAfinal = getApproverWAfinal(approverWA, wa_number);
-        if (!approverWAfinal)
+        // pastikan WA final approver
+        const approverWAfinal = approverWA.includes('@') ? approverWA : approverWA + '@c.us';
+        if (!approverWAfinal || approverWAfinal === wa_number + '@c.us') {
             return sendTyping(chat, 'Approval gagal: tidak bisa kirim ke diri sendiri.');
+        }
+
 
         // cek TTD user
         const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
