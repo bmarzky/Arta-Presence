@@ -1,7 +1,6 @@
 // index.js
 const fs = require('fs');
 const path = require('path');
-const db = require('./db');
 
 const handleAbsen = require('./absen');
 const { handleExport } = require('./export');
@@ -92,7 +91,14 @@ module.exports = {
             // jika waitingTTD untuk atasan
             if (waitingTTD[wa_number]?.approval_id) {
                 // ambil approval lengkap dari DB
-                const [approval] = await db.query(`SELECT a.*, u.wa_number AS user_wa, u.nama_lengkap AS user_nama, u.nik AS user_nik, u.jabatan AS user_jabatan FROM approvals a JOIN users u ON u.id = a.user_id WHERE a.id=?`, [waitingTTD[wa_number].approval_id]);
+                const [approval] = await query(
+                    `SELECT a.*, u.wa_number AS user_wa, u.nama_lengkap AS user_nama, u.nik AS user_nik, u.jabatan AS user_jabatan
+                    FROM approvals a
+                    JOIN users u ON u.id = a.user_id
+                    WHERE a.id=?`,
+                    [waitingTTD[wa_number].approval_id]
+                    );
+
 
                 if (!approval) {
                     return sendTyping(chat, 'Approval tidak ditemukan.');
