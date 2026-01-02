@@ -72,7 +72,7 @@ module.exports = async function approveUser(chat, user, db) {
             );
         }
 
-        // pastikan WA final approver
+        // pastikan WA final approver sebelum cek TTD
         const approverWAfinal = getWAfinal(approverWA, wa_number);
         if (!approverWAfinal) {
             return sendTyping(chat, 'Approval gagal: tidak bisa kirim ke diri sendiri.');
@@ -85,6 +85,15 @@ module.exports = async function approveUser(chat, user, db) {
             waitingTTD[wa_number] = { user: true, approval_id: approval.id };
             return sendTyping(chat, 'Silakan kirim foto tanda tangan kamu untuk melanjutkan approval.');
         }
+
+        // kalau sudah ada TTD, lanjut kirim ke atasan
+        await chat.client.sendMessage(
+            approverWAfinal,
+            `*Permintaan Approval Laporan ${typeLabel}*\n\n` +
+            `${getGreeting() || ''} *${nama_atasan}*\n\n` +
+            `*${nama_user}* meminta permohonan approval untuk laporan ${typeLabel}.\nMohon untuk diperiksa.`
+        );
+        await chat.client.sendMessage(approverWAfinal, media);
 
         // set status processing
         await query(`UPDATE approvals SET status='processing' WHERE id=?`, [approval.id]);
