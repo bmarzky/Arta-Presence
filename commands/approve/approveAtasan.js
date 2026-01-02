@@ -24,18 +24,16 @@ module.exports = async function approveAtasan(chat, user, pesan, db, isTTDReady 
         const [atasan] = await query(`SELECT * FROM users WHERE wa_number=? LIMIT 1`, [user.wa_number]);
         if (!atasan) return sendTyping(chat, 'Data atasan tidak ditemukan.');
         // ttd confirm
-if (waitingTTD[user.wa_number]?.atasan) {
-    const ttdFiles = fs.readdirSync(path.join(__dirname, '../../assets/ttd'));
-    const ttdExists = ttdFiles.some(f => f.startsWith(atasan.wa_number));
-    
-    if (!ttdExists) {
-        return sendTyping(chat, 'Silakan kirim *foto TTD* untuk melanjutkan approval.');
-    }
+        if (waitingTTD[user.wa_number]?.atasan) {
+            const ttdFiles = fs.readdirSync(path.join(__dirname, '../../assets/ttd'));
+            const ttdExists = ttdFiles.some(f => f.startsWith(atasan.wa_number));
+            
+            if (!ttdExists) {
+                return sendTyping(chat, 'Silakan kirim *foto TTD* untuk melanjutkan approval.');
+            }
 
     // Jika TTD ada, lanjut generate PDF langsung
     const approvalId = waitingTTD[user.wa_number].approval_id;
-    delete waitingTTD[user.wa_number]; // hapus flag agar tidak looping
-
     const [approval] = await query(`SELECT * FROM approvals WHERE id=?`, [approvalId]);
     const ttdAtasanHTML = getTTDHTML(atasan.wa_number);
     const ttdUserHTML   = getTTDHTML(approval.user_wa);
@@ -54,6 +52,7 @@ if (waitingTTD[user.wa_number]?.atasan) {
     await chat.client.sendMessage(userWA, media);
     await chat.client.sendMessage(userWA, `Laporan ${approval.export_type}-${approval.user_nama} telah disetujui oleh *${atasan.nama_lengkap}*.`);
 
+    delete waitingTTD[user.wa_number];
     return sendTyping(chat, '*File berhasil ditandatangani*\nApproval laporan telah selesai.');
 }
 
@@ -164,26 +163,6 @@ if (action === 'revisi') {
             if (!approval) {
                 return sendTyping(chat, `Tidak ditemukan laporan ${export_type}-${namaUser} yang pending.`);
             }
-
-        // cek TTD atasan
-        const ttdFolder = path.join(__dirname, '../../assets/ttd');
-        const ttdFiles = fs.readdirSync(ttdFolder);
-
-        const ttdExists = ttdFiles.some(f => f.startsWith(atasan.wa_number));
-        if (!ttdExists) {
-            waitingTTD[user.wa_number] = {
-                atasan: true,
-                approval_id: approval.id
-            };
-            await sendTyping(chat, 'Silakan kirim foto TTD kamu untuk approve laporan ini.');
-            await query(
-                `UPDATE approvals 
-                SET step_input='ttd_atasan' 
-                WHERE id=? AND status='pending'`,
-                [approval.id]
-            );
-            return;
-        }
 
         currentApprovalId = approval.id;
 

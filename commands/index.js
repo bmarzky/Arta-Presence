@@ -88,13 +88,18 @@ module.exports = {
             const filePath = path.join(ttdFolder, `${wa_number}.${ext}`);
             fs.writeFileSync(filePath, messageMedia.data, { encoding: 'base64' });
 
+            // jika waitingTTD untuk atasan
+            if (waitingTTD[wa_number]?.atasan) {
+                // langsung lanjut approveAtasan
+                return approveAtasan(chat, user, null, db, true);
+            }
+
             if (waitingTTD[wa_number]?.user) {
                 delete waitingTTD[wa_number];
                 return approveUser(chat, user, db);
             }
 
-            // jangan panggil approveAtasan di sini
-            return; // biarkan approveAtasan handle TTD
+            return;
         }
       /* ================= INTRO ================= */
       if (user.intro === 0 && !sendingIntro[wa_number]) {
