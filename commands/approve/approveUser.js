@@ -80,56 +80,50 @@ module.exports = async function approveUser(chat, user, db) {
             return sendTyping(chat, 'Approval gagal: tidak bisa kirim ke diri sendiri.');
         }
 
-        // cek TTD user
-        const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
-        const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
-        if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
-            waitingTTD[wa_number] = { user: true, approval_id: approval.id };
-            return sendTyping(chat, 'Silakan kirim foto tanda tangan kamu untuk melanjutkan approval.');
-        }
+// cek TTD user
+const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
+const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
+if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
+    // user belum ada TTD → tunggu kirim TTD
+    waitingTTD[wa_number] = { user: true, approval_id: approval.id };
+    return sendTyping(chat, 'Silakan kirim foto tanda tangan kamu untuk melanjutkan approval.');
+}
 
-        // kalau sudah ada TTD, lanjut kirim ke atasan
-        await chat.client.sendMessage(
-            approverWAfinal,
-            `*Permintaan Approval Laporan ${typeLabel}*\n\n` +
-            `${getGreeting() || ''} *${nama_atasan}*\n\n` +
-            `*${nama_user}* meminta permohonan approval untuk laporan ${typeLabel}.\nMohon untuk diperiksa.`
-        );
+// kalau sudah ada TTD, langsung generate PDF dan kirim ke atasan
+const updatedFilePath =
+    approval.export_type === 'lembur'
+        ? await generatePDFLemburwithTTD(user, db, approval.template_export, nama_atasan, nik_atasan)
+        : await generatePDFwithTTD(user, db, approval.template_export, nama_atasan, nik_atasan);
 
-        // set status processing
-        await query(`UPDATE approvals SET status='processing' WHERE id=?`, [approval.id]);
+const media = MessageMedia.fromFilePath(
+    Array.isArray(updatedFilePath) ? updatedFilePath[0] : updatedFilePath
+);
 
-        // generate PDF dengan TTD
-        const updatedFilePath =
-            approval.export_type === 'lembur'
-                ? await generatePDFLemburwithTTD(user, db, approval.template_export, nama_atasan, nik_atasan)
-                : await generatePDFwithTTD(user, db, approval.template_export, nama_atasan, nik_atasan);
+// set status processing
+await query(`UPDATE approvals SET status='processing' WHERE id=?`, [approval.id]);
 
-        const media = MessageMedia.fromFilePath(
-            Array.isArray(updatedFilePath) ? updatedFilePath[0] : updatedFilePath
-        );
-        
-        // kirim pesan + PDF ke approver
-        await chat.client.sendMessage(
-            approverWAfinal,
-            `*Permintaan Approval Laporan ${typeLabel}*\n\n` +
-            `${getGreeting() || ''} *${nama_atasan}*\n\n` +
-            `*${nama_user}* meminta permohonan approval untuk laporan ${typeLabel}.\nMohon untuk diperiksa.`
-        );
+// kirim langsung ke approver
+await chat.client.sendMessage(
+    approverWAfinal,
+    `*Permintaan Approval Laporan ${typeLabel}*\n\n` +
+    `${getGreeting() || ''} *${nama_atasan}*\n\n` +
+    `*${nama_user}* meminta permohonan approval untuk laporan ${typeLabel}.\nMohon untuk diperiksa.`
+);
 
-        await chat.client.sendMessage(approverWAfinal, media);
+await chat.client.sendMessage(approverWAfinal, media);
 
-        await chat.client.sendMessage(
-            approverWAfinal,
-            `Silakan ketik salah satu opsi berikut:\n\n` +
-            `• *approve* Tipe Laporan-nama\n` +
-            `• *revisi*  Tipe Laporan-nama`
-        );
+await chat.client.sendMessage(
+    approverWAfinal,
+    `Silakan ketik salah satu opsi berikut:\n\n` +
+    `• *approve* Tipe Laporan-nama\n` +
+    `• *revisi*  Tipe Laporan-nama`
+);
 
-        // update status ke pending
-        await query(`UPDATE approvals SET status='pending' WHERE id=?`, [approval.id]);
+// update status ke pending
+await query(`UPDATE approvals SET status='pending' WHERE id=?`, [approval.id]);
 
-        return sendTyping(chat, `*${nama_user}*, laporan berhasil dikirim ke *${nama_atasan}* untuk proses approval.`);
+return sendTyping(chat, `*${nama_user}*, laporan berhasil dikirim ke *${nama_atasan}* untuk proses approval.`);
+
     }
     catch (err) {
         console.error('Gagal kirim approval:', err);
