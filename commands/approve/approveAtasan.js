@@ -178,7 +178,7 @@ if (action === 'revisi') {
 
         const ttdExists = ttdFiles.some(f => f.startsWith(atasan.wa_number));
         if (!ttdExists) {
-            waitingTTD[atasan.wa_number] = {
+            waitingTTD[user.wa_number] = {
                 atasan: true,
                 approval_id: approval.id
             };
