@@ -89,20 +89,13 @@ module.exports = {
             fs.writeFileSync(filePath, messageMedia.data, { encoding: 'base64' });
 
             if (waitingTTD[wa_number]?.user) {
-                // hapus flag dulu
                 delete waitingTTD[wa_number];
-
-                // langsung panggil approveUser → generate PDF + kirim ke atasan
                 return approveUser(chat, user, db);
             }
 
-            if (waitingTTD[wa_number]?.atasan) {
-                return approveAtasan(chat, user, null, db, true);
-            }
-
-            return;
+            // jangan panggil approveAtasan di sini
+            return; // biarkan approveAtasan handle TTD
         }
-
       /* ================= INTRO ================= */
       if (user.intro === 0 && !sendingIntro[wa_number]) {
         sendingIntro[wa_number] = true;

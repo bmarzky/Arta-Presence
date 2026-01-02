@@ -25,24 +25,17 @@ module.exports = async function approveAtasan(chat, user, pesan, db, isTTDReady 
         if (!atasan) return sendTyping(chat, 'Data atasan tidak ditemukan.');
         // ttd confirm
 if (waitingTTD[user.wa_number]?.atasan) {
-    if (!chat.hasMedia) {
+    const ttdFiles = fs.readdirSync(path.join(__dirname, '../../assets/ttd'));
+    const ttdExists = ttdFiles.some(f => f.startsWith(atasan.wa_number));
+    
+    if (!ttdExists) {
         return sendTyping(chat, 'Silakan kirim *foto TTD* untuk melanjutkan approval.');
     }
 
-    const image = await chat.downloadMedia();
-    if (!image.mimetype.startsWith('image/')) {
-        return sendTyping(chat, 'TTD harus berupa *gambar* (PNG/JPG).');
-    }
-
-    const ext = image.mimetype.split('/')[1];
-    const ttdPath = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.${ext}`);
-    fs.writeFileSync(ttdPath, image.data, { encoding: 'base64' });
-
-    // Hapus waitingTTD agar tidak looping minta TTD lagi
+    // Jika TTD ada, lanjut generate PDF langsung
     const approvalId = waitingTTD[user.wa_number].approval_id;
-    delete waitingTTD[user.wa_number];
+    delete waitingTTD[user.wa_number]; // hapus flag agar tidak looping
 
-    // Langsung generate PDF
     const [approval] = await query(`SELECT * FROM approvals WHERE id=?`, [approvalId]);
     const ttdAtasanHTML = getTTDHTML(atasan.wa_number);
     const ttdUserHTML   = getTTDHTML(approval.user_wa);
