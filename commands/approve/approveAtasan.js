@@ -174,11 +174,20 @@ if (approval.status === 'pending') {
     );
 }
 
-// Lanjutkan proses approve
+// Cek apakah TTD atasan sudah ada
+const ttdFiles = fs.readdirSync(path.join(__dirname, '../../assets/ttd'));
+const ttdExists = ttdFiles.some(f => f.startsWith(atasan.wa_number));
+
+if (!ttdExists) {
+    // simpan approval id untuk menunggu TTD
+    waitingTTD[user.wa_number] = { approval_id: approval.id };
+    return sendTyping(chat, `Silakan kirim *foto TTD* untuk melanjutkan approval ${export_type}-${namaUser}.`);
+}
+
+// Jika TTD ada, lanjutkan generate PDF
 const ttdAtasanHTML = getTTDHTML(atasan.wa_number);
 const ttdUserHTML = getTTDHTML(approval.user_wa);
 
-// Generate PDF
 let outputPath;
 if (approval.export_type === 'lembur') {
     outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML, atasan.wa_number);
@@ -195,6 +204,7 @@ await query(
     WHERE id=?`,
     [approval.id]
 );
+
 
         // Kirim file ke user
         const media = MessageMedia.fromFilePath(outputPath);
