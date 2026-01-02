@@ -107,10 +107,11 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         const approval = pendingApprovals
             .filter(a =>
                 a.export_type.toLowerCase() === export_type &&
-                a.user_nama.toLowerCase() === namaUser &&
+                ((a.user_nama || user.nama_lengkap).toLowerCase() === namaUser) &&
                 allowedStatuses.includes(a.status)
             )
             .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
 
         if (!approval) {
             const oldApproval = pendingApprovals.find(a =>
@@ -228,9 +229,9 @@ async function generatePDFForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML)
     const logoBase64 = getLogoBase64(templateName);
 
     html = html.replace(/{{logo}}/g, logoBase64)
-               .replace(/{{nama}}/g, approval.user_nama)
-               .replace(/{{jabatan}}/g, approval.user_jabatan || '')
-               .replace(/{{nik}}/g, approval.user_nik || '')
+               .replace(/{{nama}}/g, approval.user_nama || user.nama_lengkap || '')
+               .replace(/{{jabatan}}/g, approval.user_jabatan || user.jabatan || '')
+               .replace(/{{nik}}/g, approval.user_nik || user.nik || '')
                .replace(/{{periode}}/g, `${1}-${totalHari} ${moment().format('MMMM YYYY')}`)
                .replace(/{{rows_absensi}}/g, rows.join(''))
                .replace(/{{ttd_user}}/g, ttdUserHTML)
@@ -241,11 +242,7 @@ async function generatePDFForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML)
     // export PDF
     const exportsDir = path.join(__dirname, '../../exports');
     if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
-    const safeName = approval.user_nama
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '');
-
+    const safeName = (approval.user_nama || user.nama_lengkap || 'user').toLowerCase().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
     const outputPath = path.join(
         exportsDir,
         `ABSENSI-${safeName}-${templateName}-Approved.pdf`
@@ -363,9 +360,9 @@ async function generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHT
 
         const html = htmlTemplate
             .replace(/{{rows_lembur}}/g, rows)
-            .replace(/{{nama}}/g, approval.user_nama || '')
-            .replace(/{{jabatan}}/g, approval.user_jabatan || '')
-            .replace(/{{nik}}/g, approval.user_nik || '')
+            .replace(/{{nama}}/g, approval.user_nama || user.nama_lengkap || '')
+            .replace(/{{jabatan}}/g, approval.user_jabatan || user.jabatan || '')
+            .replace(/{{nik}}/g, approval.user_nik || user.nik || '')
             .replace(/{{periode}}/g, periode)
             .replace(/{{logo}}/g, logoBase64)
             .replace(/{{ttd_user}}/g, ttdUserHTML)
@@ -374,7 +371,7 @@ async function generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHT
             .replace(/{{nik_atasan}}/g, approval.nik_atasan || '')
             .replace(/{{total_lembur}}/g, totalLemburKeseluruhan);
 
-        const safeName = approval.user_nama.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        const safeName = (approval.user_nama || user.nama_lengkap || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
         const outputPath = path.join(exportsDir, `LEMBUR-${safeName}-${templateName}-${bulanNama[bulanIdx]}-${tahun}-Approved.pdf`);
         await generatePDF(html, outputPath);
         pdfFiles.push(outputPath);
