@@ -94,11 +94,11 @@ if (!approverWA) {
         [user_id, approval.export_type, now.getMonth() + 1, now.getFullYear()]
         );
 
+        const approvalToSend = currentApproval || approval;
+
         if (!approvalToSend.export_type) {
             approvalToSend.export_type = approval.export_type || 'lembur'; // default bisa 'lembur' atau 'absensi'
         }
-
-        const approvalToSend = currentApproval || approval;
 
         if (currentApproval) {
             // validasi status
