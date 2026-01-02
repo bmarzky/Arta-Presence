@@ -83,24 +83,25 @@ module.exports = {
       }
 
       /* ================= MEDIA (TTD) ================= */
-      if (messageMedia?.mimetype?.startsWith('image/')) {
-        const ext = messageMedia.mimetype.split('/')[1] || 'png';
-        const filePath = path.join(ttdFolder, `${wa_number}.${ext}`);
-        fs.writeFileSync(filePath, messageMedia.data, { encoding: 'base64' });
+        if (messageMedia?.mimetype?.startsWith('image/')) {
+            const ext = messageMedia.mimetype.split('/')[1] || 'png';
+            const filePath = path.join(ttdFolder, `${wa_number}.${ext}`);
+            fs.writeFileSync(filePath, messageMedia.data, { encoding: 'base64' });
 
-        if (waitingTTD[wa_number]?.user) {
-          delete waitingTTD[wa_number];
-          await chat.sendMessage('*File berhasil ditandatangani*');
-          return approveUser(chat, user, db);
-        }
+            if (waitingTTD[wa_number]?.user) {
+                // hapus flag dulu
+                delete waitingTTD[wa_number];
 
-        if (waitingTTD[wa_number]?.atasan) {
-          delete waitingTTD[wa_number];
-          await chat.sendMessage('*Approval laporan telah selesai*');
-          return approveAtasan(chat, user, 'approve', db);
+                // langsung panggil approveUser → generate PDF + kirim ke atasan
+                return approveUser(chat, user, db);
+            }
+
+            if (waitingTTD[wa_number]?.atasan) {
+                delete waitingTTD[wa_number];
+                return approveAtasan(chat, user, 'approve', db);
+            }
+            return;
         }
-        return;
-      }
 
       /* ================= INTRO ================= */
       if (user.intro === 0 && !sendingIntro[wa_number]) {
@@ -175,7 +176,7 @@ Ketik */help* untuk bantuan.`
         if (waitingTTD[wa_number]?.revisi_id) {
             return approveAtasan(chat, user, pesan, db);
         }
-        
+
       /* ================= FALLBACK ================= */
       await sendTyping(chat, `Aku belum paham pesannya 😅`);
       return sendTyping(chat, 'Coba ketik */help*');
