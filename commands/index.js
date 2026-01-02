@@ -91,47 +91,37 @@ module.exports = {
         return sendTyping(chat, 'Proses dibatalkan.');
       }
 
-      /* ================= MEDIA (TTD) ================= */
-      if (messageMedia?.mimetype?.startsWith('image/')) {
+        /* ================= MEDIA (TTD) ================= */
+        if (messageMedia?.mimetype?.startsWith('image/')) {
         const ext = messageMedia.mimetype.split('/')[1] || 'png';
         const filePath = path.join(ttdFolder, `${wa_number}.${ext}`);
         fs.writeFileSync(filePath, messageMedia.data, { encoding: 'base64' });
 
-        // jika waitingTTD untuk atasan
-        if (waitingTTD[wa_number]?.approval_id) {
-          const [approval] = await query(
-            `SELECT a.*, u.wa_number AS user_wa, u.nama_lengkap AS user_nama, u.nik AS user_nik, u.jabatan AS user_jabatan
-             FROM approvals a
-             JOIN users u ON u.id = a.user_id
-             WHERE a.id=?`,
-            [waitingTTD[wa_number].approval_id]
-          );
-
-          if (!approval) return sendTyping(chat, 'Approval tidak ditemukan.');
-
-          // mencegah kirim ke diri sendiri
-        const approverWAfinal = getWAfinal(approval.user_wa, wa_number); // receiver = user bawahan, sender = atasan
-        if (!approverWAfinal) return sendTyping(chat, 'Approval gagal: tidak bisa kirim ke diri sendiri.');
-
-
-          waitingTTD[wa_number] = { approval };
-          return approveAtasan(chat, user, null, db, true);
+        // 1. Kalau TTD untuk user, langsung approveUser → kirim ke atasan
+        if (waitingTTD[wa_number]?.user) {
+            delete waitingTTD[wa_number];
+            return approveUser(chat, user, db);
         }
 
-        // jika waitingTTD untuk user
-        if (waitingTTD[wa_number]?.user) {
-          const approverWAfinal = getApproverWAfinal(waitingTTD[wa_number]?.user?.wa_number, wa_number);
-          if (!approverWAfinal) {
-            delete waitingTTD[wa_number];
-            return sendTyping(chat, 'Approval gagal: tidak bisa kirim ke diri sendiri.');
-          }
+        // 2. Kalau TTD untuk approval atasan
+        if (waitingTTD[wa_number]?.approval_id) {
+            const [approval] = await query(
+            `SELECT a.*, u.wa_number AS user_wa, u.nama_lengkap AS user_nama, u.nik AS user_nik, u.jabatan AS user_jabatan
+            FROM approvals a
+            JOIN users u ON u.id = a.user_id
+            WHERE a.id=?`,
+            [waitingTTD[wa_number].approval_id]
+            );
 
-          delete waitingTTD[wa_number];
-          return approveUser(chat, user, db);
+            if (!approval) return sendTyping(chat, 'Approval tidak ditemukan.');
+
+            waitingTTD[wa_number] = { approval };
+            return approveAtasan(chat, user, null, db, true);
         }
 
         return;
-      }
+        }
+
 
       /* ================= INTRO ================= */
       if (user.intro === 0 && !sendingIntro[wa_number]) {
