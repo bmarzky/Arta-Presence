@@ -16,7 +16,7 @@ const greetingReplies = require('../data/greetingReplies');
 const waitingTTD = require('../utils/waitingTTD');
 const { sendTyping } = require('../utils/sendTyping');
 const detectIntentAI = require('../utils/intentAI');
-const detectIntentAI = require('../utils/getWafinal');
+const getWAfinal = require('../utils/getWafinal');
 
 const sendingIntro = {};
 const ttdFolder = path.join(__dirname, '../assets/ttd/');
