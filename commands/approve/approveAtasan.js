@@ -3,6 +3,7 @@ const { MessageMedia } = require('whatsapp-web.js');
 const { sendTyping } = require('../../utils/sendTyping');
 const path = require('path');
 const fs = require('fs');
+const moment = require('moment');
 const generatePDF = require('../../utils/pdfGenerator');
 const { getTTDHTML } = require('../../utils/getAssets');
 const waitingTTD = require('../../utils/waitingTTD');
@@ -29,7 +30,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         const [atasan] = await query(`SELECT * FROM users WHERE wa_number=? LIMIT 1`, [user.wa_number]);
         if (!atasan) return sendTyping(chat, 'Data atasan tidak ditemukan.');
 
-        // === Jika user baru saja kirim TTD, cek apakah ada approval menunggu TTD ===
+        // cek apakah ada waitingTTD
         const pendingTTD = waitingTTD[user.wa_number]?.approval;
         if (pendingTTD) {
             const ttdAtasanHTML = getTTDHTML(atasan.wa_number);
@@ -57,6 +58,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 return sendTyping(chat, `TTD belum ditemukan. Silakan kirim TTD untuk melanjutkan approval ${pendingTTD.export_type}-${pendingTTD.user_nama}.`);
             }
         }
+
 
         // === Ambil semua laporan pending/revised ===
         const pendingApprovals = await query(`
