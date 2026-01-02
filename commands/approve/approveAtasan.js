@@ -52,20 +52,21 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 const ttdAtasanHTML = getTTDHTML(atasan.wa_number);
                 if (!ttdAtasanHTML) return sendTyping(chat, 'TTD atasan belum tersedia, silakan kirim TTD.');
 
-                const ttdUserHTML = getTTDHTML(approval.user_wa) || '';
-                const outputPath = await generatePDFForAtasanWrapper(approval, user, db, ttdAtasanHTML, ttdUserHTML);
-
                 await query(`UPDATE approvals SET status='approved', step_input=NULL, ttd_atasan_at=NOW() WHERE id=?`, [approval.id]);
 
-                const media = MessageMedia.fromFilePath(outputPath);
-                const userWA = getWAfinal(approval.user_wa, atasan.wa_number);
+                // ambil nomor WA user dari tabel users
+                const [userData] = await query(`SELECT wa_number, nama_lengkap, nik, jabatan FROM users WHERE id=? LIMIT 1`, [approval.user_id]);
+                if (!userData) return sendTyping(chat, 'Data user tidak ditemukan.');
+
+                const ttdUserHTML = getTTDHTML(userData.wa_number) || '';
+                const userWA = getWAfinal(userData.wa_number, atasan.wa_number);
                 if (!userWA) return sendTyping(chat, 'Approval gagal: tidak bisa kirim ke diri sendiri.');
 
                 await chat.client.sendMessage(userWA, media);
-                await chat.client.sendMessage(userWA, `Laporan ${approval.export_type}-${approval.user_nama} telah disetujui oleh *${atasan.nama_lengkap}*.`);
+                await chat.client.sendMessage(userWA, `Laporan ${approval.export_type}-${userData.nama_lengkap} telah disetujui oleh *${atasan.nama_lengkap}*.`);
 
                 delete waitingTTD[user.wa_number];
-                return sendTyping(chat, `*File berhasil ditandatangani*\nApproval laporan telah selesai dan dikirim ke *${approval.user_nama}*.`);
+                return sendTyping(chat, `*File berhasil ditandatangani*\nApproval laporan telah selesai dan dikirim ke *${userData.nama_lengkap}*.`);
             }
 
             if (pendingTTD.revisi_id) {
