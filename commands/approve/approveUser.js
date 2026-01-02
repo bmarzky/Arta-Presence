@@ -135,63 +135,65 @@ if (!approverWA.includes('@')) {
     approverWA += '@c.us';
 }
 
-// cek ttd users
+// cek ttd user
 const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
 const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
 
 if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
-    waitingTTD[wa_number] = { user: true };
+    // simpan context supaya bot tahu user sedang dikirim TTD
+    waitingTTD[wa_number] = { user: true, approval_id: approvalToSend.id };
+
     return sendTyping(
         chat,
         'Silakan kirim foto tanda tangan kamu untuk melanjutkan approval.'
     );
 }
 
-        // assign default jika masih kosong
-        nama_atasan = nama_atasan || 'Atasan';
-        nik_atasan = nik_atasan || '';
+// jika TTD sudah ada → langsung generate PDF + kirim ke atasan
+const updatedFilePath =
+    approvalToSend.export_type === 'lembur'
+        ? await generatePDFLemburwithTTD(
+              user,
+              db,
+              approvalToSend.template_export,
+              nama_atasan,
+              nik_atasan
+          )
+        : await generatePDFwithTTD(
+              user,
+              db,
+              approvalToSend.template_export,
+              nama_atasan,
+              nik_atasan
+          );
 
-                // generate ulang PDF dari DB + template
-                let updatedFilePath;
-                if (approvalToSend.export_type === 'lembur') {
-                    updatedFilePath = await generatePDFLemburwithTTD(
-                        user,
-                        db,
-                        approvalToSend.template_export,
-                        nama_atasan,
-                        nik_atasan
-                    );
-                } else {
-                    updatedFilePath = await generatePDFwithTTD(
-                        user,
-                        db,
-                        approvalToSend.template_export,
-                        nama_atasan,
-                        nik_atasan
-                    );
-                }
+// pastikan WA approver
+let approverWAfinal = approverWA.includes('@') ? approverWA : approverWA + '@c.us';
 
-const jenis_laporan =
-    approvalToSend.export_type === 'lembur' ? 'Lembur' : 'Absensi';
+const media = MessageMedia.fromFilePath(
+    Array.isArray(updatedFilePath) ? updatedFilePath[0] : updatedFilePath
+);
 
+await chat.client.sendMessage(
+    approverWAfinal,
+    `*Permintaan Approval Laporan ${approvalToSend.export_type === 'lembur' ? 'Lembur' : 'Absensi'}*\n\n` +
+    `${getGreeting() || ''} *${nama_atasan}*\n\n` +
+    `*${nama_user}* meminta permohonan approval untuk laporan ${approvalToSend.export_type}.\nMohon untuk diperiksa.`
+);
 
-        const media = MessageMedia.fromFilePath(Array.isArray(updatedFilePath) ? updatedFilePath[0] : updatedFilePath);
-        const greeting = getGreeting() || '';
+await chat.client.sendMessage(approverWAfinal, media);
+await chat.client.sendMessage(
+    approverWAfinal,
+    `Silakan ketik salah satu opsi berikut:\n\n` +
+    `• *approve* Tipe Laporan-nama\n` +
+    `• *revisi*  Tipe Laporan-nama`
+);
 
-        await chat.client.sendMessage(
-            approverWA,
-            `*Permintaan Approval Laporan ${jenis_laporan}*\n\n${greeting} *${nama_atasan}*\n\n` +
-            `*${nama_user}* meminta permohonan approval untuk laporan ${jenis_laporan.toLowerCase()}.\nMohon untuk diperiksa.`
-        );
-        await chat.client.sendMessage(approverWA, media);
-        await chat.client.sendMessage(
-            approverWA,
-            `Silakan ketik salah satu opsi berikut:\n\n` +
-            `• *approve* Tipe Laporan-nama\n` +
-            `• *revisi*  Tipe Laporan-nama`
-        );
+// update status ke pending (langsung kirim ke atasan)
+await query(`UPDATE approvals SET status='pending' WHERE id=?`, [approvalToSend.id]);
 
-        return sendTyping(chat, `*${nama_user}*, laporan berhasil dikirim ke *${nama_atasan}* untuk proses approval.`);
+return sendTyping(chat, `*${nama_user}*, laporan berhasil dikirim ke *${nama_atasan}* untuk proses approval.`);
+
 
     } 
     
