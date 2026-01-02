@@ -95,34 +95,36 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         }
 
         // ===== Cek apakah bot menunggu alasan revisi =====
-        if (pendingTTD && pendingTTD.revisi_id) {
-            const alasan = rawText.trim();
-            if (!alasan) return sendTyping(chat, 'Silakan ketik alasan revisi.');
+        if (pendingTTD?.revisi_id) {
+            const revisiId = pendingTTD.revisi_id;
 
-            // update approval dengan catatan revisi
+            // Simpan revisi ke DB
             await query(
-                `UPDATE approvals SET status='revised', step_input=NULL, revisi_catatan=? WHERE id=?`,
-                [alasan, pendingTTD.revisi_id]
+                `UPDATE approvals SET revisi_catatan=? WHERE id=?`,
+                [rawText.trim(), revisiId]
             );
 
-            // ambil data user yang laporannya direvisi
-            const [approval] = await query(`SELECT * FROM approvals WHERE id=?`, [pendingTTD.revisi_id]);
-            const [laporUser] = await query(`SELECT wa_number, nama_lengkap FROM users WHERE id=?`, [approval.user_id]);
+            // Ambil data user yang membuat laporan
+            const [approval] = await query(`SELECT * FROM approvals WHERE id=?`, [revisiId]);
+            const [lapUser] = await query(`SELECT wa_number, nama_lengkap FROM users WHERE id=?`, [approval.user_id]);
 
-            const userWA = getWAfinal(laporUser.wa_number, atasan.wa_number);
+            const userWA = getWAfinal(lapUser.wa_number, user.wa_number);
             if (userWA) {
-                await chat.client.sendMessage(userWA,
-                    `*Permintaan Revisi*\n\n` +
-                    `Mohon maaf ${laporUser.nama_lengkap}, laporan anda belum approved.\n\n` +
-                    `*Approvals:* ${atasan.nama_lengkap}\n` +
-                    `*Alasan:* ${alasan}\n\n` +
-                    `Silakan edit laporan anda sesuai dengan arahan.`
+                await chat.client.sendMessage(
+                    userWA,
+                    `*PERMINTAAN REVISI*\nMohon maaf *${lapUser.nama_lengkap}*, laporan Anda belum disetujui.\n\n` +
+                    `Approvals  : *${user.nama_lengkap}*\n` +
+                    `Alasan     : ${rawText.trim()}\n\n` +
+                    `Silakan edit laporan Anda sesuai arahan.`
                 );
             }
 
+            // Hapus flag revisi
             delete waitingTTD[user.wa_number];
-            return sendTyping(chat, `Alasan revisi berhasil dikirim ke user ${laporUser.nama_lengkap}.`);
+
+            return sendTyping(chat, `Alasan revisi berhasil dikirim ke user ${lapUser.nama_lengkap}.`);
         }
+
 
         // === Parsing approve/revisi command ===
         const match = rawText.trim().match(/^(approve|revisi)\s+([^-]+)-(.+)$/i);
