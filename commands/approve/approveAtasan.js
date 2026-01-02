@@ -143,7 +143,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             return sendTyping(chat, `Revisi berhasil dikirim ke *${revisiApproval.user_nama}*.`);
         }
 
-        
+
         // Parsing approve/revisi
         const match = rawText.trim().match(/^(approve|revisi)\s+([^-]+)-(.+)$/i);
         if (!match)
@@ -193,65 +193,66 @@ if (action === 'revisi') {
                 return sendTyping(chat, `Tidak ditemukan laporan ${export_type}-${namaUser} yang pending.`);
             }
 
-            // cek TTD atasan
-            const ttdPng = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.png`);
-            const ttdJpg = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.jpg`);
-            if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
-                waitingTTD[atasan.wa_number] = {
-                    atasan: true,
-                    approval_id: approval.id
-                };
-                await sendTyping(chat, 'Silakan kirim foto TTD kamu untuk approve laporan ini.');
-                await query(
-                    `UPDATE approvals 
-                    SET step_input='ttd_atasan' 
-                    WHERE id=? AND status='pending'`,
-                    [approval.id]
-                );
-                return;
-            }
-
-            currentApprovalId = approval.id;
-
-            const res = await query(
-                `UPDATE approvals SET status='processing'
+        // cek TTD atasan
+        const ttdPng = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.png`);
+        const ttdJpg = path.join(__dirname, '../../assets/ttd', `${atasan.wa_number}.jpg`);
+        if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
+            waitingTTD[atasan.wa_number] = {
+                atasan: true,
+                approval_id: approval.id
+            };
+            await sendTyping(chat, 'Silakan kirim foto TTD kamu untuk approve laporan ini.');
+            await query(
+                `UPDATE approvals 
+                SET step_input='ttd_atasan' 
                 WHERE id=? AND status='pending'`,
                 [approval.id]
             );
-
-            if (res.affectedRows === 0)
-            return sendTyping(chat, 'Laporan sedang diproses.');
-
-            const ttdAtasanHTML = getTTDHTML(atasan.wa_number);
-            const ttdUserHTML = getTTDHTML(approval.user_wa);
-
-            // Generate PDF
-            let outputPath;
-            if (approval.export_type === 'lembur') {
-                outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML, atasan.wa_number);
-            } else {
-                outputPath = await generatePDFForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML, atasan.wa_number);
-            }
-
-            // Update status approved
-            await query(
-                `UPDATE approvals 
-                SET status='approved',
-                    step_input=NULL,
-                    ttd_atasan_at=NOW()
-                WHERE id=?`,
-                [approval.id]
-                );
-
-            // Kirim file ke user
-            const media = MessageMedia.fromFilePath(outputPath);
-            const userWA = approval.user_wa.includes('@') ? approval.user_wa : approval.user_wa + '@c.us';
-            await chat.client.sendMessage(userWA, media);
-            await chat.client.sendMessage(userWA, `Laporan ${approval.export_type}-${approval.user_nama} telah disetujui oleh *${atasan.nama_lengkap}*.`);
-            await sendTyping(chat, `*File berhasil ditandatangani*\nApproval laporan telah selesai dan dikirim ke *${approval.user_nama}*.`);
-
             return;
         }
+
+        currentApprovalId = approval.id;
+
+        const res = await query(
+            `UPDATE approvals SET status='processing'
+            WHERE id=? AND status='pending'`,
+            [approval.id]
+        );
+
+        if (res.affectedRows === 0)
+            return sendTyping(chat, 'Laporan sedang diproses.');
+
+        const ttdAtasanHTML = getTTDHTML(atasan.wa_number);
+        const ttdUserHTML = getTTDHTML(approval.user_wa);
+
+        // Generate PDF
+        let outputPath;
+        if (approval.export_type === 'lembur') {
+            outputPath = await generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML, atasan.wa_number);
+        } else {
+            outputPath = await generatePDFForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML, atasan.wa_number);
+        }
+
+        // Update status approved
+        await query(
+            `UPDATE approvals 
+            SET status='approved',
+                step_input=NULL,
+                ttd_atasan_at=NOW()
+            WHERE id=?`,
+            [approval.id]
+        );
+
+        // Kirim file ke user
+        const media = MessageMedia.fromFilePath(outputPath);
+        const userWA = approval.user_wa.includes('@') ? approval.user_wa : approval.user_wa + '@c.us';
+        await chat.client.sendMessage(userWA, media);
+        await chat.client.sendMessage(userWA, `Laporan ${approval.export_type}-${approval.user_nama} telah disetujui oleh *${atasan.nama_lengkap}*.`);
+        await sendTyping(chat, `*File berhasil ditandatangani*\nApproval laporan telah selesai dan dikirim ke *${approval.user_nama}*.`);
+
+        return;
+    }
+
 
     } catch (e) {
     if (currentApprovalId) {
