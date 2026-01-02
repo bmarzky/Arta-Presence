@@ -8,18 +8,11 @@ const generatePDF = require('../../utils/pdfGenerator');
 const { getLogoBase64, getTTDHTML } = require('../../utils/getAssets');
 const waitingTTD = require('../../utils/waitingTTD');
 const moment = require('moment');
+const getWAfinal = require('../../utils/getWafinal');
 
 // folder TTD
 const ttdFolder = path.join(__dirname, '../../assets/ttd/');
 if (!fs.existsSync(ttdFolder)) fs.mkdirSync(ttdFolder, { recursive: true });
-
-// helper untuk mencegah kirim ke diri sendiri & format WA
-function getApproverWAfinal(approverWA, userWA) {
-    if (!approverWA) return null;
-    let final = approverWA.includes('@') ? approverWA : approverWA + '@c.us';
-    if (final === userWA + '@c.us') return null; // gak boleh kirim ke diri sendiri
-    return final;
-}
 
 module.exports = async function approveUser(chat, user, db) {
     const query = (sql, params = []) =>
@@ -80,11 +73,10 @@ module.exports = async function approveUser(chat, user, db) {
         }
 
         // pastikan WA final approver
-        const approverWAfinal = approverWA.includes('@') ? approverWA : approverWA + '@c.us';
-        if (!approverWAfinal || approverWAfinal === wa_number + '@c.us') {
+        const approverWAfinal = getWAfinal(approverWA, wa_number);
+        if (!approverWAfinal) {
             return sendTyping(chat, 'Approval gagal: tidak bisa kirim ke diri sendiri.');
         }
-
 
         // cek TTD user
         const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
