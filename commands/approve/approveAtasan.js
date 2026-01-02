@@ -93,7 +93,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             ).join('\n');
             return sendTyping(chat, `*Daftar Laporan Pending / Revisi:*\n\n${msg}`);
         }
-        
+
         // ===== Cek apakah bot menunggu alasan revisi =====
         if (pendingTTD && pendingTTD.revisi_id) {
             const alasan = rawText.trim();
@@ -105,8 +105,23 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 [alasan, pendingTTD.revisi_id]
             );
 
+            // ambil data user yang laporannya direvisi
+            const [approval] = await query(`SELECT * FROM approvals WHERE id=?`, [pendingTTD.revisi_id]);
+            const [laporUser] = await query(`SELECT wa_number, nama_lengkap FROM users WHERE id=?`, [approval.user_id]);
+
+            const userWA = getWAfinal(laporUser.wa_number, atasan.wa_number);
+            if (userWA) {
+                await chat.client.sendMessage(userWA,
+                    `*Permintaan Revisi*\n\n` +
+                    `Mohon maaf ${laporUser.nama_lengkap}, laporan anda belum approved.\n\n` +
+                    `*Approvals:* ${atasan.nama_lengkap}\n` +
+                    `*Alasan:* ${alasan}\n\n` +
+                    `Silakan edit laporan anda sesuai dengan arahan.`
+                );
+            }
+
             delete waitingTTD[user.wa_number];
-            return sendTyping(chat, `Alasan revisi berhasil dikirim untuk laporan. User dapat memperbarui laporannya.`);
+            return sendTyping(chat, `Alasan revisi berhasil dikirim ke user ${laporUser.nama_lengkap}.`);
         }
 
         // === Parsing approve/revisi command ===
