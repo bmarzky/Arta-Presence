@@ -5,7 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const moment = require('moment');
 const generatePDF = require('../../utils/pdfGenerator');
-const { getTTDHTML } = require('../../utils/getAssets');
+const { getTTDHTML, getLogoBase64 } = require('../../utils/getAssets');
 const waitingTTD = require('../../utils/waitingTTD');
 
 function getWAfinal(waNumber, selfNumber) {

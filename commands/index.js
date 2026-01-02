@@ -109,7 +109,7 @@ module.exports = {
                 delete waitingTTD[wa_number]; // hapus biar gak double
 
                 // panggil approveAtasan dengan approval langsung
-                return await approveAtasan(chat, user, null, db, pendingApproval);
+                return await approveAtasan(chat, user, null, db);
             }
 
             return await sendTyping(chat, 'TTD tidak terkait dengan proses apapun.');
