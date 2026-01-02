@@ -105,10 +105,7 @@ module.exports = {
 
             // TTD untuk approval atasan
             if (waitingTTD[wa_number]?.approval) {
-                const pendingApproval = waitingTTD[wa_number].approval;
-                delete waitingTTD[wa_number]; // hapus biar gak double
-
-                // panggil approveAtasan dengan approval langsung
+                // jangan hapus dulu
                 return await approveAtasan(chat, user, null, db);
             }
 

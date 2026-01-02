@@ -37,6 +37,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             if (!ttdAtasanHTML) return sendTyping(chat, `TTD belum ditemukan. Silakan kirim TTD.`);
 
             const ttdUserHTML = getTTDHTML(pendingApproval.user_wa) || '';
+
             let outputPath;
             if (pendingApproval.export_type === 'lembur') {
                 outputPath = await generatePDFLemburForAtasan(pendingApproval, db, ttdAtasanHTML, ttdUserHTML);
@@ -53,10 +54,10 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             await chat.client.sendMessage(userWA, media);
             await chat.client.sendMessage(userWA, `Laporan ${pendingApproval.export_type}-${pendingApproval.user_nama} telah disetujui oleh *${atasan.nama_lengkap}*.`);
 
-            delete waitingTTD[user.wa_number]; // hapus biar gak double
+            // baru hapus pending TTD
+            delete waitingTTD[user.wa_number];
             return sendTyping(chat, `*File berhasil ditandatangani*\nApproval laporan telah selesai dan dikirim ke *${pendingApproval.user_nama}*.`);
         }
-
 
         // === Ambil semua laporan pending/revised ===
         const pendingApprovals = await query(`
