@@ -13,6 +13,14 @@ const moment = require('moment');
 const ttdFolder = path.join(__dirname, '../../assets/ttd/');
 if (!fs.existsSync(ttdFolder)) fs.mkdirSync(ttdFolder, { recursive: true });
 
+// helper untuk mencegah kirim ke diri sendiri & format WA
+function getApproverWAfinal(approverWA, userWA) {
+    if (!approverWA) return null;
+    let final = approverWA.includes('@') ? approverWA : approverWA + '@c.us';
+    if (final === userWA + '@c.us') return null; // gak boleh kirim ke diri sendiri
+    return final;
+}
+
 module.exports = async function approveUser(chat, user, db) {
     const query = (sql, params = []) =>
         new Promise((res, rej) =>
@@ -26,7 +34,6 @@ module.exports = async function approveUser(chat, user, db) {
     if (!user_id)
         return sendTyping(chat, 'ID user tidak tersedia.');
 
-
     try {
         // Ambil approval terakhir
         const [approval] = await query(
@@ -36,190 +43,95 @@ module.exports = async function approveUser(chat, user, db) {
 
         if (!approval || !approval.file_path)
             return sendTyping(chat, 'Kamu belum menyiapkan laporan.');
-        // export type dari file path
-        if (approval.file_path) {
-            const filename = path.basename(approval.file_path);
 
-            let fixedType = approval.export_type;
+        // fix export_type berdasarkan file
+        const filename = path.basename(approval.file_path);
+        let fixedType = approval.export_type;
+        if (filename.startsWith('LEMBUR-')) fixedType = 'lembur';
+        else if (filename.startsWith('ABSENSI-')) fixedType = 'absensi';
 
-            if (filename.startsWith('LEMBUR-')) {
-                fixedType = 'lembur';
-            } else if (filename.startsWith('ABSENSI-')) {
-                fixedType = 'absensi';
-            }
-
-            if (fixedType !== approval.export_type) {
-                await query(
-                    `UPDATE approvals SET export_type=? WHERE id=?`,
-                    [fixedType, approval.id]
-                );
-                // Ambil ulang approval dari DB supaya export_type di memori sudah benar
-                const [updatedApproval] = await query(`SELECT * FROM approvals WHERE id=?`, [approval.id]);
-                approval.export_type = updatedApproval.export_type;
-            }
+        if (fixedType !== approval.export_type) {
+            await query(`UPDATE approvals SET export_type=? WHERE id=?`, [fixedType, approval.id]);
+            approval.export_type = fixedType;
         }
 
+        // Ambil approver dari DB jika kosong
+        let approverWA = approval.approver_wa;
+        let nama_atasan = approval.nama_atasan || '';
+        let nik_atasan = approval.nik_atasan || '';
 
-// Ambil approver dari DB jika kosong
-let approverWA = approval.approver_wa;
-let nama_atasan = approval.nama_atasan || '';
-let nik_atasan = approval.nik_atasan || '';
+        if (!approverWA) {
+            const [approver] = await query(
+                `SELECT * FROM users WHERE jabatan='Head West Java Operation' AND id != ? LIMIT 1`,
+                [user.id]
+            );
+            if (!approver) return sendTyping(chat, "Head West Java Operation belum menggunakan *ARTA PRESENCE*");
 
-if (!approverWA) {
-    const [approver] = await query(
-        `SELECT * FROM users WHERE jabatan='Head West Java Operation' AND id != ? LIMIT 1`,
-        [user.id]
-    );
-    if (!approver) {
-        return sendTyping(chat, "Head West Java Operation Belum Menggunakan *ARTA PRESENCE*");
-    }
-    
-    approverWA = approver.wa_number;
-    nama_atasan = approver.nama_lengkap;
-    nik_atasan  = approver.nik;
+            approverWA = approver.wa_number;
+            nama_atasan = approver.nama_lengkap;
+            nik_atasan = approver.nik;
 
-    await query(
-        `UPDATE approvals SET approver_wa=?, nama_atasan=?, nik_atasan=? WHERE id=?`,
-        [approverWA, nama_atasan, nik_atasan, approval.id]
-    );
-}
+            await query(
+                `UPDATE approvals SET approver_wa=?, nama_atasan=?, nik_atasan=? WHERE id=?`,
+                [approverWA, nama_atasan, nik_atasan, approval.id]
+            );
+        }
 
-        // Ambil approval untuk bulan & tipe saat ini
-        const now = new Date();
-        const [currentApproval] = await query(
-        `SELECT * FROM approvals
-        WHERE user_id=? 
-            AND export_type=? 
-            AND MONTH(created_at)=? 
-            AND YEAR(created_at)=?
-        ORDER BY created_at DESC
-        LIMIT 1`,
-        [user_id, approval.export_type, now.getMonth() + 1, now.getFullYear()]
+        // cek WA approver final
+        const approverWAfinal = getApproverWAfinal(approverWA, wa_number);
+        if (!approverWAfinal)
+            return sendTyping(chat, 'Approval gagal: tidak bisa kirim ke diri sendiri.');
+
+        // cek TTD user
+        const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
+        const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
+        if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
+            waitingTTD[wa_number] = { user: true, approval_id: approval.id };
+            return sendTyping(chat, 'Silakan kirim foto tanda tangan kamu untuk melanjutkan approval.');
+        }
+
+        // set status processing
+        await query(`UPDATE approvals SET status='processing' WHERE id=?`, [approval.id]);
+
+        // generate PDF dengan TTD
+        const updatedFilePath =
+            approval.export_type === 'lembur'
+                ? await generatePDFLemburwithTTD(user, db, approval.template_export, nama_atasan, nik_atasan)
+                : await generatePDFwithTTD(user, db, approval.template_export, nama_atasan, nik_atasan);
+
+        const media = MessageMedia.fromFilePath(
+            Array.isArray(updatedFilePath) ? updatedFilePath[0] : updatedFilePath
         );
 
-        const approvalToSend = currentApproval || approval;
+        const typeLabel = approval.export_type === 'lembur' ? 'Lembur' : 'Absensi';
 
-        if (!approvalToSend.export_type) {
-            approvalToSend.export_type = approval.export_type || 'lembur'; // default bisa 'lembur' atau 'absensi'
-        }
+        await chat.client.sendMessage(
+            approverWAfinal,
+            `*Permintaan Approval Laporan ${typeLabel}*\n\n` +
+            `${getGreeting() || ''} *${nama_atasan}*\n\n` +
+            `*${nama_user}* meminta permohonan approval untuk laporan ${typeLabel}.\nMohon untuk diperiksa.`
+        );
 
-        if (currentApproval) {
-            // validasi status
-            if (approvalToSend.status === 'approved') {
-                return sendTyping(chat, 'Laporan bulan ini sudah disetujui.');
-            }
+        await chat.client.sendMessage(approverWAfinal, media);
 
-            if (approvalToSend.status === 'revised') {
-                return sendTyping(chat, 'Laporan perlu revisi. Silakan export ulang.');
-            }
+        await chat.client.sendMessage(
+            approverWAfinal,
+            `Silakan ketik salah satu opsi berikut:\n\n` +
+            `• *approve* Tipe Laporan-nama\n` +
+            `• *revisi*  Tipe Laporan-nama`
+        );
 
-            // hanya draft yang boleh naik ke pending
-            if (approvalToSend.status === 'draft') {
-                await query(
-                    `UPDATE approvals SET status='pending' WHERE id=?`,
-                    [approvalToSend.id]
-                );
-                approvalToSend.status = 'pending';
-            }
+        // update status ke pending
+        await query(`UPDATE approvals SET status='pending' WHERE id=?`, [approval.id]);
 
-            if (approvalToSend.status !== 'pending') {
-                return sendTyping(chat, 'Laporan ini sedang diproses.');
-            }
-        }
-
-
-// pastikan WA format
-if (!approverWA || typeof approverWA !== 'string') {
-    return sendTyping(chat, 'Nomor WhatsApp atasan belum tersedia.');
-}
-
-let approverWAfinal = approverWA.includes('@') ? approverWA : approverWA + '@c.us';
-
-if (!approverWA.includes('@')) {
-    approverWA += '@c.us';
-}
-
-// cek ttd user
-const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
-const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
-
-if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
-    // simpan context supaya bot tahu user sedang dikirim TTD
-    waitingTTD[wa_number] = { user: true, approval_id: approvalToSend.id };
-
-    await sendTyping(
-        chat,
-        'Silakan kirim foto tanda tangan kamu untuk melanjutkan approval.'
-    );
-
-    // hentikan sementara, proses kirim ke atasan akan dipicu setelah user kirim TTD
-    return;
-}
-
-// --- hanya di sini set status processing ---
-await query(
-    `UPDATE approvals SET status='processing' WHERE id=?`,
-    [approvalToSend.id]
-);
-approvalToSend.status = 'processing';
-
-
-// jika TTD sudah ada → langsung generate PDF + kirim ke atasan
-const updatedFilePath =
-    approvalToSend.export_type === 'lembur'
-        ? await generatePDFLemburwithTTD(
-              user,
-              db,
-              approvalToSend.template_export,
-              nama_atasan,
-              nik_atasan
-          )
-        : await generatePDFwithTTD(
-              user,
-              db,
-              approvalToSend.template_export,
-              nama_atasan,
-              nik_atasan
-          );
-
-// pastikan WA approver
-if (approverWAfinal === wa_number) {
-    return sendTyping(chat, 'Approval gagal: tidak bisa kirim ke diri sendiri.');
-}
-
-const media = MessageMedia.fromFilePath(
-    Array.isArray(updatedFilePath) ? updatedFilePath[0] : updatedFilePath
-);
-
-const typeLabel = approvalToSend.export_type === 'lembur' ? 'Lembur' : 'Absensi';
-
-await chat.client.sendMessage(
-    approverWAfinal,
-    `*Permintaan Approval Laporan ${typeLabel}*\n\n` +
-    `${getGreeting() || ''} *${nama_atasan}*\n\n` +
-    `*${nama_user}* meminta permohonan approval untuk laporan ${typeLabel}.\nMohon untuk diperiksa.`
-);
-
-await chat.client.sendMessage(approverWAfinal, media);
-await chat.client.sendMessage(
-    approverWAfinal,
-    `Silakan ketik salah satu opsi berikut:\n\n` +
-    `• *approve* Tipe Laporan-nama\n` +
-    `• *revisi*  Tipe Laporan-nama`
-);
-
-// update status ke pending (langsung kirim ke atasan)
-await query(`UPDATE approvals SET status='pending' WHERE id=?`, [approvalToSend.id]);
-
-return sendTyping(chat, `*${nama_user}*, laporan berhasil dikirim ke *${nama_atasan}* untuk proses approval.`);
-
-    } 
-    
-    catch (err) {        
+        return sendTyping(chat, `*${nama_user}*, laporan berhasil dikirim ke *${nama_atasan}* untuk proses approval.`);
+    }
+    catch (err) {
         console.error('Gagal kirim approval:', err);
         return sendTyping(chat, 'Terjadi kesalahan saat mengirim approval.');
     }
 };
+
 
 // pdf absensi
 async function generatePDFwithTTD(user, db, templateName, namaAtasan = 'Atasan', nikAtasan = '') {

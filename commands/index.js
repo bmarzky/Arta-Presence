@@ -24,6 +24,14 @@ if (!fs.existsSync(ttdFolder)) fs.mkdirSync(ttdFolder, { recursive: true });
 const isUserDataComplete = (user) =>
   !!(user.nama_lengkap && user.jabatan && user.nik);
 
+// helper untuk mencegah kirim ke diri sendiri
+function getApproverWAfinal(approverWA, userWA) {
+  if (!approverWA) return null;
+  let final = approverWA.includes('@') ? approverWA : approverWA + '@c.us';
+  if (final === userWA + '@c.us') return null; // gak boleh kirim ke diri sendiri
+  return final;
+}
+
 module.exports = {
   message: async (chat, wa_number, nama_wa, db, pesan, messageMedia) => {
     const lowerMsg = pesan.toLowerCase().trim();
@@ -83,40 +91,46 @@ module.exports = {
       }
 
       /* ================= MEDIA (TTD) ================= */
-        if (messageMedia?.mimetype?.startsWith('image/')) {
-            const ext = messageMedia.mimetype.split('/')[1] || 'png';
-            const filePath = path.join(ttdFolder, `${wa_number}.${ext}`);
-            fs.writeFileSync(filePath, messageMedia.data, { encoding: 'base64' });
+      if (messageMedia?.mimetype?.startsWith('image/')) {
+        const ext = messageMedia.mimetype.split('/')[1] || 'png';
+        const filePath = path.join(ttdFolder, `${wa_number}.${ext}`);
+        fs.writeFileSync(filePath, messageMedia.data, { encoding: 'base64' });
 
-            // jika waitingTTD untuk atasan
-            if (waitingTTD[wa_number]?.approval_id) {
-                // ambil approval lengkap dari DB
-                const [approval] = await query(
-                    `SELECT a.*, u.wa_number AS user_wa, u.nama_lengkap AS user_nama, u.nik AS user_nik, u.jabatan AS user_jabatan
-                    FROM approvals a
-                    JOIN users u ON u.id = a.user_id
-                    WHERE a.id=?`,
-                    [waitingTTD[wa_number].approval_id]
-                    );
+        // jika waitingTTD untuk atasan
+        if (waitingTTD[wa_number]?.approval_id) {
+          const [approval] = await query(
+            `SELECT a.*, u.wa_number AS user_wa, u.nama_lengkap AS user_nama, u.nik AS user_nik, u.jabatan AS user_jabatan
+             FROM approvals a
+             JOIN users u ON u.id = a.user_id
+             WHERE a.id=?`,
+            [waitingTTD[wa_number].approval_id]
+          );
 
+          if (!approval) return sendTyping(chat, 'Approval tidak ditemukan.');
 
-                if (!approval) {
-                    return sendTyping(chat, 'Approval tidak ditemukan.');
-                }
+          // mencegah kirim ke diri sendiri
+          const approverWAfinal = getApproverWAfinal(approval.approver_wa, wa_number);
+          if (!approverWAfinal) return sendTyping(chat, 'Approval gagal: tidak bisa kirim ke diri sendiri.');
 
-                // tambahkan properti ke waitingTTD agar approveAtasan bisa pakai
-                waitingTTD[wa_number] = { approval }; 
-
-                return approveAtasan(chat, user, null, db, true);
-            }
-
-            if (waitingTTD[wa_number]?.user) {
-                delete waitingTTD[wa_number];
-                return approveUser(chat, user, db);
-            }
-
-            return;
+          waitingTTD[wa_number] = { approval };
+          return approveAtasan(chat, user, null, db, true);
         }
+
+        // jika waitingTTD untuk user
+        if (waitingTTD[wa_number]?.user) {
+          const approverWAfinal = getApproverWAfinal(waitingTTD[wa_number]?.user?.wa_number, wa_number);
+          if (!approverWAfinal) {
+            delete waitingTTD[wa_number];
+            return sendTyping(chat, 'Approval gagal: tidak bisa kirim ke diri sendiri.');
+          }
+
+          delete waitingTTD[wa_number];
+          return approveUser(chat, user, db);
+        }
+
+        return;
+      }
+
       /* ================= INTRO ================= */
       if (user.intro === 0 && !sendingIntro[wa_number]) {
         sendingIntro[wa_number] = true;
@@ -157,11 +171,10 @@ Ketik */help* untuk bantuan.`
       if (lowerMsg.startsWith('/export'))
         return handleExport(chat, user, pesan, db, pesan.split(' ')[1] || null);
 
-    /* ================= KIRIM LAPORAN USER ================= */
-    if (['kirim'].includes(firstWord)) {
+      /* ================= KIRIM LAPORAN USER ================= */
+      if (['kirim'].includes(firstWord)) {
         return approveUser(chat, user, db);
-    }
-
+      }
 
       /* ================= INTENT AI ================= */
       if (!lowerMsg.startsWith('/')) {
@@ -187,9 +200,10 @@ Ketik */help* untuk bantuan.`
         );
       }
 
-        if (waitingTTD[wa_number]?.revisi_id) {
-            return approveAtasan(chat, user, pesan, db);
-        }
+      /* ================= REVISI ================= */
+      if (waitingTTD[wa_number]?.revisi_id) {
+        return approveAtasan(chat, user, pesan, db);
+      }
 
       /* ================= FALLBACK ================= */
       await sendTyping(chat, `Aku belum paham pesannya 😅`);
