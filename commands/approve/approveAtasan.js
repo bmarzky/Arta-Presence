@@ -24,6 +24,9 @@ module.exports = async function approveAtasan(chat, user, pesan, db, isTTDReady 
         const [atasan] = await query(`SELECT * FROM users WHERE wa_number=? LIMIT 1`, [user.wa_number]);
         if (!atasan) return sendTyping(chat, 'Data atasan tidak ditemukan.');
 // TTD confirm
+console.log('[WAITING TTD]', waitingTTD);
+console.log('[IS TTD READY]', isTTDReady);
+
 if (waitingTTD[user.wa_number]?.approval_id) {
     const ttdFiles = fs.readdirSync(path.join(__dirname, '../../assets/ttd'));
     const ttdExists = ttdFiles.some(f => f.startsWith(atasan.wa_number));

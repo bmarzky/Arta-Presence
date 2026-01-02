@@ -89,8 +89,7 @@ module.exports = {
             fs.writeFileSync(filePath, messageMedia.data, { encoding: 'base64' });
 
             // jika waitingTTD untuk atasan
-            if (waitingTTD[wa_number]?.atasan) {
-                // langsung lanjut approveAtasan
+            if (waitingTTD[wa_number]?.approval_id) {
                 return approveAtasan(chat, user, null, db, true);
             }
 
