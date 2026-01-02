@@ -93,6 +93,21 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             ).join('\n');
             return sendTyping(chat, `*Daftar Laporan Pending / Revisi:*\n\n${msg}`);
         }
+        
+        // ===== Cek apakah bot menunggu alasan revisi =====
+        if (pendingTTD && pendingTTD.revisi_id) {
+            const alasan = rawText.trim();
+            if (!alasan) return sendTyping(chat, 'Silakan ketik alasan revisi.');
+
+            // update approval dengan catatan revisi
+            await query(
+                `UPDATE approvals SET status='revised', step_input=NULL, revisi_catatan=? WHERE id=?`,
+                [alasan, pendingTTD.revisi_id]
+            );
+
+            delete waitingTTD[user.wa_number];
+            return sendTyping(chat, `Alasan revisi berhasil dikirim untuk laporan. User dapat memperbarui laporannya.`);
+        }
 
         // === Parsing approve/revisi command ===
         const match = rawText.trim().match(/^(approve|revisi)\s+([^-]+)-(.+)$/i);
