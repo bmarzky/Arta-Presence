@@ -14,12 +14,15 @@ function getWAfinal(waNumber, selfNumber) {
     return final;
 }
 
-async function generatePDFForAtasanWrapper(approval, db, ttdAtasanHTML, ttdUserHTML) {
-    if (approval.export_type === 'lembur') {
-        return await generatePDF.generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML);
+    // Wrapper untuk memanggil fungsi PDF sesuai tipe approval
+    async function generatePDFForAtasanWrapper(approval, db, ttdAtasanHTML, ttdUserHTML) {
+        if (approval.export_type === 'lembur') {
+            // panggil fungsi lokal
+            return await generatePDFLemburForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML);
+        }
+        // panggil fungsi lokal
+        return await generatePDFForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML);
     }
-    return await generatePDF.generatePDFForAtasan(approval, db, ttdAtasanHTML, ttdUserHTML);
-}
 
 module.exports = async function approveAtasan(chat, user, pesan, db) {
     const query = (sql, params = []) =>
