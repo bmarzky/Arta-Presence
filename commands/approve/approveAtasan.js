@@ -6,6 +6,7 @@ const fs = require('fs');
 const generatePDF = require('../../utils/pdfGenerator');
 const { getTTDHTML, getLogoBase64 } = require('../../utils/getAssets');
 const waitingTTD = require('../../utils/waitingTTD');
+const moment = require('moment');
 
 function getWAfinal(waNumber, selfNumber) {
     if (!waNumber) return null;
