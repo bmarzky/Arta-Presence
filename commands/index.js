@@ -97,13 +97,13 @@ module.exports = {
             const filePath = path.join(ttdFolder, `${wa_number}.${ext}`);
             fs.writeFileSync(filePath, messageMedia.data, { encoding: 'base64' });
 
-            // TTD untuk user
+            // TTD user
             if (waitingTTD[wa_number]?.user) {
                 delete waitingTTD[wa_number];
-                return approveUser(chat, user, db);
+                return await approveUser(chat, user, db);
             }
 
-            // TTD untuk approval atasan
+            // TTD atasan
             if (waitingTTD[wa_number]?.approval_id) {
                 const [approval] = await query(
                     `SELECT a.*, u.wa_number AS user_wa, u.nama_lengkap AS user_nama, u.nik AS user_nik, u.jabatan AS user_jabatan
@@ -113,24 +113,20 @@ module.exports = {
                     [waitingTTD[wa_number].approval_id]
                 );
 
-                if (!approval) return sendTyping(chat, 'Approval tidak ditemukan.');
+                if (!approval) return await sendTyping(chat, 'Approval tidak ditemukan.');
 
-                // Cek TTD atasan langsung
                 const ttdAtasanHTML = getTTDHTML(user.wa_number);
-                const ttdUserHTML = getTTDHTML(approval.user_wa) || '';
-
                 if (ttdAtasanHTML) {
-                    // kalau TTD sudah ada, langsung generate & kirim
-                    await approveAtasan(chat, user, null, db, true);
+                    delete waitingTTD[wa_number];
+                    return await approveAtasan(chat, user, null, db, true);
                 } else {
-                    // kalau TTD belum ada, simpan saja
-                    waitingTTD[wa_number] = waitingTTD[wa_number] || {};
                     waitingTTD[wa_number].approval = approval;
-                    return sendTyping(chat, 'TTD atasan belum tersedia.');
+                    return await sendTyping(chat, 'TTD atasan belum tersedia.');
                 }
-
-                return;
             }
+
+            // TTD dikirim tapi tidak ada waitingTTD
+            return await sendTyping(chat, 'TTD tidak terkait dengan proses apapun.');
         }
 
       /* ================= INTRO ================= */
