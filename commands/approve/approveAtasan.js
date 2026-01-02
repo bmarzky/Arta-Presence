@@ -27,17 +27,8 @@ module.exports = async function approveAtasan(chat, user, pesan, db, isTTDReady 
 console.log('[WAITING TTD]', waitingTTD);
 console.log('[IS TTD READY]', isTTDReady);
 
-if (waitingTTD[user.wa_number]?.approval_id) {
-    const ttdFiles = fs.readdirSync(path.join(__dirname, '../../assets/ttd'));
-    const ttdExists = ttdFiles.some(f => f.startsWith(atasan.wa_number));
-    
-    if (!ttdExists) {
-        return sendTyping(chat, 'Silakan kirim *foto TTD* untuk melanjutkan approval.');
-    }
-
-    // Jika TTD ada, lanjut generate PDF dan kirim file ke user
-    const approvalId = waitingTTD[user.wa_number].approval_id;
-    const [approval] = await query(`SELECT * FROM approvals WHERE id=?`, [approvalId]);
+if (waitingTTD[user.wa_number]?.approval) {
+    const approval = waitingTTD[user.wa_number].approval;
     const ttdAtasanHTML = getTTDHTML(atasan.wa_number);
     const ttdUserHTML   = getTTDHTML(approval.user_wa);
 
@@ -59,6 +50,7 @@ if (waitingTTD[user.wa_number]?.approval_id) {
 
     return sendTyping(chat, `*File berhasil ditandatangani*\nApproval laporan telah selesai dan dikirim ke *${approval.user_nama}*.`);
 }
+
 
         // Semua laporan pending/revised
         const pendingApprovals = await query(`
@@ -183,8 +175,20 @@ const ttdFiles = fs.readdirSync(path.join(__dirname, '../../assets/ttd'));
 const ttdExists = ttdFiles.some(f => f.startsWith(atasan.wa_number));
 
 if (!ttdExists) {
-    // simpan approval id untuk menunggu TTD
-    waitingTTD[user.wa_number] = { approval_id: approval.id };
+    // ambil approval lengkap dari DB (join dengan users)
+    const [fullApproval] = await query(`
+        SELECT a.*,
+               u.wa_number AS user_wa,
+               u.nama_lengkap AS user_nama,
+               u.nik AS user_nik,
+               u.jabatan AS user_jabatan,
+               u.template_export
+        FROM approvals a
+        JOIN users u ON u.id = a.user_id
+        WHERE a.id=?
+    `, [approval.id]);
+
+    waitingTTD[user.wa_number] = { approval: fullApproval };
     return sendTyping(chat, `Silakan kirim *foto TTD* untuk melanjutkan approval ${export_type}-${namaUser}.`);
 }
 
