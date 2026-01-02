@@ -95,7 +95,6 @@ module.exports = async function approveUser(chat, user, db) {
             `${getGreeting() || ''} *${nama_atasan}*\n\n` +
             `*${nama_user}* meminta permohonan approval untuk laporan ${typeLabel}.\nMohon untuk diperiksa.`
         );
-        await chat.client.sendMessage(approverWAfinal, media);
 
         // set status processing
         await query(`UPDATE approvals SET status='processing' WHERE id=?`, [approval.id]);
@@ -109,9 +108,8 @@ module.exports = async function approveUser(chat, user, db) {
         const media = MessageMedia.fromFilePath(
             Array.isArray(updatedFilePath) ? updatedFilePath[0] : updatedFilePath
         );
-
         
-
+        // kirim pesan + PDF ke approver
         await chat.client.sendMessage(
             approverWAfinal,
             `*Permintaan Approval Laporan ${typeLabel}*\n\n` +
