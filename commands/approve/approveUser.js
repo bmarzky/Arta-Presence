@@ -48,6 +48,8 @@ module.exports = async function approveUser(chat, user, db) {
             approval.export_type = fixedType;
         }
 
+        const typeLabel = approval.export_type === 'lembur' ? 'Lembur' : 'Absensi';
+
         // Ambil approver dari DB jika kosong
         let approverWA = approval.approver_wa;
         let nama_atasan = approval.nama_atasan || '';
@@ -108,7 +110,7 @@ module.exports = async function approveUser(chat, user, db) {
             Array.isArray(updatedFilePath) ? updatedFilePath[0] : updatedFilePath
         );
 
-        const typeLabel = approval.export_type === 'lembur' ? 'Lembur' : 'Absensi';
+        
 
         await chat.client.sendMessage(
             approverWAfinal,
