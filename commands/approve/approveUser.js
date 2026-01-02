@@ -49,11 +49,13 @@ module.exports = async function approveUser(chat, user, db) {
             }
 
             if (fixedType !== approval.export_type) {
-                approval.export_type = fixedType;
                 await query(
                     `UPDATE approvals SET export_type=? WHERE id=?`,
                     [fixedType, approval.id]
                 );
+                // Ambil ulang approval dari DB supaya export_type di memori sudah benar
+                const [updatedApproval] = await query(`SELECT * FROM approvals WHERE id=?`, [approval.id]);
+                approval.export_type = updatedApproval.export_type;
             }
         }
 
@@ -91,6 +93,10 @@ if (!approverWA) {
         LIMIT 1`,
         [user_id, approval.export_type, now.getMonth() + 1, now.getFullYear()]
         );
+
+        if (!approvalToSend.export_type) {
+            approvalToSend.export_type = approval.export_type || 'lembur'; // default bisa 'lembur' atau 'absensi'
+        }
 
         const approvalToSend = currentApproval || approval;
 
@@ -178,11 +184,13 @@ const media = MessageMedia.fromFilePath(
     Array.isArray(updatedFilePath) ? updatedFilePath[0] : updatedFilePath
 );
 
+const typeLabel = approvalToSend.export_type === 'lembur' ? 'Lembur' : 'Absensi';
+
 await chat.client.sendMessage(
     approverWAfinal,
-    `*Permintaan Approval Laporan ${approvalToSend.export_type === 'lembur' ? 'Lembur' : 'Absensi'}*\n\n` +
+    `*Permintaan Approval Laporan ${typeLabel}*\n\n` +
     `${getGreeting() || ''} *${nama_atasan}*\n\n` +
-    `*${nama_user}* meminta permohonan approval untuk laporan ${approvalToSend.export_type}.\nMohon untuk diperiksa.`
+    `*${nama_user}* meminta permohonan approval untuk laporan ${typeLabel}.\nMohon untuk diperiksa.`
 );
 
 await chat.client.sendMessage(approverWAfinal, media);
