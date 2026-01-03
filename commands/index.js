@@ -2,13 +2,13 @@
 const fs = require('fs');
 const path = require('path');
 
-const handleAbsen = require('./absen');
+const handleAbsen = require('./absensi/absen');
 const { handleExport } = require('./export');
 const approveUser = require('./approve/approveUser');
 const approveAtasan = require('./approve/approveAtasan');
 
 const handleLembur = require('./absensi/lembur');
-const handleRiwayatAbsen = require('./absensi/riwayatAbsen');
+const handleRiwayat = require('./absensi/riwayatAbsen');
 const handleEdit = require('./absensi/editAbsen');
 
 const greetings = require('../data/greetings');
@@ -149,7 +149,7 @@ Ketik */help* untuk bantuan.`
           return handleLembur(chat, user, pesan, db);
 
       if (user.step_riwayat)
-          return handleRiwayatAbsen(chat, user, pesan, db);
+          return handleRiwayat(chat, user, pesan, db);
 
       if (user.step_input)
           return handleExport(chat, user, pesan, db, null);
@@ -159,7 +159,7 @@ Ketik */help* untuk bantuan.`
         return handleAbsen(chat, user, lowerMsg, pesan, query);
 
       if (lowerMsg === '/riwayat')
-        return handleRiwayatAbsen(chat, user, pesan, db);
+        return handleRiwayat(chat, user, pesan, db);
 
       if (lowerMsg === '/edit')
         return handleEdit(chat, user, pesan, query);
@@ -190,7 +190,7 @@ Ketik */help* untuk bantuan.`
 
           if (intent === 'ABSEN')
               return handleAbsen(chat, user, lowerMsg, pesan, query, true);
-            
+
           if (intent === 'LEMBUR')
               return handleLembur(chat, user, pesan, db);
 
