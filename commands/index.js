@@ -138,6 +138,10 @@ Ketik */help* untuk bantuan.`
         return require('./help')(chat, user.nama_wa);
 
       /* ================= STATE MACHINE (PRIORITAS UTAMA) ================= */
+      if (handleEdit.isEditing(wa_number)) {
+          return handleEdit(chat, user, pesan, query);
+      }
+
       if (user.step_absen)
           return handleAbsen(chat, user, lowerMsg, pesan, query);
 
@@ -176,7 +180,9 @@ Ketik */help* untuk bantuan.`
 
       /* ================= INTENT AI ================= */
       if (!lowerMsg.startsWith('/')) {
-          const intent = await detectIntentAI(pesan);
+          if (handleEdit.isEditing(wa_number)) {
+              return handleEdit(chat, user, pesan, query);
+          }
           console.log('[INTENT AI]', pesan, '=>', intent);
 
           if (intent === 'ABSEN')
