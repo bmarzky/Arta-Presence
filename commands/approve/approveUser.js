@@ -37,6 +37,16 @@ module.exports = async function approveUser(chat, user, db) {
         if (!approval || !approval.file_path)
             return sendTyping(chat, 'Kamu belum menyiapkan laporan.');
 
+        //cek ttd
+        if (waitingTTD[wa_number]?.user) {
+            return sendTyping(chat, `Tunggu dulu, kirim TTD terlebih dahulu sebelum mengirim laporan.`);
+        }
+
+        //cek status
+        if (approval.status === 'processing' || approval.status === 'pending') {
+            return sendTyping(chat, `Laporan sudah dikirim dan menunggu approval.`);
+        }
+
         // fix export_type berdasarkan file
         const filename = path.basename(approval.file_path);
         let fixedType = approval.export_type;
@@ -89,6 +99,9 @@ if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
     return sendTyping(chat, 'Silakan kirim foto tanda tangan kamu untuk melanjutkan approval.');
 }
 
+// set status processing
+await query(`UPDATE approvals SET status='processing' WHERE id=?`, [approval.id]);
+
 // kalau sudah ada TTD, langsung generate PDF dan kirim ke atasan
 const updatedFilePath =
     approval.export_type === 'lembur'
@@ -98,9 +111,6 @@ const updatedFilePath =
 const media = MessageMedia.fromFilePath(
     Array.isArray(updatedFilePath) ? updatedFilePath[0] : updatedFilePath
 );
-
-// set status processing
-await query(`UPDATE approvals SET status='processing' WHERE id=?`, [approval.id]);
 
 // kirim langsung ke approver
 await chat.client.sendMessage(
