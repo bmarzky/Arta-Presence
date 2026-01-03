@@ -75,7 +75,7 @@ function formatTotalJamHuman(totalJamHHMM) {
 
 
 // Modul handleLembur
-module.exports = function handleLembur(chat, user, pesan, query) {
+module.exports = function handleLembur(chat, user, pesan, db) {
     const userId = user.id;
     const lowerMsg = pesan.trim().toLowerCase();
     const rawText = pesan.trim();
@@ -87,7 +87,7 @@ module.exports = function handleLembur(chat, user, pesan, query) {
     if (lowerMsg === '/lembur') {
         session.step = 'input_tanggal';
         session.data = {};
-        query("UPDATE users SET step_lembur=? WHERE id=?", [session.step, userId], (err) => {
+        db.query("UPDATE users SET step_lembur=? WHERE id=?", [session.step, userId], (err) => {
             if (err) console.error(err);
             chat.sendMessage('Silakan masukkan tanggal lembur (misal: 28 Desember 2025):');
         });
@@ -105,13 +105,13 @@ module.exports = function handleLembur(chat, user, pesan, query) {
             const tanggal = date.format('YYYY-MM-DD');
 
             // Cek duplikat tanggal langsung
-            query(`SELECT * FROM lembur WHERE user_id=? AND tanggal=?`, [userId, tanggal], (err, results) => {
+            db.query(`SELECT * FROM lembur WHERE user_id=? AND tanggal=?`, [userId, tanggal], (err, results) => {
                 if (err) return chat.sendMessage('Terjadi kesalahan saat memeriksa tanggal lembur.');
                 if (results.length > 0) return chat.sendMessage('Mohon maaf, Anda sudah mencatat lembur pada tanggal tersebut.');
 
                 session.data.tanggal = tanggal;
                 session.step = 'input_jam_mulai';
-                query("UPDATE users SET step_lembur=? WHERE id=?", [session.step, userId], (err2) => {
+                db.query("UPDATE users SET step_lembur=? WHERE id=?", [session.step, userId], (err2) => {
                     if (err2) console.error(err2);
                     chat.sendMessage('Masukkan jam mulai lembur (misal: 9 pagi, setengah 4 sore, atau 14:30):');
                 });
@@ -124,7 +124,7 @@ module.exports = function handleLembur(chat, user, pesan, query) {
             if (!t) return chat.sendMessage('Format jam salah.');
             session.data.jam_mulai = `${String(t.h).padStart(2,'0')}:${String(t.m).padStart(2,'0')}`;
             session.step = 'input_jam_selesai';
-            query("UPDATE users SET step_lembur=? WHERE id=?", [session.step, userId], (err) => {
+            db.query("UPDATE users SET step_lembur=? WHERE id=?", [session.step, userId], (err) => {
                 if (err) console.error(err);
                 chat.sendMessage('Masukkan jam selesai lembur:');
             });
@@ -136,7 +136,7 @@ module.exports = function handleLembur(chat, user, pesan, query) {
             if (!t) return chat.sendMessage('Format jam salah.');
             session.data.jam_selesai = `${String(t.h).padStart(2,'0')}:${String(t.m).padStart(2,'0')}`;
             session.step = 'input_deskripsi';
-            query("UPDATE users SET step_lembur=? WHERE id=?", [session.step, userId], (err) => {
+            db.query("UPDATE users SET step_lembur=? WHERE id=?", [session.step, userId], (err) => {
                 if (err) console.error(err);
                 chat.sendMessage('Masukkan deskripsi lembur:');
             });
@@ -146,7 +146,7 @@ module.exports = function handleLembur(chat, user, pesan, query) {
         case 'input_deskripsi': {
             session.data.deskripsi = rawText;
             session.step = 'confirm';
-            query("UPDATE users SET step_lembur=? WHERE id=?", [session.step, userId], (err) => {
+            db.query("UPDATE users SET step_lembur=? WHERE id=?", [session.step, userId], (err) => {
                 if (err) console.error(err);
 
                 const tanggalHuman = moment(session.data.tanggal).format('DD MMMM YYYY');
@@ -174,7 +174,7 @@ module.exports = function handleLembur(chat, user, pesan, query) {
             const confirmText = rawText.toLowerCase();
             if (confirmText === 'ya') {
                 const totalJamHHMM = calculateTotalJam(session.data.jam_mulai, session.data.jam_selesai);
-                query(
+                db.query(
                     `INSERT INTO lembur
                     (user_id, tanggal, jam_mulai, jam_selesai, total_lembur, deskripsi)
                     VALUES (?, ?, ?, ?, ?, ?)`,
@@ -183,7 +183,7 @@ module.exports = function handleLembur(chat, user, pesan, query) {
                         if (err2) return chat.sendMessage('Terjadi kesalahan saat menyimpan data lembur.');
                         session.step = null;
                         session.data = {};
-                        query("UPDATE users SET step_lembur=NULL WHERE id=?", [userId], (err3) => {
+                        db.query("UPDATE users SET step_lembur=NULL WHERE id=?", [userId], (err3) => {
                             if (err3) console.error(err3);
                             chat.sendMessage('Data lembur berhasil disimpan.');
                         });
@@ -192,7 +192,7 @@ module.exports = function handleLembur(chat, user, pesan, query) {
             } else if (confirmText === 'tidak') {
                 session.step = 'input_tanggal';
                 session.data = {};
-                query("UPDATE users SET step_lembur=? WHERE id=?", [session.step, userId], (err) => {
+                db.query("UPDATE users SET step_lembur=? WHERE id=?", [session.step, userId], (err) => {
                     if (err) console.error(err);
                     chat.sendMessage('Silakan ulangi input. Masukkan tanggal lembur:');
                 });
