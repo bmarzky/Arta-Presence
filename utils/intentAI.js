@@ -1,3 +1,4 @@
+//intentAi
 const OpenAI = require('openai');
 
 let client;

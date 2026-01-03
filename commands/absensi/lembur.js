@@ -83,16 +83,16 @@ module.exports = function handleLembur(chat, user, pesan, db) {
     if (!sessions[userId]) sessions[userId] = { step: null, data: {} };
     const session = sessions[userId];
 
+    console.log('[LEMBUR]', user.nama_wa, 'step:', session.step, 'pesan:', pesan);
     // Start / reset flow
-    if (lowerMsg === '/lembur') {
+    if (!session.step) {
         session.step = 'input_tanggal';
         session.data = {};
-        db.query("UPDATE users SET step_lembur=? WHERE id=?", [session.step, userId], (err) => {
-            if (err) console.error(err);
-            chat.sendMessage('Silakan masukkan tanggal lembur (misal: 28 Desember 2025):');
-        });
+        db.query("UPDATE users SET step_lembur=? WHERE id=?", [session.step, userId]);
+        chat.sendMessage('Silakan masukkan tanggal lembur (misal: 28 Desember 2025):');
         return;
     }
+
 
     if (!session.step && user.step_lembur) session.step = user.step_lembur;
 
