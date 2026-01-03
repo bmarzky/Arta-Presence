@@ -9,6 +9,7 @@ const approveAtasan = require('./approve/approveAtasan');
 
 const handleLembur = require('./absensi/lembur');
 const handleRiwayatAbsen = require('./absensi/riwayatAbsen');
+const handleEdit = require('./absensi/editAbsen');
 
 const greetings = require('../data/greetings');
 const greetingReplies = require('../data/greetingReplies');
@@ -138,16 +139,16 @@ Ketik */help* untuk bantuan.`
 
       /* ================= STATE MACHINE (PRIORITAS UTAMA) ================= */
       if (user.step_absen)
-        return handleAbsen(chat, user, lowerMsg, pesan, query);
+          return handleAbsen(chat, user, lowerMsg, pesan, query);
 
       if (user.step_lembur)
-        return handleLembur(chat, user, pesan, db);
+          return handleLembur(chat, user, pesan, db);
 
       if (user.step_riwayat)
-        return handleRiwayatAbsen(chat, user, pesan, db);
+          return handleRiwayatAbsen(chat, user, pesan, db);
 
       if (user.step_input)
-        return handleExport(chat, user, pesan, db, null);
+          return handleExport(chat, user, pesan, db, null);
 
       /* ================= COMMAND (ALIAS INTENT) ================= */
       if (lowerMsg === '/absen')
@@ -155,6 +156,9 @@ Ketik */help* untuk bantuan.`
 
       if (lowerMsg === '/riwayat')
         return handleRiwayatAbsen(chat, user, pesan, db);
+
+      if (lowerMsg === '/edit')
+        return handleEdit(chat, user, pesan, query);
 
       if (lowerMsg.startsWith('/export'))
         return handleExport(chat, user, pesan, db, pesan.split(' ')[1] || null);
@@ -172,17 +176,23 @@ Ketik */help* untuk bantuan.`
 
       /* ================= INTENT AI ================= */
       if (!lowerMsg.startsWith('/')) {
-        const intent = await detectIntentAI(pesan);
-        console.log('[INTENT AI]', pesan, '=>', intent);
+          const intent = await detectIntentAI(pesan);
+          console.log('[INTENT AI]', pesan, '=>', intent);
 
-        if (intent === 'ABSEN')
-          return handleAbsen(chat, user, lowerMsg, pesan, query, true);
+          if (intent === 'ABSEN')
+              return handleAbsen(chat, user, lowerMsg, pesan, query, true);
 
-        if (intent === 'RIWAYAT')
-          return handleRiwayatAbsen(chat, user, pesan, db);
+          if (intent === 'RIWAYAT')
+              return handleRiwayat(chat, user, pesan, db);
 
-        if (intent === 'EXPORT')
-          return handleExport(chat, user, pesan, db, null, true);
+          if (intent === 'EDIT')
+              return handleEdit(chat, user, pesan, query);
+
+          if (intent === 'EXPORT')
+              return handleExport(chat, user, pesan, db, null, true);
+
+          if (intent === 'REVISI')
+              return approveAtasan(chat, user, pesan, db);
       }
 
       /* ================= GREETING ================= */
