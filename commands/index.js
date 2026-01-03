@@ -183,6 +183,9 @@ Ketik */help* untuk bantuan.`
           if (handleEdit.isEditing(wa_number)) {
               return handleEdit(chat, user, pesan, query);
           }
+
+          // Ini harus didefinisikan dulu
+          const intent = await detectIntentAI(pesan);
           console.log('[INTENT AI]', pesan, '=>', intent);
 
           if (intent === 'ABSEN')
