@@ -28,6 +28,7 @@ Tentukan SATU intent dari daftar berikut:
 - EXPORT
 - REVISI (khusus untuk atasan)
 - EDIT (untuk user ingin mengubah data sendiri)
+- LEMBUR
 - UNKNOWN
 
 Pesan user:
@@ -58,9 +59,10 @@ Balas HANYA dengan satu kata intent (huruf kapital).
       'APPROVE',
       'EXPORT',
       'REVISI',
+      'LEMBUR',
       'EDIT'
     ];
-    
+
     console.log('[IntentAI]', text, '=>', intent);
 
     return allowed.includes(intent) ? intent : 'UNKNOWN';

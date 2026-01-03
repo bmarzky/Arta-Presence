@@ -190,6 +190,8 @@ Ketik */help* untuk bantuan.`
 
           if (intent === 'ABSEN')
               return handleAbsen(chat, user, lowerMsg, pesan, query, true);
+          if (intent === 'LEMBUR')
+              return handleLembur(chat, user, pesan, query);
 
           if (intent === 'RIWAYAT')
               return handleRiwayat(chat, user, pesan, db);
