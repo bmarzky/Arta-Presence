@@ -13,7 +13,7 @@ module.exports = async function handleRiwayat(chat, user, pesan, db) {
         );
 
     // STEP 0 — TRIGGER
-    if (text === '/riwayat') {
+    if (!user.step_riwayat) {
         await query(
             `UPDATE users SET step_riwayat='pilih', riwayat_jenis=NULL WHERE id=?`,
             [user.id]
