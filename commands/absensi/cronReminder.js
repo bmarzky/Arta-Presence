@@ -2,39 +2,37 @@
 const cron = require('node-cron');
 
 module.exports = function startReminder(client, db) {
-  console.log('⏰ Reminder service started');
+  console.log('Reminder service started');
 
   function isWeekday() {
     const day = new Date().getDay();
-    return day !== 0 && day !== 6; // Senin–Jumat
+    return day !== 0 && day !== 6;
   }
 
-  // eminder absen masuk
-  cron.schedule(
-    '0 8 * * *',
-    () => {
-      if (!isWeekday()) return;
+  // PAGI - 08.00
+  cron.schedule('0 8 * * *', () => {
+    if (!isWeekday()) return;
 
-      console.log('[CRON] Reminder pagi');
+    const query = `
+      SELECT u.wa_number, u.nama_wa
+      FROM users u
+      LEFT JOIN absensi a
+        ON u.wa_number = a.wa_number
+        AND a.tanggal = CURDATE()
+      WHERE a.wa_number IS NULL
+         OR a.jam_masuk IS NULL
+    `;
 
-      const query = `
-        SELECT u.wa_number, u.nama_wa
-        FROM users u
-        LEFT JOIN absensi a
-          ON u.id = a.id_user
-          AND a.tanggal = CURDATE()
-        WHERE a.id IS NULL
-           OR a.jam_masuk IS NULL
-      `;
+    db.query(query, async (err, users) => {
+      if (err) {
+        console.error('DB error pagi:', err);
+        return;
+      }
 
-      db.query(query, async (err, users) => {
-        if (err) {
-          console.error('DB error pagi:', err);
-          return;
-        }
+      console.log(`Pagi: kirim ke ${users.length} user`);
 
-        for (const user of users) {
-          const pesan =
+      for (const user of users) {
+        const pesan =
 `Selamat pagi *${user.nama_wa}*
 
 Kamu belum melakukan *absen masuk* hari ini.
@@ -42,43 +40,39 @@ Kamu belum melakukan *absen masuk* hari ini.
 Ketik:
 *absen masuk*`;
 
-          try {
-            await client.sendMessage(user.wa_number, pesan);
-          } catch (e) {
-            console.error('Send error:', e.message);
-          }
+        try {
+          await client.sendMessage(user.wa_number, pesan);
+        } catch (e) {
+          console.error('WA send failed:', user.wa_number, e.message);
         }
-      });
-    },
-    { timezone: 'Asia/Jakarta' }
-  );
+      }
+    });
+  }, { timezone: 'Asia/Jakarta' });
 
-  // Reminder Absen Pulang (17.00)
-  cron.schedule(
-    '0 17 * * *',
-    () => {
-      if (!isWeekday()) return;
+  // Sore - 17.20
+  cron.schedule('20 17 * * *', () => {
+    if (!isWeekday()) return;
 
-      console.log('[CRON] Reminder sore');
+    const query = `
+      SELECT u.wa_number, u.nama_wa
+      FROM users u
+      JOIN absensi a
+        ON u.wa_number = a.wa_number
+        AND a.tanggal = CURDATE()
+      WHERE a.jam_masuk IS NOT NULL
+        AND a.jam_pulang IS NULL
+    `;
 
-      const query = `
-        SELECT u.wa_number, u.nama_wa
-        FROM users u
-        JOIN absensi a
-          ON u.id = a.id_user
-          AND a.tanggal = CURDATE()
-        WHERE a.jam_masuk IS NOT NULL
-          AND a.jam_pulang IS NULL
-      `;
+    db.query(query, async (err, users) => {
+      if (err) {
+        console.error('DB error sore:', err);
+        return;
+      }
 
-      db.query(query, async (err, users) => {
-        if (err) {
-          console.error('DB error sore:', err);
-          return;
-        }
+      console.log(`Sore: kirim ke ${users.length} user`);
 
-        for (const user of users) {
-          const pesan =
+      for (const user of users) {
+        const pesan =
 `Hai *${user.nama_wa}*
 
 Waktunya pulang.
@@ -87,14 +81,12 @@ Jangan lupa lakukan *absen pulang* ya.
 Ketik:
 *absen pulang*`;
 
-          try {
-            await client.sendMessage(user.wa_number, pesan);
-          } catch (e) {
-            console.error('Send error:', e.message);
-          }
+        try {
+          await client.sendMessage(user.wa_number, pesan);
+        } catch (e) {
+          console.error('WA send failed:', user.wa_number, e.message);
         }
-      });
-    },
-    { timezone: 'Asia/Jakarta' }
-  );
+      }
+    });
+  }, { timezone: 'Asia/Jakarta' });
 };
