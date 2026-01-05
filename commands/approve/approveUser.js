@@ -46,11 +46,6 @@ module.exports = async function approveUser(chat, user, db) {
             return sendTyping(chat, 'Silakan kirim foto tanda tangan kamu untuk melanjutkan approval.');
         }
 
-        //  cek ttd
-        if (waitingTTD[wa_number]?.user) {
-            return sendTyping(chat, `Tunggu dulu, kirim TTD terlebih dahulu sebelum mengirim laporan.`);
-        }
-
         //  cek status
         if (approval.status === 'processing' || approval.status === 'pending') {
             return sendTyping(chat, `Laporan sudah dikirim dan menunggu approval.`);
