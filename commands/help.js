@@ -16,8 +16,7 @@ module.exports = async function handleHelp(chat, nama_wa) {
         `• "absen pulang"\n` +
         `• "saya lembur hari ini"\n` +
         `• "edit absen kemarin"\n` +
-        `• "lihat riwayat absen"\n\n` +
-        `*(command lama masih bisa: /absen, /lembur, /edit, /riwayat)*`,
+        `• "lihat riwayat absen"\n\n`,
         10
     );
 
@@ -26,8 +25,7 @@ module.exports = async function handleHelp(chat, nama_wa) {
         `*Export Laporan*\n` +
         `Contoh:\n` +
         `• "export laporan absen bulan ini"\n` +
-        `• "download laporan lembur"\n\n` +
-        `*(command: /export)*`,
+        `• "download laporan lembur"\n\n`,
         10
     );
 
@@ -36,8 +34,7 @@ module.exports = async function handleHelp(chat, nama_wa) {
         `*Approval*\n` +
         `Contoh:\n` +
         `• "kirim laporan untuk approval"\n` +
-        `• "ajukan laporan ke atasan"\n\n` +
-        `*(command: /approve)*`,
+        `• "ajukan laporan ke atasan"\n\n`,
         10
     );
 
