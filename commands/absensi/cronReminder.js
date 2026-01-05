@@ -11,6 +11,7 @@ module.exports = function startReminder(client, db) {
 
   // PAGI - 08.00
   cron.schedule('0 8 * * *', () => {
+    console.log('CRON SORE TERPICU:', new Date().toLocaleString('id-ID'));
     if (!isWeekday()) return;
 
     const query = `
@@ -50,7 +51,7 @@ Ketik:
   }, { timezone: 'Asia/Jakarta' });
 
   // Sore - 17.20
-  cron.schedule('20 17 * * *', () => {
+  cron.schedule('30 17 * * *', () => {
     if (!isWeekday()) return;
 
     const query = `
