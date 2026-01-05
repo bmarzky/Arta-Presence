@@ -60,6 +60,13 @@ function startWhatsAppBot() {
     console.log('Arta is online.');
   });
 
+  const startReminder = require('./commands/absensi/cronReminder');
+
+  client.on('ready', () => {
+    console.log('Arta is online.');
+    startReminder(client, db);
+  });
+
   // Message handdler
   client.on('message', async msg => {
       try {
