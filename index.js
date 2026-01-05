@@ -5,6 +5,10 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
 const mysql = require('mysql2');
 const commands = require('./commands');
 
+//OPEM AI API
+console.log('OPENAI KEY:', process.env.OPENAI_API_KEY ? 'TERBACA' : 'TIDAK ADA');
+console.log('OPENAI BASE URL:', process.env.OPENAI_BASE_URL || 'TIDAK ADA');
+
 // DB
 const db = mysql.createPool({
   host: '127.0.0.1',
@@ -59,25 +63,27 @@ function startWhatsAppBot() {
     startReminder(client, db);
   });
 
-  // Message handler
+  // Message handdler
   client.on('message', async msg => {
-    try {
-      const chat = await msg.getChat();
-      const wa_number = msg.from.replace('@c.us', '');
-      const nama = msg._data?.notifyName || 'User';
-      const pesan = msg.body?.trim() || '';
+      try {
+          const chat = await msg.getChat();
+          const wa_number = msg.from.replace('@c.us', '');
+          const nama = msg._data?.notifyName || 'User';
+          const pesan = msg.body?.trim() || '';
 
-      let messageMedia = null;
-      if (msg.hasMedia) {
-        messageMedia = await msg.downloadMedia();
-      }
+          // Ambil media jika ada
+          let messageMedia = null;
+          if (msg.hasMedia) {
+              messageMedia = await msg.downloadMedia();
+          }
 
-      if (commands.message) {
-        await commands.message(chat, wa_number, nama, db, pesan, messageMedia);
+          // Panggil module message dengan 6 parameter
+          if (commands.message) {
+              await commands.message(chat, wa_number, nama, db, pesan, messageMedia);
+          }
+      } catch (err) {
+          console.error('Message handling error:', err);
       }
-    } catch (err) {
-      console.error('Message handling error:', err);
-    }
   });
 
   client.initialize();
