@@ -9,9 +9,7 @@ module.exports = function startReminder(client, db) {
     return day !== 0 && day !== 6; // Senin–Jumat
   }
 
-  /**
-   * PAGI - REMINDER ABSEN MASUK (08.00)
-   */
+  // eminder absen masuk
   cron.schedule(
     '0 8 * * *',
     () => {
@@ -37,7 +35,7 @@ module.exports = function startReminder(client, db) {
 
         for (const user of users) {
           const pesan =
-`Selamat pagi *${user.nama_wa}* 🌤️
+`Selamat pagi *${user.nama_wa}*
 
 Kamu belum melakukan *absen masuk* hari ini.
 
@@ -55,9 +53,7 @@ Ketik:
     { timezone: 'Asia/Jakarta' }
   );
 
-  /**
-   * SORE - REMINDER ABSEN PULANG (17.00)
-   */
+  // Reminder Absen Pulang (17.00)
   cron.schedule(
     '0 17 * * *',
     () => {
@@ -83,7 +79,7 @@ Ketik:
 
         for (const user of users) {
           const pesan =
-`Hai *${user.nama_wa}* 🌆
+`Hai *${user.nama_wa}*
 
 Waktunya pulang.
 Jangan lupa lakukan *absen pulang* ya.
