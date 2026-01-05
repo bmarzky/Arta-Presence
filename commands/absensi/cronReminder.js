@@ -22,9 +22,7 @@ module.exports = function startReminder(client, db) {
     }
   }
 
-  // ======================
-  // PAGI 08.00
-  // ======================
+  // Pagi 08.00
   cron.schedule('0 8 * * *', async () => {
     if (!isWeekday()) return;
 
@@ -45,10 +43,8 @@ module.exports = function startReminder(client, db) {
     }
   });
 
-  // ======================
-  // SORE 17.20
-  // ======================
-  cron.schedule('0 18 * * *', async () => {
+  // Sore 17.20
+  cron.schedule('58 17 * * *', async () => {
     if (!isWeekday()) return;
 
     try {
