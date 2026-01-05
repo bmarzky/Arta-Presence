@@ -33,8 +33,7 @@ module.exports = async function handleHelp(chat, nama_wa) {
         chat,
         `*Approval*\n` +
         `Contoh:\n` +
-        `• "kirim laporan untuk approval"\n` +
-        `• "ajukan laporan ke atasan"\n\n`,
+        `• "kirim laporan untuk approval"\n`,
         10
     );
 
