@@ -2,7 +2,7 @@ const cron = require('node-cron');
 const sendWA = require('./sendWA');
 const db = require('./db');
 
-// PAGI - REMINDER ABSEN MASUK JAM 08.00
+// riminder pagi
 cron.schedule('0 8 * * 1-5', async () => {
     const users = await db.query(`
         SELECT u.id, u.nama, u.no_wa
@@ -26,7 +26,7 @@ Silakan ketik:
     }
 });
 
-// SORE - REMINDER ABSEN PULANG JAM 17.00
+// reminder pulang
 cron.schedule('0 17 * * 1-5', async () => {
     const users = await db.query(`
         SELECT u.id, u.nama, u.no_wa
