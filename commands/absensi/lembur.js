@@ -3,7 +3,7 @@ const sessions = {}; // session sementara
 const moment = require('moment');
 moment.locale('id'); // set locale Indonesia
 
-// Fungsi bantu parsing jam fleksibel
+// helper parsing jam fleksibel
 function parseFlexibleTime(input) {
     input = input.trim().toLowerCase();
     let h = 0, m = 0;

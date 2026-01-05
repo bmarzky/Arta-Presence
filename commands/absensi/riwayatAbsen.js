@@ -12,7 +12,7 @@ module.exports = async function handleRiwayat(chat, user, pesan, db) {
             db.query(sql, params, (err, rows) => err ? reject(err) : resolve(rows))
         );
 
-    // STEP 0 — TRIGGER
+    // Step 0 trrigger
     if (!user.step_riwayat) {
         await query(
             `UPDATE users SET step_riwayat='pilih', riwayat_jenis=NULL WHERE id=?`,
@@ -27,7 +27,7 @@ Balas: absen atau lembur`
         );
     }
 
-    // STEP 1 — PILIH JENIS
+    // Step 1 pilih jenis
     if (user.step_riwayat === 'pilih') {
         if (!['absen', 'lembur'].includes(text)) {
             return sendTyping(chat, 'Balas dengan: *absen* atau *lembur*');
@@ -70,7 +70,7 @@ Balas: absen atau lembur`
                    AND file_path LIKE ?
                  ORDER BY created_at DESC
                  LIMIT 1`,
-                [user.id, `%${prefix}%`] // <-- perbaikan LIKE
+                [user.id, `%${prefix}%`] // perbaikan like
             );
 
             if (!laporan) {

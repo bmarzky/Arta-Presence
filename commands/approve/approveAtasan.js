@@ -86,7 +86,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
 
         if (!pendingApprovals.length) return sendTyping(chat, 'Tidak ada laporan yang menunggu approval.');
 
-        // === Command status ===
+        // Command status
         if (text === 'status') {
             const msg = pendingApprovals.map((a, i) =>
                 `${i + 1}. ${a.user_nama} (${a.export_type}) - Status: ${a.status}`
@@ -94,7 +94,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             return sendTyping(chat, `*Daftar Laporan Pending / Revisi:*\n\n${msg}`);
         }
 
-        // ===== Cek apakah bot menunggu alasan revisi =====
+        // Cek apakah bot menunggu alasan revisi
         if (pendingTTD?.revisi_id) {
             const revisiId = pendingTTD.revisi_id;
 
@@ -126,7 +126,7 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
         }
 
 
-        // === Parsing approve/revisi command ===
+        // Parsing approve/revisi command
         const match = rawText.trim().match(/^(approve|revisi)\s+([^-]+)-(.+)$/i);
         if (!match) return sendTyping(chat, 'Format salah. Contoh:\napprove lembur-Bima Rizki');
 
@@ -155,14 +155,14 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
             if (oldApproval.status === 'approved') return sendTyping(chat, 'Laporan sudah disetujui.');
         }
 
-        // === Handle revisi ===
+        // Handle revisi
         if (action === 'revisi') {
             await query(`UPDATE approvals SET status='revised', step_input='alasan_revisi' WHERE id=?`, [approval.id]);
             waitingTTD[user.wa_number] = { revisi_id: approval.id };
             return sendTyping(chat, `Silakan ketik *alasan revisi* untuk ${export_type}-${namaUser}.`);
         }
 
-        // === Handle approve ===
+        // Handle approve
         if (action === 'approve') {
             currentApprovalId = approval.id;
 

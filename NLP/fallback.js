@@ -1,7 +1,6 @@
 const { NlpManager } = require('node-nlp');
 const manager = new NlpManager({ languages: ['id'], forceNER: true });
 
-// ===== Tambahkan dokument untuk setiap intent =====
 // HELP
 manager.addDocument('id', 'help', 'help');
 manager.addDocument('id', 'bantuan', 'help');
@@ -58,7 +57,7 @@ manager.addDocument('id', 'exit', 'cancel');
 manager.addDocument('id', 'end', 'cancel');
 manager.addDocument('id', 'clear', 'cancel');
 
-// ===== Tambahkan jawaban default =====
+// jawaban default
 manager.addAnswer('id', 'help', 'Kamu bisa menggunakan perintah /help untuk melihat daftar perintah.');
 manager.addAnswer('id', 'absen', 'Kamu bisa mulai absen menggunakan /absen.');
 manager.addAnswer('id', 'lembur', 'Kamu bisa mulai lembur menggunakan /lembur.');
@@ -68,19 +67,19 @@ manager.addAnswer('id', 'export', 'Gunakan /export untuk mengekspor laporan ke P
 manager.addAnswer('id', 'approve', 'Gunakan /approve untuk mengajukan laporan ke approval.');
 manager.addAnswer('id', 'info', 'Ini adalah bot ARTA PRESENCE untuk membantu absensi dan laporan.');
 
-// ===== Latih model =====
+// latih model
 (async () => {
     await manager.train();
     manager.save(); // simpan model agar bisa dipakai ulang tanpa train ulang
 })();
 
-// ===== Fungsi prediksi intent =====
+// prediksi intent
 async function predictIntent(message) {
     const response = await manager.process('id', message);
     return response.intent === 'None' ? 'unknown' : response.intent;
 }
 
-// ===== Fungsi ambil jawaban dari intent =====
+// ambil jawaban dari intent
 async function getResponse(message) {
     const response = await manager.process('id', message);
     if (response.answer) return response.answer;

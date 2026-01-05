@@ -30,7 +30,7 @@ const isUserDataComplete = (user) =>
 function getApproverWAfinal(approverWA, userWA) {
   if (!approverWA) return null;
   let final = approverWA.includes('@') ? approverWA : approverWA + '@c.us';
-  if (final === userWA + '@c.us') return null; // gak boleh kirim ke diri sendiri
+  if (final === userWA + '@c.us') return null;
   return final;
 }
 
@@ -44,7 +44,7 @@ module.exports = {
       );
 
     try {
-      /* ================= USER INIT ================= */
+      // user init
       let [user] = await query(
         "SELECT * FROM users WHERE wa_number=?",
         [wa_number]
@@ -67,7 +67,7 @@ module.exports = {
         user.nama_wa = nama_wa;
       }
 
-      /* ================= RESTRICTED ================= */
+      // restricted
       const firstWord = lowerMsg.replace('/', '').split(' ')[0];
       if (['approve', 'revisi', 'status'].includes(firstWord)) {
         if (user.jabatan !== 'Head West Java Operation')
@@ -75,7 +75,7 @@ module.exports = {
         return approveAtasan(chat, user, pesan, db);
       }
 
-      /* ================= CANCEL ================= */
+      // global cancel
       if (['batal', 'cancel', 'close', '/cancel'].includes(lowerMsg)) {
         await query(`
           UPDATE users SET
@@ -92,7 +92,7 @@ module.exports = {
         return sendTyping(chat, 'Proses dibatalkan.');
       }
 
-    /* ================= MEDIA (TTD) ================= */
+    // media ttd
     if (messageMedia?.mimetype?.startsWith('image/')) {
         const extRaw = messageMedia.mimetype.split('/')[1] || 'png';
         const ext = ['png','jpg','jpeg'].includes(extRaw) ? extRaw : 'png';
@@ -108,8 +108,8 @@ module.exports = {
         }
 
         // TTD untuk approval atasan
-        if (waitingTTD[wa_number]?.approval_id) { // sesuaikan key dengan approveAtasan
-            return await approveAtasan(chat, user, null, db); // approveAtasan nanti yang hapus
+        if (waitingTTD[wa_number]?.approval_id) { 
+            return await approveAtasan(chat, user, null, db);
         }
 
         // TTD untuk revisi atasan
@@ -120,7 +120,7 @@ module.exports = {
         return await sendTyping(chat, 'TTD tidak terkait dengan proses apapun.');
     }
 
-      /* ================= INTRO ================= */
+      // intro
       if (user.intro === 0 && !sendingIntro[wa_number]) {
         sendingIntro[wa_number] = true;
         await sendTyping(chat,
@@ -133,11 +133,11 @@ Ketik */help* untuk bantuan.`
         return;
       }
 
-      /* ================= HELP ================= */
+      // help
       if (lowerMsg === '/help')
         return require('./help')(chat, user.nama_wa);
 
-      /* ================= STATE MACHINE (PRIORITAS UTAMA) ================= */
+      // state machine
       if (handleEdit.isEditing(wa_number)) {
           return handleEdit(chat, user, pesan, query);
       }
@@ -154,7 +154,7 @@ Ketik */help* untuk bantuan.`
       if (user.step_input)
           return handleExport(chat, user, pesan, db, null);
 
-      /* ================= COMMAND (ALIAS INTENT) ================= */
+      // Command (intent)
       if (lowerMsg === '/absen')
         return handleAbsen(chat, user, lowerMsg, pesan, query);
 
@@ -167,24 +167,23 @@ Ketik */help* untuk bantuan.`
       if (lowerMsg.startsWith('/export'))
         return handleExport(chat, user, pesan, db, pesan.split(' ')[1] || null);
 
-      /* ================= KIRIM LAPORAN USER ================= */
+      // kirim laporan users
       if (['kirim'].includes(firstWord)) {
         return approveUser(chat, user, db);
       }
       
-      /* ================= REVISI ================= */
+      // revisi
       if (waitingTTD[wa_number]?.revisi_id) {
         return approveAtasan(chat, user, pesan, db);
       }
 
 
-      /* ================= INTENT AI ================= */
+      // intent ai
       if (!lowerMsg.startsWith('/')) {
           if (handleEdit.isEditing(wa_number)) {
               return handleEdit(chat, user, pesan, query);
           }
 
-          // Ini harus didefinisikan dulu
           const intent = await detectIntentAI(pesan);
           console.log('[INTENT AI]', pesan, '=>', intent);
 
@@ -207,7 +206,7 @@ Ketik */help* untuk bantuan.`
               return approveAtasan(chat, user, pesan, db);
       }
 
-      /* ================= GREETING ================= */
+      // greetings
       if (greetings[lowerMsg]) {
         const reply =
           greetingReplies[Math.floor(Math.random() * greetingReplies.length)];
@@ -216,7 +215,7 @@ Ketik */help* untuk bantuan.`
         );
       }
 
-      /* ================= FALLBACK ================= */
+      // fallback
       await sendTyping(chat, `Aku belum paham pesannya 😅`);
       return sendTyping(chat, 'Coba ketik */help*');
 

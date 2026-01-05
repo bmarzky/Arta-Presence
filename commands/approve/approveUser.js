@@ -37,12 +37,21 @@ module.exports = async function approveUser(chat, user, db) {
         if (!approval || !approval.file_path)
             return sendTyping(chat, 'Kamu belum menyiapkan laporan.');
 
-        //cek ttd
+        // cek TTD user
+        const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
+        const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
+        if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
+            // user belum ada TTD → tunggu kirim TTD
+            waitingTTD[wa_number] = { user: true, approval_id: approval.id };
+            return sendTyping(chat, 'Silakan kirim foto tanda tangan kamu untuk melanjutkan approval.');
+        }
+
+        //  cek ttd
         if (waitingTTD[wa_number]?.user) {
             return sendTyping(chat, `Tunggu dulu, kirim TTD terlebih dahulu sebelum mengirim laporan.`);
         }
 
-        //cek status
+        //  cek status
         if (approval.status === 'processing' || approval.status === 'pending') {
             return sendTyping(chat, `Laporan sudah dikirim dan menunggu approval.`);
         }
@@ -89,15 +98,6 @@ module.exports = async function approveUser(chat, user, db) {
         if (!approverWAfinal) {
             return sendTyping(chat, 'Approval gagal: tidak bisa kirim ke diri sendiri.');
         }
-
-// cek TTD user
-const ttdPng = path.join(ttdFolder, `${wa_number}.png`);
-const ttdJpg = path.join(ttdFolder, `${wa_number}.jpg`);
-if (!fs.existsSync(ttdPng) && !fs.existsSync(ttdJpg)) {
-    // user belum ada TTD → tunggu kirim TTD
-    waitingTTD[wa_number] = { user: true, approval_id: approval.id };
-    return sendTyping(chat, 'Silakan kirim foto tanda tangan kamu untuk melanjutkan approval.');
-}
 
 // set status processing
 await query(`UPDATE approvals SET status='processing' WHERE id=?`, [approval.id]);
@@ -267,7 +267,7 @@ async function generatePDFLemburwithTTD(user, db, templateName = 'LMD', namaAtas
         // Logo
         const logoBase64 = getLogoBase64(templateName);
 
-        //ttd
+        //  ttd
         const ttdUserHTML = getTTDHTML(user.wa_number);
 
         // Generate rows
