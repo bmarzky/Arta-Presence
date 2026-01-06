@@ -50,113 +50,125 @@ async function handleExport(chat, user, pesan, db, paramBulan=null, isIntent=fal
         }
 
 
-        //  Flow data user
-        if (missing.length > 0 || user.step_input?.startsWith('input') || user.step_input === 'confirm_nama') {
+//  Flow data user
+if (missing.length > 0 || user.step_input?.startsWith('input') || user.step_input === 'confirm_nama') {
 
-            // User baru
-            if (missing.length === 3 && !user.step_input) {
-                await query(
-                    `UPDATE users SET step_input='confirm_nama' WHERE id=?`,
-                    [user.id]
-                );
+    // User baru (semua data kosong)
+    if (missing.length === 3 && !user.step_input) {
+        await query(
+            `UPDATE users SET step_input='confirm_nama' WHERE id=?`,
+            [user.id]
+        );
 
-                return sendTyping(
-                    chat,
-                    `Apakah benar nama kamu *${user.nama_wa || nama_wa}*?\nKetik *iya* / *tidak*`
-                );
-            }
+        return sendTyping(
+            chat,
+            `Apakah benar nama kamu *${user.nama_wa || nama_wa}*?\nKetik *iya* / *tidak*`
+        );
+    }
 
-
-            // Confirm nama
-            if (user.step_input === 'confirm_nama') {
-                if (text === 'iya') {
-                    await query(
-                        `UPDATE users 
-                        SET nama_lengkap=?, step_input='input_jabatan' 
-                        WHERE id=?`,
-                        [user.nama_wa || nama_wa, user.id]
-                    );
-                    return sendTyping(chat, 'Silahkan isi *jabatan* kamu');
-                }
-
-                if (text === 'tidak') {
-                    await query(
-                        `UPDATE users SET step_input='input_nama' WHERE id=?`,
-                        [user.id]
-                    );
-                    return sendTyping(chat, 'Silahkan isi *Nama Lengkap* kamu');
-                }
-
-                return sendTyping(chat, 'Ketik *iya* atau *tidak* ya');
-            }
-
-
-            // Input nama tidak nama_wa
-            if (user.step_input === 'input_nama') {
-                await query(
-                    `UPDATE users 
-                    SET nama_lengkap=?, step_input='input_jabatan' 
-                    WHERE id=?`,
-                    [pesan.trim(), user.id]
-                );
-                return sendTyping(chat, 'Silahkan isi *jabatan* kamu');
-            }
-
-            // Input Jabatan
-            if (user.step_input === 'input_jabatan') {
-                await query(
-                    `UPDATE users 
-                    SET jabatan=?, step_input='input_nik' 
-                    WHERE id=?`,
-                    [pesan.trim(), user.id]
-                );
-                return sendTyping(chat, 'Silahkan isi *NIP* kamu');
-            }
-
-            // Input NIP
-            if (user.step_input === 'input_nik') {
-                await query(
-                    `UPDATE users 
-                    SET nik=?, step_input='choose_export_type' 
-                    WHERE id=?`,
-                    [pesan.trim(), user.id]
-                );
-
-                return sendTyping(
-                    chat,
-                    `Halo *${nama_wa}*, mau export *Absensi* atau *Lembur*?`
-                );
-            }
-
-            // User lama (DATA SEBAGIAN KOSONG)
-            if (!user.step_input && missing.length > 0) {
-                const nextField =
-                    !user.nama_lengkap ? 'input_nama' :
-                    !user.jabatan ? 'input_jabatan' :
-                    'input_nik';
-
-                await query(
-                    `UPDATE users SET step_input=? WHERE id=?`,
-                    [nextField, user.id]
-                );
-
-                const label = {
-                    input_nama: 'Nama Lengkap',
-                    input_jabatan: 'Jabatan',
-                    input_nik: 'NIP'
-                };
-
-                return sendTyping(
-                    chat,
-                    `Maaf saya belum memiliki data anda.\nSilahkan isi *${label[nextField]}*`
-                );
-            }
+    // Confirm nama
+    if (user.step_input === 'confirm_nama') {
+        if (text === 'iya') {
+            await query(
+                `UPDATE users 
+                 SET nama_lengkap=?, step_input='input_jabatan' 
+                 WHERE id=?`,
+                [user.nama_wa || nama_wa, user.id]
+            );
+            return sendTyping(chat, 'Silahkan isi *jabatan* kamu');
         }
 
-        // Step: pilih tipe export
-        if (user.step_input === 'choose_export_type') {
-            if (!['absensi', 'lembur'].includes(text))
-                return sendTyping(chat, 'Balas *absensi* atau *lembur* ya.');
+        if (text === 'tidak') {
+            await query(
+                `UPDATE users SET step_input='input_nama' WHERE id=?`,
+                [user.id]
+            );
+            return sendTyping(chat, 'Silahkan isi *Nama Lengkap* kamu');
+        }
+
+        return sendTyping(chat, 'Ketik *iya* atau *tidak* ya');
+    }
+
+    // Input nama
+    if (user.step_input === 'input_nama') {
+        await query(
+            `UPDATE users 
+             SET nama_lengkap=?, step_input='input_jabatan' 
+             WHERE id=?`,
+            [pesan.trim(), user.id]
+        );
+        return sendTyping(chat, 'Silahkan isi *jabatan* kamu');
+    }
+
+    // Input Jabatan
+    if (user.step_input === 'input_jabatan') {
+        await query(
+            `UPDATE users 
+             SET jabatan=?, step_input='input_nik' 
+             WHERE id=?`,
+            [pesan.trim(), user.id]
+        );
+        return sendTyping(chat, 'Silahkan isi *NIP* kamu');
+    }
+
+    // Input NIP
+    if (user.step_input === 'input_nik') {
+        await query(
+            `UPDATE users 
+             SET nik=?, step_input='input_lokasi' 
+             WHERE id=?`,
+            [pesan.trim(), user.id]
+        );
+        return sendTyping(chat, 'Silahkan isi *lokasi* kamu untuk dicatat di laporan');
+    }
+
+    // Input Lokasi
+    if (user.step_input === 'input_lokasi') {
+        await query(
+            `UPDATE users 
+             SET lokasi=?, step_input='choose_export_type' 
+             WHERE id=?`,
+            [pesan.trim(), user.id]
+        );
+        return sendTyping(
+            chat,
+            `Lokasi berhasil dicatat: *${pesan.trim()}*.\nSekarang pilih tipe export: *Absensi* atau *Lembur*`
+        );
+    }
+
+    // User lama (DATA SEBAGIAN KOSONG)
+    if (!user.step_input && (missing.length > 0 || !user.lokasi)) {
+        const nextField =
+            !user.nama_lengkap ? 'input_nama' :
+            !user.jabatan ? 'input_jabatan' :
+            !user.nik ? 'input_nik' :
+            !user.lokasi ? 'input_lokasi' : null; // tambah lokasi
+
+        if(nextField){
+            await query(
+                `UPDATE users SET step_input=? WHERE id=?`,
+                [nextField, user.id]
+            );
+
+            const label = {
+                input_nama: 'Nama Lengkap',
+                input_jabatan: 'Jabatan',
+                input_nik: 'NIP',
+                input_lokasi: 'Lokasi'
+            };
+
+            return sendTyping(
+                chat,
+                `Maaf saya belum memiliki data anda.\nSilahkan isi *${label[nextField]}*`
+            );
+        }
+    }
+}
+
+// Step: pilih tipe export
+if (user.step_input === 'choose_export_type') {
+    if (!['absensi', 'lembur'].includes(text))
+        return sendTyping(chat, 'Balas *absensi* atau *lembur* ya.');
 
             // Cek pending untuk jenis
             const [pendingApproval] = await query(
@@ -294,6 +306,7 @@ async function handleExport(chat, user, pesan, db, paramBulan=null, isIntent=fal
                 .replace(/{{nama}}/g,user.nama_lengkap||'')
                 .replace(/{{jabatan}}/g,user.jabatan||'')
                 .replace(/{{nik}}/g,user.nik||'')
+                .replace(/{{lokasi}}/g, user.lokasi || '')
                 .replace(/{{periode}}/g,periode)
                 .replace(/{{rows_absensi}}/g,rows.join(''))
                 .replace(/{{ttd_user}}/g,ttdUserHTML)
@@ -471,6 +484,7 @@ async function handleExport(chat, user, pesan, db, paramBulan=null, isIntent=fal
                     .replace(/{{nama}}/g, user.nama_lengkap || '')
                     .replace(/{{jabatan}}/g, user.jabatan || '')
                     .replace(/{{nik}}/g, user.nik || '')
+                    .replace(/{{lokasi}}/g, user.lokasi || '')
                     .replace(/{{ttd_user}}/g, ttdUserHTML)
                     .replace(/{{nama_atasan}}/g, approverNama)
                     .replace(/{{nik_atasan}}/g, approverNik)

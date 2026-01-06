@@ -189,6 +189,7 @@ async function generatePDFwithTTD(user, db, templateName, namaAtasan = 'Atasan',
                .replace(/{{nama}}/g, user.nama_lengkap)
                .replace(/{{jabatan}}/g, user.jabatan)
                .replace(/{{nik}}/g, user.nik)
+               .replace(/{{lokasi}}/g, user.lokasi || '')
                .replace(/{{periode}}/g, `${1}-${totalHari} ${moment().format('MMMM YYYY')}`)
                .replace(/{{rows_absensi}}/g, rows.join(''))
                .replace(/{{ttd_user}}/g, ttdUserHTML)
@@ -320,9 +321,10 @@ async function generatePDFLemburwithTTD(user, db, templateName = 'LMD', namaAtas
 
         const html = htmlTemplate
             .replace(/{{rows_lembur}}/g, rows)
-            .replace(/{{nama}}/g, user.nama_lengkap || '-')
-            .replace(/{{jabatan}}/g, user.jabatan || '-')
-            .replace(/{{nik}}/g, user.nik || '-')
+            .replace(/{{nama}}/g, user.nama_lengkap || '')
+            .replace(/{{jabatan}}/g, user.jabatan || '')
+            .replace(/{{nik}}/g, user.nik || '')
+            .replace(/{{lokasi}}/g, user.lokasi || '')
             .replace(/{{periode}}/g, periode)
             .replace(/{{logo}}/g, logoBase64)
             .replace(/{{ttd_user}}/g, ttdUserHTML)
