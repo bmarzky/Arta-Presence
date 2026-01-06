@@ -167,6 +167,14 @@ if (missing.length > 0 || user.step_input?.startsWith('input') || user.step_inpu
 
 // Step: pilih tipe export
 if (user.step_input === 'choose_export_type') {
+        if (!user.lokasi) {
+        await query(
+            `UPDATE users SET step_input='input_lokasi' WHERE id=?`,
+            [user.id]
+        );
+        return sendTyping(chat, 'Silahkan isi *lokasi* kamu terlebih dahulu sebelum export.');
+    }
+
     if (!['absensi', 'lembur'].includes(text))
         return sendTyping(chat, 'Balas *absensi* atau *lembur* ya.');
 
