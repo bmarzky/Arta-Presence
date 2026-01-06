@@ -31,11 +31,42 @@ async function handleExport(chat, user, pesan, db, paramBulan=null, isIntent=fal
         const nama_wa = user.nama_wa || 'Arta';
         const text = pesan.toLowerCase().trim();
 
-        const required = ['nama_lengkap', 'jabatan', 'nik'];
+        const required = ['nama_lengkap', 'jabatan', 'nik', 'lokasi'];
         const missing = required.filter(f => !user[f]);
 
+        function getNextMissingField(user) {
+        if (!user.nama_lengkap) return 'input_nama';
+        if (!user.jabatan) return 'input_jabatan';
+        if (!user.nik) return 'input_nik';
+        if (!user.lokasi) return 'input_lokasi';
+        return null;
+    }
+        // Vlidasi Data
+        if (isIntent && !user.step_input && missing.length < 4) {
+            const nextField = getNextMissingField(user);
+
+            if (nextField) {
+                await query(
+                    `UPDATE users SET step_input=? WHERE id=?`,
+                    [nextField, user.id]
+                );
+
+                const label = {
+                    input_nama: 'Nama Lengkap',
+                    input_jabatan: 'Jabatan',
+                    input_nik: 'NIP',
+                    input_lokasi: 'Lokasi'
+                };
+
+                return sendTyping(
+                    chat,
+                    `Sebelum export, saya perlu data berikut.\nSilakan isi *${label[nextField]}*`
+                );
+            }
+        }
+
         // user lengkap
-        if (missing.length === 0 && (!user.step_input || isIntent)) {
+        if (isIntent && !user.step_input && missing.length === 0) {
             await query(
                 `UPDATE users 
                 SET step_input='choose_export_type' 
@@ -54,7 +85,7 @@ async function handleExport(chat, user, pesan, db, paramBulan=null, isIntent=fal
 if (missing.length > 0 || user.step_input?.startsWith('input') || user.step_input === 'confirm_nama') {
 
     // User baru (semua data kosong)
-    if (missing.length === 3 && !user.step_input) {
+    if (missing.length === 4 && !user.step_input) {
         await query(
             `UPDATE users SET step_input='confirm_nama' WHERE id=?`,
             [user.id]
@@ -119,7 +150,7 @@ if (missing.length > 0 || user.step_input?.startsWith('input') || user.step_inpu
              WHERE id=?`,
             [pesan.trim(), user.id]
         );
-        return sendTyping(chat, 'Silahkan isi *lokasi* kamu untuk dicatat di laporan');
+        return sendTyping(chat, 'Silahkan isi *lokasi* kamu');
     }
 
     // Input Lokasi
@@ -135,46 +166,10 @@ if (missing.length > 0 || user.step_input?.startsWith('input') || user.step_inpu
             `Lokasi berhasil dicatat: *${pesan.trim()}*.\nSekarang pilih tipe export: *Absensi* atau *Lembur*`
         );
     }
-
-    // User lama (DATA SEBAGIAN KOSONG)
-    if (!user.step_input && (missing.length > 0 || !user.lokasi)) {
-        const nextField =
-            !user.nama_lengkap ? 'input_nama' :
-            !user.jabatan ? 'input_jabatan' :
-            !user.nik ? 'input_nik' :
-            !user.lokasi ? 'input_lokasi' : null; // tambah lokasi
-
-        if(nextField){
-            await query(
-                `UPDATE users SET step_input=? WHERE id=?`,
-                [nextField, user.id]
-            );
-
-            const label = {
-                input_nama: 'Nama Lengkap',
-                input_jabatan: 'Jabatan',
-                input_nik: 'NIP',
-                input_lokasi: 'Lokasi'
-            };
-
-            return sendTyping(
-                chat,
-                `Maaf saya belum memiliki data anda.\nSilahkan isi *${label[nextField]}*`
-            );
-        }
-    }
 }
 
 // Step: pilih tipe export
 if (user.step_input === 'choose_export_type') {
-        if (!user.lokasi) {
-        await query(
-            `UPDATE users SET step_input='input_lokasi' WHERE id=?`,
-            [user.id]
-        );
-        return sendTyping(chat, 'Silahkan isi *lokasi* kamu terlebih dahulu sebelum export.');
-    }
-
     if (!['absensi', 'lembur'].includes(text))
         return sendTyping(chat, 'Balas *absensi* atau *lembur* ya.');
 
@@ -214,7 +209,6 @@ if (user.step_input === 'choose_export_type') {
 
 
         // Step: pilih template
-
         if (user.step_input === 'choose_template') {
             if (!['ksps', 'lmd'].includes(text))
                 return sendTyping(chat, 'Balas *ksps* atau *lmd* ya.');
