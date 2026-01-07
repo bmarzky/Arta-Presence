@@ -59,8 +59,6 @@ module.exports = async function approveAtasan(chat, user, pesan, db) {
                 const ttdUserHTML = getTTDHTML(userData.wa_number) || '';
                 const userWA = getWAfinal(userData.wa_number, atasan.wa_number);
                 if (!userWA) return sendTyping(chat, 'Approval gagal: tidak bisa kirim ke diri sendiri.');
-
-                // **generate PDF terlebih dahulu**
                 const outputPath = await generatePDFForAtasanWrapper(approval, userData, db, ttdAtasanHTML, ttdUserHTML);
 
                 // baru buat media
