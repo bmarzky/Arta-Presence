@@ -1,4 +1,5 @@
 //export.js
+// export.js
 const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
@@ -14,8 +15,11 @@ const formatTanggalLMD = (date) => {
 
 const hariIndonesia = (date) => moment(date).locale('id').format('dddd');
 
+const safeFileName = (text='') =>
+    text.replace(/[^a-z0-9]/gi, '_');
+
 async function handleExport(chat, user, pesan, db, paramBulan=null, isIntent=false) {
-    if(!db || !user?.id) return;
+    if (!db || !user?.id) return;
 
     const query = (sql, params=[]) =>
         new Promise((res, rej) =>
@@ -24,7 +28,7 @@ async function handleExport(chat, user, pesan, db, paramBulan=null, isIntent=fal
 
     try {
         const [dbUser] = await query(`SELECT * FROM users WHERE id=?`, [user.id]);
-        if(!dbUser) return;
+        if (!dbUser) return;
 
         user = { ...user, ...dbUser };
 
@@ -34,202 +38,140 @@ async function handleExport(chat, user, pesan, db, paramBulan=null, isIntent=fal
         const required = ['nama_lengkap', 'jabatan', 'nik', 'lokasi'];
         const missing = required.filter(f => !user[f]);
 
-        function getNextMissingField(user) {
-        if (!user.nama_lengkap) return 'input_nama';
-        if (!user.jabatan) return 'input_jabatan';
-        if (!user.nik) return 'input_nik';
-        if (!user.lokasi) return 'input_lokasi';
-        return null;
-    }
-        // Vlidasi Data
-        if (isIntent && !user.step_input && missing.length < 4) {
-            const nextField = getNextMissingField(user);
+        const getNextMissingField = (u) => {
+            if (!u.nama_lengkap) return 'input_nama';
+            if (!u.jabatan) return 'input_jabatan';
+            if (!u.nik) return 'input_nik';
+            if (!u.lokasi) return 'input_lokasi';
+            return null;
+        };
 
-            if (nextField) {
+        // step input aktif
+
+        // Confirm nama
+        if (user.step_input === 'confirm_nama') {
+            if (text === 'iya') {
                 await query(
-                    `UPDATE users SET step_input=? WHERE id=?`,
-                    [nextField, user.id]
+                    `UPDATE users SET nama_lengkap=?, step_input='input_jabatan' WHERE id=?`,
+                    [user.nama_wa || nama_wa, user.id]
                 );
+                return sendTyping(chat, 'Silahkan isi *jabatan* kamu');
+            }
 
+            if (text === 'tidak') {
+                await query(
+                    `UPDATE users SET step_input='input_nama' WHERE id=?`,
+                    [user.id]
+                );
+                return sendTyping(chat, 'Silahkan isi *Nama Lengkap* kamu');
+            }
+
+            return sendTyping(chat, 'Ketik *iya* atau *tidak* ya');
+        }
+
+        // Input Nama
+        if (user.step_input === 'input_nama') {
+            await query(`UPDATE users SET nama_lengkap=? WHERE id=?`, [pesan.trim(), user.id]);
+        }
+
+        // Input Jabatan
+        if (user.step_input === 'input_jabatan') {
+            await query(`UPDATE users SET jabatan=? WHERE id=?`, [pesan.trim(), user.id]);
+        }
+
+        // Input NIK
+        if (user.step_input === 'input_nik') {
+            await query(`UPDATE users SET nik=? WHERE id=?`, [pesan.trim(), user.id]);
+        }
+
+        // Input Lokasi
+        if (user.step_input === 'input_lokasi') {
+            await query(`UPDATE users SET lokasi=? WHERE id=?`, [pesan.trim(), user.id]);
+        }
+
+        // Setelah input
+        if (user.step_input?.startsWith('input')) {
+            const [fresh] = await query(`SELECT * FROM users WHERE id=?`, [user.id]);
+            const next = getNextMissingField(fresh);
+
+            if (next) {
+                await query(`UPDATE users SET step_input=? WHERE id=?`, [next, user.id]);
                 const label = {
                     input_nama: 'Nama Lengkap',
                     input_jabatan: 'Jabatan',
-                    input_nik: 'NIP',
+                    input_nik: 'NIK',
                     input_lokasi: 'Lokasi'
                 };
+                return sendTyping(chat, `Silahkan isi *${label[next]}* kamu`);
+            }
 
+            await query(`UPDATE users SET step_input='choose_export_type' WHERE id=?`, [user.id]);
+            return sendTyping(chat, 'Sekarang pilih tipe export: *Absensi* atau *Lembur*');
+        }
+
+        // Validasi data awal
+        if (missing.length > 0) {
+            if (isIntent && !user.step_input && !user.nama_lengkap) {
+                await query(`UPDATE users SET step_input='confirm_nama' WHERE id=?`, [user.id]);
                 return sendTyping(
                     chat,
-                    `Sebelum export, saya perlu data berikut.\nSilakan isi *${label[nextField]}*`
+                    `Apakah benar nama kamu *${user.nama_wa || nama_wa}*?\nKetik *iya* / *tidak*`
                 );
+            }
+
+            const next = getNextMissingField(user);
+            if (next) {
+                await query(`UPDATE users SET step_input=? WHERE id=?`, [next, user.id]);
+                const label = {
+                    input_nama: 'Nama Lengkap',
+                    input_jabatan: 'Jabatan',
+                    input_nik: 'NIK',
+                    input_lokasi: 'Lokasi'
+                };
+                return sendTyping(chat, `Sebelum export, silakan isi *${label[next]}* terlebih dahulu.`);
             }
         }
 
-        // user lengkap
-        if (isIntent && !user.step_input && missing.length === 0) {
-            await query(
-                `UPDATE users 
-                SET step_input='choose_export_type' 
-                WHERE id=?`,
-                [user.id]
-            );
+        // export jenis
+        if (user.step_input === 'choose_export_type') {
+            if (!['absensi','lembur'].includes(text))
+                return sendTyping(chat, 'Balas *absensi* atau *lembur* ya.\nContoh: *absensi*');
 
-            return sendTyping(
-                chat,
-                `Halo *${nama_wa}*, mau export *Absensi* atau *Lembur*?`
-            );
-        }
-
-
-//  Flow data user
-if (missing.length > 0 || user.step_input?.startsWith('input') || user.step_input === 'confirm_nama') {
-
-    // User baru (semua data kosong)
-    if (missing.length === 4 && !user.step_input) {
-        await query(
-            `UPDATE users SET step_input='confirm_nama' WHERE id=?`,
-            [user.id]
-        );
-
-        return sendTyping(
-            chat,
-            `Apakah benar nama kamu *${user.nama_wa || nama_wa}*?\nKetik *iya* / *tidak*`
-        );
-    }
-
-    // Confirm nama
-    if (user.step_input === 'confirm_nama') {
-        if (text === 'iya') {
-            await query(
-                `UPDATE users 
-                 SET nama_lengkap=?, step_input='input_jabatan' 
-                 WHERE id=?`,
-                [user.nama_wa || nama_wa, user.id]
-            );
-            return sendTyping(chat, 'Silahkan isi *jabatan* kamu');
-        }
-
-        if (text === 'tidak') {
-            await query(
-                `UPDATE users SET step_input='input_nama' WHERE id=?`,
-                [user.id]
-            );
-            return sendTyping(chat, 'Silahkan isi *Nama Lengkap* kamu');
-        }
-
-        return sendTyping(chat, 'Ketik *iya* atau *tidak* ya');
-    }
-
-    // Input nama
-    if (user.step_input === 'input_nama') {
-        await query(
-            `UPDATE users 
-             SET nama_lengkap=?, step_input='input_jabatan' 
-             WHERE id=?`,
-            [pesan.trim(), user.id]
-        );
-        return sendTyping(chat, 'Silahkan isi *jabatan* kamu');
-    }
-
-    // Input Jabatan
-    if (user.step_input === 'input_jabatan') {
-        await query(
-            `UPDATE users 
-             SET jabatan=?, step_input='input_nik' 
-             WHERE id=?`,
-            [pesan.trim(), user.id]
-        );
-        return sendTyping(chat, 'Silahkan isi *NIP* kamu');
-    }
-
-    // Input NIP
-    if (user.step_input === 'input_nik') {
-        await query(
-            `UPDATE users 
-             SET nik=?, step_input='input_lokasi' 
-             WHERE id=?`,
-            [pesan.trim(), user.id]
-        );
-        return sendTyping(chat, 'Silahkan isi *lokasi* kamu');
-    }
-
-    // Input Lokasi
-    if (user.step_input === 'input_lokasi') {
-        await query(
-            `UPDATE users 
-             SET lokasi=?, step_input='choose_export_type' 
-             WHERE id=?`,
-            [pesan.trim(), user.id]
-        );
-        return sendTyping(
-            chat,
-            `Lokasi berhasil dicatat: *${pesan.trim()}*.\nSekarang pilih tipe export: *Absensi* atau *Lembur*`
-        );
-    }
-}
-
-// Step: pilih tipe export
-if (user.step_input === 'choose_export_type') {
-    if (!['absensi', 'lembur'].includes(text))
-        return sendTyping(chat, 'Balas *absensi* atau *lembur* ya.');
-
-            // Cek pending untuk jenis
-            const [pendingApproval] = await query(
-                `SELECT file_path
-                FROM approvals
-                WHERE user_id=? 
-                AND source='export'
-                AND status='pending'
-                AND file_path LIKE ?
-                ORDER BY created_at DESC
-                LIMIT 1`,
+            const [existing] = await query(
+                `SELECT id FROM approvals
+                 WHERE user_id=? AND source='export'
+                 AND status IN ('pending','draft')
+                 AND file_path LIKE ?
+                 ORDER BY created_at DESC LIMIT 1`,
                 [user.id, text === 'lembur' ? 'LEMBUR-%' : 'ABSENSI-%']
             );
 
-            if (pendingApproval) {
-                return sendTyping(
-                    chat,
-                    `*Laporan ${text} kamu sedang dalam proses approval.*\nSilakan tunggu hingga selesai.`
-                );
-            }
+            if (existing)
+                return sendTyping(chat, `*Laporan ${text} kamu masih diproses.*\nTunggu sampai selesai ya.`);
 
-            // Simpan pilihan dan lanjut ke pilih template
             await query(
-                `UPDATE users 
-                SET export_type=?, step_input='choose_template' 
-                WHERE id=?`,
+                `UPDATE users SET export_type=?, step_input='choose_template' WHERE id=?`,
                 [text, user.id]
             );
 
-            return sendTyping(
-                chat,
-                `Pilih template:\n1. KSPS\n2. LMD\nBalas *ksps* atau *lmd*`
-            );
+            return sendTyping(chat, 'Pilih template:\n1. KSPS\n2. LMD\nBalas *ksps* atau *lmd*');
         }
 
-
-        // Step: pilih template
+        // templete jenis
         if (user.step_input === 'choose_template') {
-            if (!['ksps', 'lmd'].includes(text))
+            if (!['ksps','lmd'].includes(text))
                 return sendTyping(chat, 'Balas *ksps* atau *lmd* ya.');
 
             await query(
-                `UPDATE users 
-                 SET template_export=?, step_input=NULL 
-                 WHERE id=?`,
+                `UPDATE users SET template_export=?, step_input=NULL WHERE id=?`,
                 [text.toUpperCase(), user.id]
             );
 
-            const [freshUser] = await query(
-                `SELECT * FROM users WHERE id=?`,
-                [user.id]
-            );
+            const [freshUser] = await query(`SELECT * FROM users WHERE id=?`, [user.id]);
 
-            if (freshUser.export_type === 'absensi') {
-                return generatePDFandSend(chat, freshUser, db, paramBulan);
-            } else {
-                return generatePDFLembur(chat, freshUser, db);
-            }
+            return freshUser.export_type === 'absensi'
+                ? generatePDFandSend(chat, freshUser, db, paramBulan)
+                : generatePDFLembur(chat, freshUser, db);
         }
 
     } catch (err) {
