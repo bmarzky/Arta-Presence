@@ -1,7 +1,15 @@
 const moment = require('moment');
 const { sendTyping } = require('../utils/sendTyping');
+const reverseGeocode = require('../utils/reverseGeocode');
 
-module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query, isIntent = false) {
+module.exports = async function handleAbsen(
+    chat,
+    user,
+    lowerMsg,
+    pesan,
+    query,
+    isIntent = false
+) {
     const today = moment().format('YYYY-MM-DD');
     const nowTime = moment().format('HH:mm');
 
@@ -12,11 +20,55 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query, 
     );
     const todayAbsen = rows[0];
 
-    // Handle step absen
+    // lokasi terakhir
+    let lokasiRealtime = 'Lokasi tidak diketahui';
+
+    const lokasiRows = await query(
+        `
+        SELECT 
+            id,
+            latitude,
+            longitude,
+            nama_tempat,
+            updated_at
+        FROM user_location
+        WHERE user_id = ?
+        ORDER BY updated_at DESC
+        LIMIT 1
+        `,
+        [user.id]
+    );
+
+    if (lokasiRows.length > 0) {
+        const loc = lokasiRows[0];
+        let namaTempat = loc.nama_tempat;
+
+        // reverse geocoding
+        if (!namaTempat && loc.latitude && loc.longitude) {
+            namaTempat = await reverseGeocode(loc.latitude, loc.longitude);
+
+            if (namaTempat) {
+                await query(
+                    `
+                    UPDATE user_location
+                    SET nama_tempat=?
+                    WHERE id=?
+                    `,
+                    [namaTempat, loc.id]
+                );
+            }
+        }
+
+        lokasiRealtime = `Lokasi Terakhir
+- Latitude  : ${loc.latitude}
+- Longitude : ${loc.longitude}
+- Lokasi    : ${namaTempat || 'Tidak diketahui'}
+- Update    : ${moment(loc.updated_at).format('DD-MM-YYYY HH:mm')}`;
+    }
+
+    // handle step absen
     if (user.step_absen) {
         switch (user.step_absen) {
-
-            // konfirmasi keterangan masuk
             case 'ket_masuk': {
                 if (lowerMsg === 'ya') {
                     await query(
@@ -37,11 +89,9 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query, 
                     );
                 }
 
-                // Jawaban ga valid
                 return sendTyping(chat, 'Mohon jawab dengan *ya* atau *tidak*');
             }
 
-            // Input keterangan masuk
             case 'isi_ket': {
                 await query(
                     `UPDATE absensi SET deskripsi=? WHERE user_id=? AND tanggal=?`,
@@ -57,7 +107,6 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query, 
                 return sendTyping(chat, 'Jangan lupa untuk absen saat pulang.');
             }
 
-            // Input keterangan saat pulang
             case 'isi_ket_pulang': {
                 await query(
                     `UPDATE absensi SET deskripsi=? WHERE user_id=? AND tanggal=?`,
@@ -73,14 +122,15 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query, 
                 return sendTyping(chat, 'Mau absen PULANG sekarang?');
             }
 
-            // Konfirmasi absen pulang
             case 'konfirmasi_pulang': {
                 if (lowerMsg === 'ya') {
                     await query(
-                        `UPDATE absensi 
+                        `
+                        UPDATE absensi 
                         SET jam_pulang=CURTIME(), lokasi=? 
-                        WHERE user_id=? AND tanggal=?`,
-                        [user.lokasi || 'Lokasi tidak diketahui', user.id, today]
+                        WHERE user_id=? AND tanggal=?
+                        `,
+                        [lokasiRealtime, user.id, today]
                     );
 
                     await query(
@@ -89,10 +139,7 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query, 
                     );
 
                     await sendTyping(chat, `Absen PULANG berhasil pada ${nowTime}`);
-                    return sendTyping(
-                        chat,
-                        'Terima kasih, absensi hari ini sudah lengkap'
-                    );
+                    return sendTyping(chat, 'Terima kasih, absensi hari ini sudah lengkap');
                 }
 
                 if (lowerMsg === 'tidak') {
@@ -103,22 +150,22 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query, 
                     return sendTyping(chat, 'Absen pulang dibatalkan.');
                 }
 
-                // Jawaban ga valid
                 return sendTyping(chat, 'Mohon jawab dengan *ya* atau *tidak* 🙏');
             }
         }
     }
 
-    // Command atau Intent
-    if (lowerMsg === '/absen' || isIntent) {
-        // Belum absen hari ini
-        if (!todayAbsen) {
-        await query(
-            `INSERT INTO absensi (user_id, tanggal, jam_masuk, lokasi)
-            VALUES (?, ?, CURTIME(), ?)`,
-            [user.id, today, user.lokasi || 'Lokasi tidak diketahui']
-        );
 
+    // Command /absen
+    if (lowerMsg === '/absen' || isIntent) {
+        if (!todayAbsen) {
+            await query(
+                `
+                INSERT INTO absensi (user_id, tanggal, jam_masuk, lokasi)
+                VALUES (?, ?, CURTIME(), ?)
+                `,
+                [user.id, today, lokasiRealtime]
+            );
 
             await query(
                 "UPDATE users SET step_absen='ket_masuk' WHERE id=?",
@@ -129,14 +176,13 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query, 
             return sendTyping(chat, 'Mau tambahkan keterangan?');
         }
 
-        // Sudah masuk, belum pulang
         if (todayAbsen.jam_masuk && !todayAbsen.jam_pulang) {
-
             if (!todayAbsen.deskripsi) {
                 await query(
                     "UPDATE users SET step_absen='isi_ket_pulang' WHERE id=?",
                     [user.id]
                 );
+
                 await sendTyping(chat, 'Kamu belum mengisi keterangan kerja hari ini.');
                 return sendTyping(
                     chat,
@@ -148,14 +194,12 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query, 
                 "UPDATE users SET step_absen='konfirmasi_pulang' WHERE id=?",
                 [user.id]
             );
+
             return sendTyping(chat, 'Mau absen PULANG sekarang?');
         }
 
-        // Absen sudah lengkap
         return sendTyping(chat, 'Absensi hari ini sudah lengkap');
     }
 
-    // Kalau bukan command atau intent, return diam
     return;
-
 };
