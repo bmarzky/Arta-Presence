@@ -77,8 +77,10 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query, 
             case 'konfirmasi_pulang': {
                 if (lowerMsg === 'ya') {
                     await query(
-                        `UPDATE absensi SET jam_pulang=CURTIME() WHERE user_id=? AND tanggal=?`,
-                        [user.id, today]
+                        `UPDATE absensi 
+                        SET jam_pulang=CURTIME(), lokasi=? 
+                        WHERE user_id=? AND tanggal=?`,
+                        [user.lokasi || 'Lokasi tidak diketahui', user.id, today]
                     );
 
                     await query(
@@ -111,11 +113,12 @@ module.exports = async function handleAbsen(chat, user, lowerMsg, pesan, query, 
     if (lowerMsg === '/absen' || isIntent) {
         // Belum absen hari ini
         if (!todayAbsen) {
-            await query(
-                `INSERT INTO absensi (user_id, tanggal, jam_masuk)
-                VALUES (?, ?, CURTIME())`,
-                [user.id, today]
-            );
+        await query(
+            `INSERT INTO absensi (user_id, tanggal, jam_masuk, lokasi)
+            VALUES (?, ?, CURTIME(), ?)`,
+            [user.id, today, user.lokasi || 'Lokasi tidak diketahui']
+        );
+
 
             await query(
                 "UPDATE users SET step_absen='ket_masuk' WHERE id=?",

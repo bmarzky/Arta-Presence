@@ -46,8 +46,6 @@ async function handleExport(chat, user, pesan, db, paramBulan=null, isIntent=fal
             return null;
         };
 
-        // step input aktif
-
         // Confirm nama
         if (user.step_input === 'confirm_nama') {
             if (text === 'iya') {
